@@ -1454,8 +1454,19 @@
     'tactics.disc':          { ca:'Platet', es:'Platillo', en:'Disc' },
     'tactics.pole':          { ca:'Pica', es:'Pica', en:'Pole' },
     'tactics.hoop':          { ca:'Anella', es:'Aro', en:'Hoop' },
-    'tactics.items':         { ca:'Més material', es:'Más material', en:'More equipment' },
-    'tactics.item_colour':   { ca:'Color del material', es:'Color del material', en:'Equipment colour' },
+    // The Material panel's groups.
+    'tactics.g_ball':        { ca:'Pilota', es:'Balón', en:'Ball' },
+    'tactics.g_markers':     { ca:'Marcadors', es:'Marcadores', en:'Markers' },
+    'tactics.g_agility':     { ca:'Agilitat', es:'Agilidad', en:'Agility' },
+    'tactics.g_goals':       { ca:'Porteries', es:'Porterías', en:'Goals' },
+    'tactics.g_other':       { ca:'Altres', es:'Otros', en:'Other' },
+    /* Short names under the tool buttons, where the full one (the tooltip)
+       would not fit; every other type shows tactics.<type>. */
+    'tactics.sn_hurdlehi':   { ca:'Tanca alta', es:'Valla alta', en:'Tall hurdle' },
+    'tactics.sn_ladder':     { ca:'Escala', es:'Escalera', en:'Ladder' },
+    'tactics.sn_minigoal':   { ca:'Mini', es:'Mini', en:'Mini' },
+    'tactics.sn_goal7':      { ca:'F7', es:'F7', en:'7-a-side' },
+    'tactics.sn_goal11':     { ca:'F11', es:'F11', en:'11-a-side' },
     'ctx.delete_item':       { ca:'Eliminar', es:'Eliminar', en:'Delete' },
     'tactics.hurdle':        { ca:'Tanca baixa', es:'Valla baja', en:'Low hurdle' },
     'tactics.hurdlehi':      { ca:"Tanca alta d'atletisme", es:'Valla alta de atletismo', en:'Tall athletics hurdle' },
@@ -2896,7 +2907,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 276;
+  const APP_VERSION = 277;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -10459,11 +10470,16 @@
        has to be here. */
     if (!tbIs3D()) adopt('gear', ['#tb-orient'], t('tactics.orientation'));
 
-    adopt('props', ['#tb-ball-tool'], t('tactics.ball'));
-    adopt('props', ['#tb-cone-tool'], t('tactics.cone'));
-    adopt('props', ['#tb-prop-tools'], t('tactics.items'));
-    adopt('props', ['#tb-prop-colours'], t('tactics.item_colour'));
-    adopt('props', ['#tb-sil-wrap'], t('tactics.silhouette'));
+    /* Five groups, as a coach looks for them. The colour row is not a
+       row of its own: it follows the chosen tool into ITS group, and only
+       when that item takes a colour — see paintPropSwatches. It starts in
+       the markers group, hidden. The silhouette is a player's pose, not
+       equipment: it moves to the squad panel, below. */
+    adopt('props', ['#tb-ball-tool'], t('tactics.g_ball'));
+    adopt('props', ['#tb-prop-g-markers', '#tb-prop-colours'], t('tactics.g_markers'));
+    adopt('props', ['#tb-prop-g-agility'], t('tactics.g_agility'));
+    adopt('props', ['#tb-prop-g-goals'], t('tactics.g_goals'));
+    adopt('props', ['#tb-prop-g-other'], t('tactics.g_other'));
 
     /* One row per tool, so each carries its own options — which is
        what "options on hover over each" means once the row is the
@@ -10546,6 +10562,9 @@
     }
 
     tbMenuSquad(hooks || {});
+    /* After tbMenuSquad, which BUILDS its panel with innerHTML — adopted
+       before, the silhouette would be wiped with the rest. */
+    adopt('squad', ['#tb-sil-wrap'], t('tactics.silhouette'));
 
     /* The board name, moved in beside the hamburger. Adopted like
        every other control — it is bound by bindTactics and a copy
@@ -11735,6 +11754,9 @@
      rotatable ones face DOWN (+y) at rotation 0: a goal's mouth is its
      open bottom edge, a mannequin's nose points down. */
   const TB_PROP_2D = Object.assign(Object.create(null), {
+    /* The cone, side-on like the legacy .tb-cone and in any colour: body
+       and base plate in currentColor, the plate shaded a touch darker. */
+    cone: { vb: '0 0 24 24', svg: '<path d="M10.2 1.5h3.6l5.7 19H4.5z" fill="currentColor" stroke="rgba(0,0,0,.6)" stroke-width="1.1" stroke-linejoin="round"/><path d="M10.9 3.2h1.2l-3.3 16.1H7.2z" fill="#fff" fill-opacity=".35"/><rect x="0.6" y="20" width="22.8" height="3.4" rx="0.8" fill="currentColor" stroke="rgba(0,0,0,.6)" stroke-width="1.1"/><rect x="0.6" y="20" width="22.8" height="3.4" rx="0.8" fill="#000" fill-opacity=".12"/>' },
     /* A saucer: dark rim so it reads against any turf, a lighter ring for
        the dome, and a SMALL hole on top — the real ones are a few cm. */
     disc: { vb: '0 0 24 24', svg: '<circle cx="12" cy="12" r="10.3" fill="currentColor" stroke="rgba(0,0,0,.72)" stroke-width="2.2"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.4"/><circle cx="12" cy="12" r="2.9" fill="rgba(0,0,0,.55)"/>' },
@@ -11758,6 +11780,28 @@
     goal11: { vb: '0 0 73 20', svg: '<rect x="2.5" y="2.5" width="68" height="15" fill="rgba(255,255,255,.22)"/><path d="M2.5 17.5 L2.5 2.5 L70.5 2.5 L70.5 17.5" fill="none" stroke="#f2f2f2" stroke-width="2.4" stroke-linejoin="round"/><circle cx="2.5" cy="17.5" r="2.2" fill="#f2f2f2" stroke="rgba(0,0,0,.5)" stroke-width="0.7"/><circle cx="70.5" cy="17.5" r="2.2" fill="#f2f2f2" stroke="rgba(0,0,0,.5)" stroke-width="0.7"/>' },
     rebounder: { vb: '0 0 30 20', svg: '<path d="M5 16 L9 4 L21 4 L25 16 Z" fill="rgba(255,255,255,.22)" stroke="#d8d8d8" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 16 L27 16" stroke="#f2f2f2" stroke-width="3.4" stroke-linecap="round"/>' }
   });
+
+  /* BUTTON icons, where the picker should show a thing from the FRONT —
+     what it is — rather than as the board draws it, from above, the way
+     it is placed. A type not listed here uses its board glyph. */
+  const TB_PROP_ICON = Object.assign(Object.create(null), {
+    dummy: { vb: '0 0 20 24', svg: '<g fill="currentColor" stroke="rgba(0,0,0,.6)" stroke-width="0.8" stroke-linejoin="round"><circle cx="10" cy="3.4" r="2.5"/><path d="M8.9 5.8 h2.2 v1 l3.6 1.1 q1 .4 1 1.5 l-.4 5.2 q-.1 .8 -.9 .8 l-.5 -4.4 -.4 3.4 .3 6.8 h-2.3 l-.6 -6.3 -.6 6.3 h-2.3 l.3 -6.8 -.4 -3.4 -.5 4.4 q-.8 0 -.9 -.8 l-.4 -5.2 q0 -1.1 1 -1.5 l3.6 -1.1 z"/></g><rect x="4.5" y="21.4" width="11" height="1.8" rx=".6" fill="#2b2b2b"/>' },
+    hurdle: { vb: '0 0 24 16', svg: '<path d="M2 14.5 H4.6 C5.4 11.5 3.6 9 4.8 5.6 Q5.6 3 8.4 3 H15.6 Q18.4 3 19.2 5.6 C20.4 9 18.6 11.5 19.4 14.5 H22" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 14.5 H4.6 C5.4 11.5 3.6 9 4.8 5.6 Q5.6 3 8.4 3 H15.6 Q18.4 3 19.2 5.6 C20.4 9 18.6 11.5 19.4 14.5 H22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' },
+    hurdlehi: { vb: '0 0 24 18', svg: '<path d="M4 5 V16.5 M20 5 V16.5 M1.5 16.5 H6.5 M17.5 16.5 H22.5" stroke="#bdbdbd" stroke-width="1.8" stroke-linecap="round"/><rect x="2" y="2" width="20" height="4" rx=".8" fill="currentColor" stroke="rgba(0,0,0,.6)" stroke-width=".8"/><path d="M5.5 2 v4 M10 2 v4 M14 2 v4 M18.5 2 v4" stroke="#1a1a1a" stroke-width="1.9"/>' }
+  });
+
+  /** One captioned tool button per type — icon above, short name below. */
+  function tbPropToolsHtml(types) {
+    return types.filter(ty => TB_PROP_2D[ty]).map(ty => {
+      const ic = TB_PROP_ICON[ty] || TB_PROP_2D[ty];
+      const shortKey = 'tactics.sn_' + ty;
+      const name = t(shortKey) !== shortKey ? t(shortKey) : t('tactics.' + ty);
+      return '<button class="tb-cone-tool tb-prop-tool" data-prop="' + ty + '" data-tooltip="' +
+        sanitize(t('tactics.' + ty)) + '" style="color:' + tbPropHex(ty, '') + '">' +
+        '<svg viewBox="' + ic.vb + '" aria-hidden="true">' + ic.svg + '</svg>' +
+        '<span class="tb-prop-name">' + sanitize(name) + '</span></button>';
+    }).join('');
+  }
 
   /** The hex a prop row is drawn in: its colour, else its type's default. */
   function tbPropHex(type, colour) {
@@ -17068,8 +17112,13 @@
             </div>
           </div>
           <span class="tb-sep"></span>
-          <button class="tb-cone-tool" id="tb-cone-tool" data-tooltip="Place cone"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M10.2 1.5h3.6l5.7 19H4.5z" fill="#ff8c00" stroke="#a85800" stroke-width="1.3" stroke-linejoin="round"/><rect x="0.6" y="20" width="22.8" height="3.4" rx="0.8" fill="#f07f00" stroke="#a85800" stroke-width="1.3"/></svg></button>
-          <span class="tb-prop-tools" id="tb-prop-tools">${Object.keys(TB_PROP_2D).map(ty => `<button class="tb-cone-tool tb-prop-tool" data-prop="${ty}" data-tooltip="${sanitize(t('tactics.' + ty))}" style="color:${tbPropHex(ty, '')}"><svg width="20" height="16" viewBox="${TB_PROP_2D[ty].vb}">${TB_PROP_2D[ty].svg}</svg></button>`).join('')}</span>
+          ${/* The material, in the groups the Material panel shows. The cone
+                is one of them now (a prop with a colour); the old cone tool
+                is gone, though cones placed with it are still drawn. */''}
+          <span class="tb-prop-tools" id="tb-prop-g-markers">${tbPropToolsHtml(['cone', 'disc', 'pole', 'hoop'])}</span>
+          <span class="tb-prop-tools" id="tb-prop-g-agility">${tbPropToolsHtml(['hurdle', 'hurdlehi', 'ladder'])}</span>
+          <span class="tb-prop-tools" id="tb-prop-g-goals">${tbPropToolsHtml(['minigoal', 'goal7', 'goal11'])}</span>
+          <span class="tb-prop-tools" id="tb-prop-g-other">${tbPropToolsHtml(['dummy', 'rebounder'])}</span>
           <span class="tb-prop-colours" id="tb-prop-colours">${tbPropSwatchesHtml('')}</span>
           <button class="tb-ball-tool" id="tb-ball-tool" data-tooltip="Add ball"><span class="tb-ball-icon">⚽</span></button>
           <span class="tb-sep"></span>
@@ -18491,6 +18540,10 @@
       coneMode = false;
       propMode = null;
       selectMode = false;
+      /* No tool, no colour row (paintPropSwatches shows it again). By id:
+         this runs before that function's own const is initialised. */
+      const pcRow = document.getElementById('tb-prop-colours');
+      if (pcRow) pcRow.hidden = true;
       document.querySelectorAll('.tb-prop-tool').forEach(b => b.classList.remove('tb-cone-tool-active'));
       if (arrowToolBtn) arrowToolBtn.classList.remove('tb-arrow-tool-active');
       if (rectToolBtn) rectToolBtn.classList.remove('tb-rect-tool-active');
@@ -19480,6 +19533,7 @@
     let coneMode = false;
     let propMode = null;      // the prop type being placed, or null
     let propColour = null;    // the chosen swatch; null = the type's default
+    let propColourFor = null; // …and the type it was chosen for
     const coneToolBtn = document.getElementById('tb-cone-tool');
 
     function saveCones() {
@@ -19691,7 +19745,16 @@
       const on = propColour || (def ? def.def : '');
       propColoursEl.querySelectorAll('.tb-prop-sw').forEach(b =>
         b.classList.toggle('tb-prop-sw-on', b.dataset.pc === on));
+      /* Under the chosen tool's OWN group, and only when that item takes a
+         colour — a row of swatches under the goals, which have none, would
+         read as if it applied to them. Moved, not copied: the one element
+         keeps its handler. */
+      const btn = propMode && document.querySelector('.tb-prop-tool[data-prop="' + propMode + '"]');
+      const group = btn && btn.closest('.tb-prop-tools');
+      if (group && group.nextSibling !== propColoursEl) group.after(propColoursEl);
+      propColoursEl.hidden = !(def && def.colour);
     }
+    paintPropSwatches();   // start hidden: no tool is chosen yet
 
     document.querySelectorAll('.tb-prop-tool').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -19699,6 +19762,9 @@
         deactivateDrawTools();
         if (!was) {
           tbSetDrawMode(true);
+          /* Each item starts from its OWN default colour — orange for a
+             cone — rather than inheriting the yellow chosen for discs. */
+          if (propColourFor !== btn.dataset.prop) propColour = null;
           propMode = btn.dataset.prop;
           btn.classList.add('tb-cone-tool-active');
           inner.style.cursor = 'crosshair';
@@ -19715,6 +19781,7 @@
         const sw = e.target.closest('.tb-prop-sw');
         if (!sw) return;
         propColour = sw.dataset.pc;
+        propColourFor = propMode;
         const picked = Array.from(selected).filter(el => el.classList.contains('tb-prop'));
         if (picked.length) {
           pushUndo();

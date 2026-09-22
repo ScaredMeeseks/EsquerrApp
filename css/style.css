@@ -1608,11 +1608,28 @@ tr:hover td { background: #f7f8fa; }
 .tb-prop.tb-rotating > .tb-prop-rot { cursor:grabbing; }
 /* On a turf-coloured chip: the goals and the rebounder are drawn white,
    which on the card-white button would be invisible. */
-.tb-prop-tool svg { background:#2e7d32; border-radius:3px; padding:1px; }
-.tb-cone-tool.tb-prop-tool { width:auto; min-width:32px; padding:0 4px; }
+.tb-prop-tool svg { background:#2e7d32; border-radius:3px; padding:1px; width:30px; height:24px; }
+/* Icon above, short name below: three goals and two hurdles look alike at
+   icon size, and a phone has no hover to show a tooltip. */
+.tb-cone-tool.tb-prop-tool {
+  width:auto; height:auto; min-width:52px; padding:5px 4px 3px;
+  flex-direction:column; gap:3px;
+}
+.tb-prop-name { font-size:.62rem; line-height:1; color:var(--text); white-space:nowrap; }
+.tb-cone-tool-active .tb-prop-name { color:#fff; }
+/* A group's tools, then — when the chosen item takes one — its colours
+   on their own line underneath. */
+.tb-m-row > .tb-prop-colours { flex:0 0 100%; padding-top:.15rem; }
+/* The Material panel's groups, divided like the mockup the coach chose. */
+#tb-panel-props > .tb-m-row + .tb-m-row {
+  border-top:1px solid rgba(255,255,255,.12); padding-top:.45rem;
+}
 .tb-prop.tb-dragging { cursor:grabbing; filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)); z-index:10; }
 .tb-prop:hover { filter:drop-shadow(0 0 4px var(--primary)); }
-.tb-prop-tools { display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.tb-prop-tools { display:inline-flex; align-items:stretch; gap:4px; flex-wrap:wrap; }
+/* ⚠ [hidden] needs saying: the UA's display:none loses to the display
+   below, and the row is shown and hidden with .hidden. */
+.tb-prop-colours[hidden] { display:none !important; }
 .tb-prop-colours { display:inline-flex; align-items:center; gap:5px; flex-wrap:wrap; }
 .tb-prop-sw {
   width:18px; height:18px; flex:none; border-radius:50%; cursor:pointer;

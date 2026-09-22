@@ -108,10 +108,10 @@
      the pitch like everything else and the floor is only a backstop.
      The 3D view keeps `w`, a little over life size like the ball.
 
-     `tool: false` is a type that is counted but not placed from the
-     picker: the cone still has its own tool and its own track
-     (`cones`), and is listed here so a legacy cone and a future
-     coloured one land in the same line of the material list.
+     The cone is a prop like the rest since v277, so it takes a colour
+     (orange by default). Cones placed before that live on their own
+     `cones` track, which is still drawn and still counted — as orange
+     cones, on the same line as orange ones placed now.
 
      Order is the order the material list prints in.
 
@@ -119,7 +119,7 @@
      boards, and `PROPS['constructor']` on a plain object is a function —
      truthy, so every "is this a known type?" test would pass it. */
   var PROPS = Object.assign(Object.create(null), {
-    cone: {w: 0.50, d: 0.50, h: 0.50,  rot: false, colour: true,  def: 'taronja', tool: false},
+    cone: {w: 0.50, d: 0.50, h: 0.50,  g: 0.90, rot: false, colour: true,  def: 'taronja'},
     disc: {w: 0.40, d: 0.40, h: 0.09,  g: 1.20, rot: false, colour: true,  def: 'groc'},
     pole: {w: 0.08, d: 0.08, h: 1.60,  g: 1.10, rot: false, colour: true,  def: 'groc'},
     hoop: {w: 0.90, d: 0.90, h: 0.04,  g: 1.80, rot: false, colour: true,  def: 'vermell'},

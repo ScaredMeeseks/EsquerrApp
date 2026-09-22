@@ -706,16 +706,24 @@ export function createBoard3D(opts) {
      picker, which is non-recursive for cones, still hits the part a coach
      aims at. */
   const CONE_PLATE_H = 0.03;
-  function addCone(i, pct) {
-    const w = BG.toWorld(pct[0], pct[1], getPitch(), getBoardType());
+  /* One cone, in any colour — the legacy orange ones (addCone) and the
+     coloured ones placed as props (PROP_BUILD.cone) are the same object. */
+  function coneMesh(col) {
+    const c = new THREE.Color(col);
     const body = new THREE.CylinderGeometry(0.035, CONE_R * 0.8, CONE_H - CONE_PLATE_H, 20);
     body.translate(0, CONE_PLATE_H + (CONE_H - CONE_PLATE_H) / 2, 0);
-    const mesh = new THREE.Mesh(body, new THREE.MeshLambertMaterial({color: 0xff8c00}));
+    const mesh = new THREE.Mesh(body, new THREE.MeshLambertMaterial({color: c}));
     const plateGeo = new THREE.BoxGeometry(CONE_R * 2, CONE_PLATE_H, CONE_R * 2);
     plateGeo.translate(0, CONE_PLATE_H / 2, 0);
-    const plate = new THREE.Mesh(plateGeo, new THREE.MeshLambertMaterial({color: 0xe07400}));
+    const plate = new THREE.Mesh(plateGeo,
+        new THREE.MeshLambertMaterial({color: c.clone().multiplyScalar(0.88)}));
     plate.castShadow = true;
     mesh.add(plate);
+    return mesh;
+  }
+  function addCone(i, pct) {
+    const w = BG.toWorld(pct[0], pct[1], getPitch(), getBoardType());
+    const mesh = coneMesh(0xff8c00);
     mesh.position.set(w.x, 0, w.z);
     mesh.castShadow = true;
     objectRoot.add(mesh);
@@ -788,6 +796,7 @@ export function createBoard3D(opts) {
   }
 
   const PROP_BUILD = {
+    cone(d, col) { return coneMesh(col); },
     disc(d, col) {
       /* A saucer, turned from a profile: a wide foot rising to a low dome
          with a SMALL hole on top — the real ones have a few centimetres.

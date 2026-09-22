@@ -198,6 +198,15 @@ describe('material — items counted per type AND colour', () => {
     assert.strictEqual(m.cones, 5, 'the cones total still means every cone');
   });
 
+  it('cones placed as props count by colour, beside the legacy orange ones', () => {
+    // The cone tool places props now; cones from before stay on `cones`.
+    const bb = { a: B({ cones: cones(4),
+      props: props(6, 'cone', 'groc').concat(props(2, 'cone', 'taronja')) }) };
+    const m = H.planMaterial(plan([ex('a')]), (id) => bb[id] || null);
+    assert.deepStrictEqual(rows(m), ['cone|groc=6', 'cone|taronja=6']);
+    assert.strictEqual(m.cones, 12);
+  });
+
   it('prints in catalogue order, then palette order', () => {
     const bb = { a: B({ props: props(1, 'hoop', 'blanc').concat(props(1, 'disc', 'blau'),
       props(1, 'hoop', 'groc')), cones: cones(1) }) };
@@ -250,6 +259,22 @@ describe('material — every item in the catalogue is complete', () => {
         assert.ok(has(k), 'missing ' + k));
       if (BGm.PROPS[ty].colour) assert.ok(has('mat.' + ty + '_g'), 'missing mat.' + ty + '_g');
       if (BGm.PROPS[ty].tool !== false) assert.ok(has('tactics.' + ty), 'missing tactics.' + ty);
+    });
+  });
+
+  it('each placeable type is in exactly one group of the Material panel', () => {
+    /* A type missing from every group is in the table and the count but
+       has no button — nobody can place it. In two groups, it has two. */
+    const groups = [...src.matchAll(/id="tb-prop-g-(\w+)">\$\{tbPropToolsHtml\(\[([^\]]*)\]\)\}/g)]
+      .map((m) => [m[1], m[2].match(/'(\w+)'/g).map((q) => q.slice(1, -1))]);
+    assert.deepStrictEqual(groups.map((g) => g[0]), ['markers', 'agility', 'goals', 'other']);
+    placed.forEach((ty) => {
+      const n = groups.filter((g) => g[1].includes(ty)).length;
+      assert.strictEqual(n, 1, ty + ' is in ' + n + ' groups');
+    });
+    groups.forEach(([g]) => {
+      const i18nKey = 'tactics.g_' + g;
+      assert.ok(has(i18nKey), 'the ' + g + ' group has no heading');
     });
   });
 
