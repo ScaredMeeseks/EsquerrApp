@@ -233,11 +233,6 @@ describe('deleteTeam', function () {
     assert.strictEqual(JSON.stringify(await blob('fa_matches__amateur')), before);
   });
 
-  it('refuses to delete the last remaining team', async () => {
-    await assert.rejects(() => callDelete({category: 'amateur', letter: 'A'}),
-        (e) => /mínim un equip/.test(e.message));
-  });
-
   it('rejects a caller who is not the lead', async () => {
     await assert.rejects(() => fns.deleteTeam.run({
       auth: {uid: P_A, token: {teamId: CLUB, role: 'player', email: 'a@x.com'}},
@@ -248,6 +243,73 @@ describe('deleteTeam', function () {
   it('rejects a malformed team', async () => {
     await assert.rejects(() => callDelete({category: 'nope', letter: 'A'}));
     await assert.rejects(() => callDelete({category: 'amateur', letter: 'bb'}));
+  });
+});
+
+/* v278: the LAST team may be deleted. Until then deleteTeam refused it, so a
+   club sold one team could never swap it — the quota refused a second, and
+   the first could not go. Zero teams is the state of a club that has never
+   been set up; the client holds the lead on the setup card until a team is
+   saved, and setClubCategories still refuses to SAVE zero. */
+describe('deleteTeam — down to zero teams, then a different one', function () {
+  this.timeout(120000);
+
+  before(async () => {
+    await seed();
+    await db.doc('clubs/' + CLUB).set({maxTeams: 1}, {merge: true});
+    await callDelete({category: 'amateur', letter: 'B'});
+    await callDelete({category: 'amateur', letter: 'A'});
+  });
+
+  it('deletes the last team instead of refusing it', async () => {
+    const m = (await db.doc('clubs/' + CLUB + '/teamDeletions/amateur-A').get()).data();
+    assert.strictEqual(m.status, 'done');
+  });
+
+  it('leaves the category disabled, with no letters to resurrect', async () => {
+    const club = (await db.doc('clubs/' + CLUB).get()).data();
+    assert.deepStrictEqual(club.categories.amateur, {enabled: false, letters: ['A']});
+    assert.strictEqual(club.fcfLinks['amateur-A'], undefined);
+    assert.strictEqual(club.schedules['amateur-A'], undefined);
+  });
+
+  it('removes both roster documents', async () => {
+    for (const k of ['amateur-A', 'amateur-B']) {
+      const r = await db.doc('clubs/' + CLUB + '/rosters/' + k).get();
+      assert.strictEqual(r.exists, false, k + ' survived');
+    }
+  });
+
+  it('detaches A\'s player too, rather than deleting them', async () => {
+    const none = await blob('fa_users__none');
+    const a = (none || []).find((u) => u.id === P_A);
+    assert.ok(a, 'the last team\'s player must land in __none');
+    assert.strictEqual(a.category, '');
+    assert.strictEqual(a.team, '');
+  });
+
+  it('leaves none of A\'s matches behind', async () => {
+    const rows = await blob('fa_matches__amateur');
+    assert.ok(!rows || !rows.some((m) => String(m.team) === 'A'));
+  });
+
+  it('then lets the one-team club save a different team — Juvenil C', async () => {
+    const res = await fns.setClubCategories.run({
+      auth: {uid: LEAD, token: {teamId: CLUB, role: 'lead', email: 'lead@x.com'}},
+      data: {categories: {juvenil: {enabled: true, letters: ['C']}}},
+      rawRequest: {},
+    });
+    assert.strictEqual(res.teams, 1);
+    const club = (await db.doc('clubs/' + CLUB).get()).data();
+    assert.deepStrictEqual(club.categories.juvenil, {enabled: true, letters: ['C']});
+  });
+
+  it('still refuses to SAVE a club with no team at all', async () => {
+    await assert.rejects(() => fns.setClubCategories.run({
+      auth: {uid: LEAD, token: {teamId: CLUB, role: 'lead', email: 'lead@x.com'}},
+      data: {categories: {juvenil: {enabled: false, letters: ['C']}}},
+      rawRequest: {},
+    }), (e) => /almenys una categoria/.test(e.message));
   });
 });
 

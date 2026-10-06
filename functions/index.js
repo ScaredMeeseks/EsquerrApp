@@ -4641,10 +4641,12 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
       // previous run got past the club-doc write and stopped — resume rather
       // than refuse, or a partial failure bricks the team permanently.
       const resuming = !liveKeys.includes(teamKey);
-      if (!resuming && liveKeys.length <= 1) {
-        throw new HttpsError("failed-precondition",
-            "Un club ha de tenir com a mínim un equip.");
-      }
+      /* The LAST team may go too. Under maxTeams:1 there is no other way to
+         swap it: the quota refuses a second team, so the old one has to be
+         deleted first. Zero teams is the same state as a club that has never
+         been set up — no category enabled, the lead's `cats` empty — and
+         navigate() already holds the lead on the setup card until a team is
+         saved again. setClubCategories still refuses to SAVE zero. */
 
       const markerRef = clubRef.collection("teamDeletions").doc(teamKey);
       await markerRef.set({

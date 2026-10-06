@@ -97,6 +97,7 @@
     // ── Team quota (commercial limit set by the superadmin) ──
     'quota.title':       { ca:"Límit d'equips assolit", es:'Límite de equipos alcanzado', en:'Team limit reached' },
     'ts.add_team':       { ca:'Afegir equip', es:'Añadir equipo', en:'Add team' },
+    'ts.remove_team':    { ca:'Treure', es:'Quitar', en:'Remove' },
     'quota.add_blocked': { ca:"Per afegir un equip extra contacta amb l'administrador o elimina un dels equips actuals. Eliminar un equip comportarà la pèrdua de les dades.",
                            es:'Para añadir un equipo extra contacta con el administrador o elimina uno de los equipos actuales. Eliminar un equipo conllevará la pérdida de los datos.',
                            en:'To add an extra team contact the admin or remove one of your current teams. Removing a team will result in the loss of the data.' },
@@ -118,7 +119,6 @@
     'team_del.deleting': { ca:"Eliminant l'equip…", es:'Eliminando el equipo…', en:'Deleting the team…' },
     'team_del.done':     { ca:'Equip eliminat.', es:'Equipo eliminado.', en:'Team deleted.' },
     'team_del.failed':   { ca:"No s'ha pogut eliminar l'equip. Torna-ho a provar.", es:'No se ha podido eliminar el equipo. Inténtalo de nuevo.', en:'The team could not be deleted. Try again.' },
-    'team_del.last_team': { ca:'Un club ha de tenir com a mínim un equip.', es:'Un club debe tener como mínimo un equipo.', en:'A club must have at least one team.' },
     'team_del.button':   { ca:'Eliminar equip', es:'Eliminar equipo', en:'Delete team' },
     'team_del.disable_blocked': { ca:"Aquesta categoria encara té equips ({teams}). Elimina'ls un per un: en treure l'últim, la categoria es desactiva sola.",
                            es:'Esta categoría todavía tiene equipos ({teams}). Elimínalos uno a uno: al quitar el último, la categoría se desactiva sola.',
@@ -2939,7 +2939,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 278;
+  const APP_VERSION = 279;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4997,13 +4997,26 @@
      leaving the row painted as disabled: a greyed A and no "+", so the
      lead could tick Juvenil and then had no way to add a team to it.
 
-     Teams are removed from the END, so only the last chip is clickable.
-     Every chip used to look identical and clickable while doing two very
+     Teams are removed from the END, so only the last chip is clickable —
+     and only when it is a SAVED team, whose removal is deleteTeam. Every
+     chip used to look identical and clickable while doing two very
      different things — destroying a saved team, or silently vanishing if
      unsaved. An inert chip says "not this one" before the click.
+
+     A team added since the last save is not a plain chip but a stdSelect
+     showing its letter ("A ▾"): it offers every letter the row does not
+     already use, and "Treure". That is how a club with one licence gets
+     Juvenil C rather than Juvenil A. A SAVED team's letter never changes —
+     `{category}-{letter}` keys its roster doc, its players' `team`, its
+     matches and every shard join — so `saved` (the letters _clubConfig
+     holds for this category) decides which of the two each letter is.
+     ⚠ The stdSelect root keeps `ts-letter-chip` and `data-letter`: the quota
+     count, the save and the three per-team sections all read the row's
+     teams by that class and attribute.
      A DISABLED row shows one greyed A that turns the category ON. */
-  function _letterChipsHtml(catKey, letters, enabled) {
+  function _letterChipsHtml(catKey, letters, enabled, saved) {
     var chips = letters.map(function (l, idx) {
+      if (enabled && saved.indexOf(l) === -1) return _newLetterChipHtml(catKey, l, letters);
       var cls = 'ts-letter-chip';
       if (!enabled) cls += ' ts-letter-chip-off';
       else if (idx === letters.length - 1) cls += ' ts-letter-chip-last';
@@ -5020,11 +5033,107 @@
       '<span class="ts-letter-add-l">' + t('ts.add_team') + '</span></button>' : '');
   }
 
+  /* An unsaved team: its letter as a stdSelect. The options are the letters
+     no OTHER team in the row uses, so a pick can never collide. */
+  function _newLetterChipHtml(catKey, letter, rowLetters) {
+    var options = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(function (l) {
+      return l === letter || rowLetters.indexOf(l) === -1;
+    }).map(function (l) { return { value: l, label: l }; });
+    options.push({ value: '-', label: '✕ ' + t('ts.remove_team') });
+    return stdSelect({
+      kind: 'tsletter', cls: 'ts-letter-chip ts-letter-chip-new std-sel-esc',
+      value: letter, data: { letter: letter, cat: catKey }, options: options
+    });
+  }
+
   /* Repaint one row's chips in place. Repainting the whole container would
      throw away chips added in OTHER categories since the last save. */
   function _paintLetters(row, letters, enabled) {
     var el = row.querySelector('.ts-letters');
-    if (el) el.innerHTML = _letterChipsHtml(row.dataset.cat, letters, enabled);
+    if (!el) return;
+    el.innerHTML = _letterChipsHtml(row.dataset.cat, letters, enabled,
+      _savedLetters(row.dataset.cat));
+    _bindNewLetterChips();
+  }
+
+  /** The letters of a category's SAVED teams — the config, not the screen. */
+  function _savedLetters(catKey) {
+    return rosterKeys(_clubConfig, catKey).map(function (k) {
+      return k.slice(catKey.length + 1);
+    });
+  }
+
+  /** The letters a row shows right now, saved and unsaved alike. */
+  function _rowLetters(row) {
+    return Array.from(row.querySelectorAll('.ts-letter-chip')).map(function (c) {
+      return c.dataset.letter;
+    });
+  }
+
+  /* Structural change to one row: repaint it, sorted, and rebuild the three
+     per-team sections and the quota line from what is now on screen. */
+  function _tsRepaintRow(row, letters) {
+    _paintLetters(row, letters.slice().sort(), true);
+    _refreshTeamSetupFcf();
+    _refreshTeamSetupSchedules();
+    _refreshTeamSetupStaff();
+    _refreshTeamSetupQuota();
+  }
+
+  /* bindStdSelects binds each root once, so this is safe after every paint:
+     only the chips just drawn pick up listeners. */
+  function _bindNewLetterChips() {
+    bindStdSelects('tsletter', function (root, v) { _onNewLetterPick(root, v); });
+  }
+
+  /**
+   * A pick from an unsaved team's letter menu: a new letter, or '-' to drop
+   * the team. Saved teams never get here — they are never drawn as a menu.
+   */
+  function _onNewLetterPick(root, v) {
+    var row = root.closest('.ts-cat-row');
+    if (!row) return;
+    var catKey = row.dataset.cat;
+    var old = root.dataset.letter;
+    var letters = _rowLetters(row);
+    if (v === '-') {
+      letters = letters.filter(function (l) { return l !== old; });
+      if (!letters.length) {
+        /* Its only team: that IS unticking the category, so it goes through
+           the checkbox's own handler rather than a second copy of it. */
+        var box = row.querySelector('input[type="checkbox"]');
+        if (box && box.checked) {
+          box.checked = false;
+          box.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        return;
+      }
+    } else {
+      if (!/^[A-Z]$/.test(v) || letters.indexOf(v) !== -1) return;
+      letters = letters.map(function (l) { return l === old ? v : l; });
+      _tsRenameTeamKey(catKey + '-' + old, catKey + '-' + v);
+    }
+    _tsRepaintRow(row, letters);
+  }
+
+  /* Re-key what has been typed for a team whose letter just changed. The
+     FCF, schedule and staff sections rebuild from what is ON SCREEN, keyed
+     `{cat}-{letter}`, so without this a link or a staff list typed before
+     choosing the letter would be dropped by the repaint. Only the attributes
+     their collectors read are renamed; the repaint rebuilds the rest. */
+  function _tsRenameTeamKey(oldKey, newKey) {
+    _tsAll('#team-setup-fcf-inputs input[data-fcf-key="' + oldKey + '"]')
+      .forEach(function (inp) { inp.dataset.fcfKey = newKey; });
+    _tsAll('#team-setup-staff-inputs .ts-staff-list[data-staff-key="' + oldKey + '"]')
+      .forEach(function (list) { list.dataset.staffKey = newKey; });
+    _tsAll('#team-setup-schedule-inputs .ts-sched-block[data-sched-key="' + oldKey + '"]')
+      .forEach(function (block) {
+        block.dataset.schedKey = newKey;
+        ['home-day', 'home-time', 'home-location', 'home-link'].forEach(function (a) {
+          var el = block.querySelector('[data-' + a + '="' + oldKey + '"]');
+          if (el) el.setAttribute('data-' + a, newKey);
+        });
+      });
   }
 
   /* ── Where the setup sections are mounted ────────────────────────────
@@ -5240,10 +5349,11 @@
         ' data-cat="' + key + '"><span class="slider"></span></label>' +
         '<span class="ts-cat-name">' + CATEGORY_LABELS[key] + '</span>' +
         '<span class="ts-letters" data-cat="' + key + '">' +
-        _letterChipsHtml(key, letters, cat.enabled) +
+        _letterChipsHtml(key, letters, cat.enabled, _savedLetters(key)) +
         '</span></div>';
     });
     container.innerHTML = html;
+    _bindNewLetterChips();
     _refreshTeamSetupFcf();
     _refreshTeamSetupSchedules();
     _refreshTeamSetupStaff();
@@ -6053,6 +6163,7 @@
           }
           row.classList.add('active');
           // Repaint: the row is still drawn as disabled — greyed A, no "+".
+          // The new team comes out as "A ▾", so the lead can make it C.
           _paintLetters(row, ['A'], true);
         } else {
           var savedHere = rosterKeys(_clubConfig).filter(function (k) {
@@ -6092,30 +6203,18 @@
            again if anything else ever double-binds. */
         if (addBtn._tsClick === e.timeStamp) return;
         addBtn._tsClick = e.timeStamp;
-        var catKey = addBtn.dataset.cat;
-        var lettersEl = container.querySelector('.ts-letters[data-cat="' + catKey + '"]');
         if (_domTeamCount(container) >= clubMaxTeams()) {
           _showQuotaBlockedModal();
           return;
         }
-        var existing = Array.from(lettersEl.querySelectorAll('.ts-letter-chip')).map(function (c) { return c.dataset.letter; });
+        /* Through the one chip builder, not a hand-made <span>: the new team
+           must come out as a letter menu, and a second builder is how the
+           two drifted apart before. */
+        var addRow = addBtn.closest('.ts-cat-row');
+        var existing = _rowLetters(addRow);
         var next = _nextLetter(existing);
         if (!next) return;
-        var chip = document.createElement('span');
-        chip.className = 'ts-letter-chip';
-        chip.dataset.letter = next;
-        chip.dataset.cat = catKey;
-        chip.textContent = next;
-        lettersEl.insertBefore(chip, addBtn);
-        var afterAdd = lettersEl.querySelectorAll('.ts-letter-chip');
-        afterAdd.forEach(function (c, i) {
-          c.classList.toggle('ts-letter-chip-last', i === afterAdd.length - 1);
-          c.classList.toggle('ts-letter-chip-fixed', i !== afterAdd.length - 1);
-        });
-        _refreshTeamSetupFcf();
-        _refreshTeamSetupSchedules();
-        _refreshTeamSetupStaff();
-        _refreshTeamSetupQuota();
+        _tsRepaintRow(addRow, existing.concat(next));
         return;
       }
       var clickedChip = e.target.closest('.ts-letter-chip');
@@ -6138,33 +6237,21 @@
           return;
         }
 
-        // Teams are removed from the END, so earlier chips are inert.
+        /* Teams are removed from the END, so earlier chips are inert. Only a
+           SAVED chip is ever marked last: an unsaved team is a letter menu
+           and is dropped from its own "Treure" (_onNewLetterPick). */
         if (!clickedChip.classList.contains('ts-letter-chip-last')) return;
 
-        var lettersEl2 = container.querySelector('.ts-letters[data-cat="' + catKey2 + '"]');
-        var chips = lettersEl2.querySelectorAll('.ts-letter-chip');
         var teamKey2 = catKey2 + '-' + clickedChip.dataset.letter;
         /* A team that has been SAVED owns matches, medical records and
            availability, so it can only go through deleteTeam — dropping the
            letter from the config alone would strand all of it and leave
-           joinClub still registering people onto a dead team. A chip added a
-           moment ago and not yet saved owns nothing, so it just disappears. */
+           joinClub still registering people onto a dead team. That includes
+           the club's LAST team: under a one-team allowance, deleting it is
+           the only way to swap it for another. */
         if (rosterKeys(_clubConfig).indexOf(teamKey2) !== -1) {
           showDeleteTeamModal(catKey2, clickedChip.dataset.letter);
-          return;
         }
-        if (chips.length <= 1) return; // keep at least 1
-        clickedChip.remove();
-        // The chip before it is now the last, so the affordance has to move.
-        var remaining = lettersEl2.querySelectorAll('.ts-letter-chip');
-        remaining.forEach(function (c, i) {
-          c.classList.toggle('ts-letter-chip-last', i === remaining.length - 1);
-          c.classList.toggle('ts-letter-chip-fixed', i !== remaining.length - 1);
-        });
-        _refreshTeamSetupFcf();
-        _refreshTeamSetupSchedules();
-        _refreshTeamSetupStaff();
-        _refreshTeamSetupQuota();
       }
     });
     // Staff section: add/remove email rows
@@ -23684,6 +23771,12 @@
     const own = (Array.isArray(kinds) ? kinds : [kinds]).map(String);
     document.querySelectorAll('.std-sel').forEach(function (root) {
       if (own.indexOf(String(root.dataset.stdSel || '')) === -1) return;
+      /* Once per ROOT. Callers bind after a repaint, and a repaint of PART of
+         a screen (one team-setup row) leaves the other roots of the same kind
+         in place — binding those again is the two-listener bug above: the
+         second listener shuts the menu the first just opened. */
+      if (root._stdSelBound) return;
+      root._stdSelBound = true;
       const trigger = root.querySelector('.std-sel-t');
       if (!trigger) return;
       trigger.addEventListener('click', function (e) {

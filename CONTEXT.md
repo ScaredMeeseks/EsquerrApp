@@ -12486,3 +12486,41 @@ in headless Edge). Unit 3676 → **3787**, rules 181, functions 107. Version tri
 **Rollout:** deploy rules + functions with the switch off; press the button on a played match;
 then `{enabled:true, dryRun:true}` for a weekend; then `{enabled:true}`. Old APKs still show ✕ on
 acta rows; the guard puts back what they delete.
+
+### 2026-10-07 — v279: a club can drop to zero teams; a new team's letter can be chosen
+
+Two owner requests, from selling single-team licences. **(a)** A club with `maxTeams: 1` could not swap
+its team: "+" is refused at 1/1, and `deleteTeam` refused the LAST team ("Un club ha de tenir com a
+mínim un equip"). **(b)** A new team was always `A` (ticking a category) or the next letter ("+"), so
+"one licence, for Juvenil C" could not be set up at all.
+
+- **`deleteTeam` deletes the last team.** The refusal is gone; the existing `catGone` path already
+  disables the category, resets its letters to `['A']` and refreshes claims (the lead's `cats` → `[]`).
+  Zero teams is the never-set-up state: `navigate()`'s no-enabled-category gate holds the lead on the
+  setup card until a team is saved, and `setClubCategories` still refuses to SAVE zero. Players and
+  staff see an empty app in between, as in a brand-new club. Old APKs just stop getting the error.
+  `team_del.last_team` removed.
+- **An unsaved team is a letter menu.** `_letterChipsHtml(catKey, letters, enabled, saved)` — still the
+  only chip builder — draws a letter not in `saved` (`_savedLetters` = `rosterKeys(_clubConfig, cat)`)
+  as a `stdSelect` of kind `tsletter` ("C ▾", dashed): every letter the row does not use, then
+  "✕ Treure" (`ts.remove_team`). Saved letters are never menus — `{cat}-{letter}` keys rosters,
+  players' `team`, matches and every shard join. ⚠ The menu root keeps `ts-letter-chip` and
+  `data-letter`, which the quota count, the save and the FCF/schedule/staff sections read.
+- One repaint path: the enable branch, "+" (no more hand-built `<span>`) and a pick all go through
+  `_paintLetters` → `_tsRepaintRow` (sorted). `_onNewLetterPick` re-keys typed FCF/schedule/staff
+  values to the new letter (`_tsRenameTeamKey`) — those sections rebuild from the DOM by key — and
+  "Treure" on a category's only team unticks it through the checkbox's own handler. `-last` (the
+  deleteTeam affordance) now only ever sits on a SAVED chip.
+- **`bindStdSelects` binds once per root** (`root._stdSelBound`). A one-row repaint re-binds the
+  untouched menus of the same kind, and a second listener shut each menu the first had opened.
+
+Tests drive the real handlers in `configuracio.test.js` (real `stdSelect`, real `rosterKeys` now
+sliced in instead of a stub that ignored its category argument, jsdom's `Event`, and a `firebase`
+stub that records the `setClubCategories` payload of a real save). `teams.test.js` deletes B then A
+and saves Juvenil C under `maxTeams: 1`. Mutations — no key rename, no bind guard, `saved` ignored,
+no sort, no untick, used letters offered, empty saved list, -last not deleting, pick ignored, and the
+old server guard — all red. Rendered in headless Edge against the real CSS on both dressings and at
+390px: new chips match the saved chips' height and baseline, the menu opens under its trigger.
+`build-configuracio-preview.js` gains a frame with two unsaved teams made through the handlers.
+
+Unit 3787 → **3798**, functions 107 → **113**, rules 181. Version triple → **v279** (v278 went to the FCF acta work, landed in parallel).

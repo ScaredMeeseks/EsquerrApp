@@ -85,8 +85,15 @@ const CLUB = {
   }
 };
 
-const SETUP = grab('  function _letterChipsHtml(catKey, letters, enabled) {',
+const SETUP = grab('  function _letterChipsHtml(catKey, letters, enabled, saved) {',
     '  // ---------- Profile Setup ----------');
+/* The app's dropdown, whole: an unsaved team's letter IS one (v278), and a
+   stub could not open, pick or double-bind. */
+const STD = grab('  function stdSelect(o) {', '  /**\n   * A place, linked to its map');
+/* The real one, not a re-implementation: `_savedLetters` asks it for ONE
+   category, and a stand-in that ignored the second argument returned every
+   category's keys — which read back as letters for the wrong row. */
+const ROSTER_KEYS = grab('  function rosterKeys(cfg, onlyCategory) {', '\n  /**');
 const PAGE = grab('  /** Which tab is showing.',
     '  /* Team-lead field in the club table (superadmin only).');
 const TIMES = grab('  function buildTimeOptions(selected) {', '\n  /**');
@@ -102,10 +109,15 @@ function render(over) {
   const club = Object.assign({}, CLUB, (over && over.club) || {});
   const session = Object.assign({ id: 'u0', email: 'lead@club.cat', teamId: 'club1',
     isTeamLead: true, isAdmin: false }, (over && over.session) || {});
+  /* What the screen asked of the outside world: callables with their
+     payloads, and the delete-team modal. */
+  const calls = [];
 
   const api = {
     document: doc,
     window: dom.window,
+    // jsdom's, not Node's global: dispatchEvent refuses a foreign Event.
+    Event: dom.window.Event,
     requestAnimationFrame: (fn) => fn(),
     DAY_VALUES: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
     REMINDER_PUSH_HOURS: 4, REMINDER_LOCK_HOURS: 3, REMINDER_HOURS_MAX: 72,
@@ -120,7 +132,8 @@ function render(over) {
     tv: (k, v) => String(k in CA ? CA[k] : k).replace(/\{(\w+)\}/g, (s, n) => (n in v ? String(v[n]) : s)),
     seasonStartStr: () => '2026-08-15',
     showModal: () => {}, showView: () => {}, navigate: () => {},
-    renderPage: () => {}, renderDashboard: () => {}, showDeleteTeamModal: () => {},
+    renderPage: () => {}, renderDashboard: () => {},
+    showDeleteTeamModal: (c, l) => calls.push(['deleteTeamModal', c, l]),
     _showPushToast: () => {}, _showQuotaBlockedModal: () => {},
     normalizeEmail: (v) => String(v || '').trim().toLowerCase(),
     isValidEmail: (v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v),
@@ -134,28 +147,30 @@ function render(over) {
     kitsOf: (c) => (c && c.kits && c.kits.length ? c.kits : [{ id: 'k1', label: '', shirt: '#fff', shorts: '#000', socks: '#fff' }]),
     clubReminders: (c) => (c && c.reminders) || { pushHours: 4, lockHours: 3 },
     clubMaxTeams: () => Math.max(1, Number(club.maxTeams || 1)),
-    /* Sliced-in behaviour, not a constant: the hero figure, the rail and the
-       quota colour all divide by this, and `() => 4` would make three
-       different derivations agree on a number none of them computed. */
-    rosterKeys: (cfg) => {
-      const cats = (cfg && cfg.categories) || {};
-      const out = [];
-      ['amateur', 'juvenil', 'cadet', 'infantil', 'alevi', 'benjami'].forEach((k) => {
-        if (!cats[k] || !cats[k].enabled) return;
-        (cats[k].letters && cats[k].letters.length ? cats[k].letters : ['A'])
-            .forEach((l) => out.push(k + '-' + l));
-      });
-      return out;
-    },
+    /* rosterKeys is sliced in below (ROSTER_KEYS), not stubbed: the hero
+       figure, the rail and the quota colour all divide by it, and since v278
+       the chip builder asks it for one category's saved letters. */
     isClubOverQuota: () => false,
     STAFF_SUB_ROLES: ['coach', 'fitness', 'delegate'],
-    db: null, firebase: null, storage: null,
+    db: null, storage: null,
+    /* Records every callable with its payload, so a test can SAVE and read
+       what would have reached setClubCategories. */
+    firebase: {
+      app: () => ({ functions: () => ({ httpsCallable: (name) => async (payload) => {
+        calls.push([name, payload]);
+        return { data: {} };
+      } }) }),
+      firestore: { FieldValue: { delete: () => '__delete__' } }
+    },
+    pruneStaleLeagueCache: () => {},
     getClub: async () => club, loadRosters: async () => club.rosters,
     saveRosterFields: async () => {}, DB: {}, getTeamLetters: () => ['A', 'B']
   };
 
   const fn = new Function(...Object.keys(api), `
     ${TIMES}
+    ${ROSTER_KEYS}
+    ${STD}
     ${SETUP}
     ${PAGE}
     _cfgTab = ${JSON.stringify((over && over.tab) || 'club')};
@@ -174,6 +189,7 @@ function render(over) {
       collectReminders: _collectRemindersFromDom,
       collectKits: _collectKitsFromDom,
       collectSchedules: _collectSchedulesFromDom,
+      save: _handleSaveTeamSetup,
       /* Re-point the club and re-run the kit refresh WITHOUT rebuilding the
          container — which is what a club switch did before v254, when the
          container was a static node in index.html. */
@@ -186,7 +202,8 @@ function render(over) {
     } };
   `);
   const out = fn(...Object.values(api));
-  return { host: out.host, inner: out.api, html: out.host.innerHTML, doc, errors, window: dom.window };
+  return { host: out.host, inner: out.api, html: out.host.innerHTML, doc, errors, calls,
+    window: dom.window };
 }
 
 describe('Configuració — the page renders and mounts', () => {
@@ -241,6 +258,135 @@ describe('Configuració — the page renders and mounts', () => {
     // that is not in their strip and see an empty body.
     const { host } = render({ tab: 'clubs' });
     assert.strictEqual(host.querySelector('.cfg-page').dataset.cfgActive, 'club');
+  });
+});
+
+/* ── Choosing a team's letter, and a club with no team (v278) ─────────────
+   A club with one licence for Juvenil C could only ever create Juvenil A,
+   and one with a single slot could not swap its team at all. An unsaved
+   team is now a letter menu (stdSelect); a saved one never is. These drive
+   the REAL handlers — the checkbox, the "+", the menu — and save through
+   the real _handleSaveTeamSetup, because a markup assertion cannot see a
+   menu that opens and shuts in one click. */
+describe('Configuració — choosing a team\'s letter (v278)', () => {
+  const OFF = { enabled: false, letters: ['A'] };
+  const NO_TEAMS = { amateur: OFF, juvenil: OFF, cadet: OFF, infantil: OFF, alevi: OFF, benjami: OFF };
+  const roomy = { club: { maxTeams: 8 } };
+
+  const click = (r, el) => el.dispatchEvent(new r.window.MouseEvent('click', { bubbles: true }));
+  const row = (r, cat) => r.host.querySelector('.ts-cat-row[data-cat="' + cat + '"]');
+  const letters = (r, cat) => Array.from(row(r, cat).querySelectorAll('.ts-letter-chip'))
+      .map((c) => c.dataset.letter);
+  const menuOf = (r, cat, l) => row(r, cat).querySelector('.ts-letter-chip-new[data-letter="' + l + '"]');
+  const tick = (r, cat) => {
+    const box = row(r, cat).querySelector('input[type="checkbox"]');
+    box.checked = true;
+    box.dispatchEvent(new r.window.Event('change', { bubbles: true }));
+  };
+  const plus = (r, cat) => click(r, row(r, cat).querySelector('.ts-letter-add'));
+  const pick = (r, cat, from, to) => {
+    const m = menuOf(r, cat, from);
+    assert.ok(m, 'no letter menu for ' + cat + '-' + from);
+    click(r, m.querySelector('.std-sel-t'));
+    assert.ok(m.classList.contains('std-sel-open'), 'the ' + cat + '-' + from + ' menu did not open');
+    click(r, m.querySelector('.std-sel-o[data-v="' + to + '"]'));
+  };
+  /* The checkbox handler drops a second `change` carrying the same
+     timeStamp, and jsdom stamps events to the millisecond — so a tick and an
+     untick dispatched back to back can look like one event. A person cannot
+     click that fast; a test can. */
+  const tickOver = () => new Promise((res) => setTimeout(res, 5));
+  const noErrors = (r) => assert.deepStrictEqual(r.errors, [], 'errors: ' + r.errors.join(' | '));
+
+  it('one licence, for Juvenil C: tick, choose C, and C is what is saved', async () => {
+    const r = render({ club: { maxTeams: 1, categories: NO_TEAMS, fcfLinks: {}, schedules: {}, rosters: {} } });
+    tick(r, 'juvenil');
+    assert.ok(menuOf(r, 'juvenil', 'A'), 'a new team must come out as a letter menu');
+    pick(r, 'juvenil', 'A', 'C');
+    assert.deepStrictEqual(letters(r, 'juvenil'), ['C']);
+    assert.strictEqual(menuOf(r, 'juvenil', 'C').querySelector('.std-sel-l').textContent, 'C');
+    await r.inner.save();
+    const sent = r.calls.find((c) => c[0] === 'setClubCategories');
+    assert.ok(sent, 'nothing reached setClubCategories: ' +
+        (r.host.querySelector('#team-setup-error') || {}).textContent);
+    assert.deepStrictEqual(sent[1].categories.juvenil, { enabled: true, letters: ['C'] });
+    assert.deepStrictEqual(Object.keys(sent[1].categories)
+        .filter((k) => sent[1].categories[k].enabled), ['juvenil']);
+    noErrors(r);
+  });
+
+  it('carries what was typed for the team across a change of letter', () => {
+    const r = render(roomy);
+    tick(r, 'infantil');
+    const q = (sel) => r.host.querySelector(sel);
+    q('[data-fcf-key="infantil-A"]').value = 'https://www.fcf.cat/x?grupId=77';
+    q('.ts-staff-list[data-staff-key="infantil-A"] input[data-staff-email]').value = 'coach@x.com';
+    q('[data-home-location="infantil-A"]').value = 'Camp Municipal';
+    pick(r, 'infantil', 'A', 'C');
+    assert.ok(!q('[data-fcf-key="infantil-A"]'), 'the old key survived the repaint');
+    assert.strictEqual(q('[data-fcf-key="infantil-C"]').value, 'https://www.fcf.cat/x?grupId=77');
+    assert.strictEqual(
+        q('.ts-staff-list[data-staff-key="infantil-C"] input[data-staff-email]').value, 'coach@x.com');
+    assert.strictEqual(q('[data-home-location="infantil-C"]').value, 'Camp Municipal');
+    noErrors(r);
+  });
+
+  it('keeps the row sorted, and the removable chip a saved one', () => {
+    const r = render({ club: { maxTeams: 8,
+      categories: Object.assign({}, CLUB.categories, { juvenil: { enabled: true, letters: ['C'] } }) } });
+    plus(r, 'juvenil');
+    assert.ok(menuOf(r, 'juvenil', 'D'), '"+" still offers the next letter by default');
+    pick(r, 'juvenil', 'D', 'A');
+    assert.deepStrictEqual(letters(r, 'juvenil'), ['A', 'C']);
+    assert.ok(menuOf(r, 'juvenil', 'A'), 'A is the new team');
+    const saved = row(r, 'juvenil').querySelector('span.ts-letter-chip[data-letter="C"]');
+    assert.ok(saved.classList.contains('ts-letter-chip-last'), 'saved C stays removable');
+    noErrors(r);
+  });
+
+  it('"Treure" on a category\'s only new team unticks the category', async () => {
+    const r = render(roomy);
+    tick(r, 'infantil');
+    await tickOver();
+    pick(r, 'infantil', 'A', '-');
+    const box = row(r, 'infantil').querySelector('input[type="checkbox"]');
+    assert.strictEqual(box.checked, false, 'the category is still ticked');
+    assert.ok(!row(r, 'infantil').classList.contains('active'));
+    assert.ok(row(r, 'infantil').querySelector('.ts-letter-chip-off'), 'back to the greyed A');
+    assert.ok(!r.host.querySelector('[data-fcf-key^="infantil-"]'), 'its FCF box outlived it');
+    noErrors(r);
+  });
+
+  it('"Treure" on one new team leaves the others', () => {
+    const r = render(roomy);
+    plus(r, 'amateur');
+    plus(r, 'amateur');
+    assert.deepStrictEqual(letters(r, 'amateur'), ['A', 'B', 'C', 'D']);
+    pick(r, 'amateur', 'C', '-');
+    assert.deepStrictEqual(letters(r, 'amateur'), ['A', 'B', 'D']);
+    noErrors(r);
+  });
+
+  it('a menu still opens after ANOTHER row has been repainted', () => {
+    /* Each repaint binds the 'tsletter' menus again. Without bindStdSelects'
+       once-per-root guard the menus left in place got a second listener,
+       and the second shut what the first had just opened. */
+    const r = render(roomy);
+    tick(r, 'infantil');
+    plus(r, 'amateur');
+    const m = menuOf(r, 'infantil', 'A');
+    click(r, m.querySelector('.std-sel-t'));
+    assert.ok(m.classList.contains('std-sel-open'), 'opened and shut in one click');
+    noErrors(r);
+  });
+
+  it('the club\'s LAST saved team still goes to deleteTeam', () => {
+    // Under a one-team allowance this is the only way to swap the team.
+    const r = render({ club: { maxTeams: 1,
+      categories: Object.assign({}, NO_TEAMS, { juvenil: { enabled: true, letters: ['C'] } }) } });
+    click(r, row(r, 'juvenil').querySelector('span.ts-letter-chip[data-letter="C"]'));
+    assert.deepStrictEqual(r.calls, [['deleteTeamModal', 'juvenil', 'C']]);
+    noErrors(r);
   });
 });
 

@@ -393,8 +393,8 @@ describe('quota — i18n', () => {
     'error.remove_team_unavailable',
     'quota.over_staff', 'quota.over_lead', 'team_del.title', 'team_del.msg',
     'team_del.kept', 'team_del.confirm_hint', 'team_del.deleting',
-    'team_del.done', 'team_del.failed', 'team_del.last_team',
-    'team_del.button', 'team_del.disable_blocked'].forEach((key) => {
+    'team_del.done', 'team_del.failed',
+    'team_del.button', 'team_del.disable_blocked', 'ts.remove_team'].forEach((key) => {
     it(`${key} is translated into ca, es and en`, () => {
       const i = appSrc.indexOf("'" + key + "':");
       assert.ok(i !== -1, 'key missing: ' + key);
@@ -482,23 +482,34 @@ describe('team setup — counting the row being toggled', () => {
    and they disagreed: enabling a category left the row painted as
    disabled, greyed and with no "+", so no team could be added to it. */
 describe('team setup — letter chip markup', () => {
+  /* The real stdSelect rides along: an unsaved team IS one, and a stub
+     standing in for it could not say what its menu offers. */
   const chipsHtml = (() => {
-    const code = grab(appSrc, '  function _letterChipsHtml(catKey, letters, enabled)',
+    const code = grab(appSrc, '  function _letterChipsHtml(catKey, letters, enabled, saved)',
         '\n  /* Repaint one row', 'js/app.js');
+    const std = grab(appSrc, '  function stdSelect(o) {', '\n  /**', 'js/app.js');
+    const sanitize = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     // eslint-disable-next-line no-new-func
-    return new Function('t', `${code}\nreturn _letterChipsHtml;`)((k) => k);
+    return new Function('t', 'sanitize', `${std}\n${code}\nreturn _letterChipsHtml;`)(
+        (k) => k, sanitize);
   })();
+  /** The option values of each unsaved team's menu, in order. */
+  const menus = (html) => (html.match(/data-std-sel="tsletter"[\s\S]*?<\/div><\/div>/g) || [])
+      .map((m) => (m.match(/data-v="([^"]*)"/g) || []).map((v) => v.slice(8, -1)));
 
   it('a disabled row is one greyed A with no "+"', () => {
-    const html = chipsHtml('juvenil', ['A'], false);
+    const html = chipsHtml('juvenil', ['A'], false, []);
     assert.ok(html.includes('ts-letter-chip-off'));
     assert.ok(!html.includes('class="ts-letter-add"'), 'nothing to add a team to yet');
     assert.strictEqual((html.match(/ts-letter-chip/g) || []).length, 2,
         'one chip (the class appears twice on it)');
+    assert.ok(!html.includes('std-sel'), 'a disabled row has no letter to choose yet');
   });
 
   it('an enabled row marks only the last chip removable', () => {
-    const html = chipsHtml('amateur', ['A', 'B', 'C'], true);
+    const html = chipsHtml('amateur', ['A', 'B', 'C'], true, ['A', 'B', 'C']);
     assert.strictEqual((html.match(/ts-letter-chip-last/g) || []).length, 1);
     assert.strictEqual((html.match(/ts-letter-chip-fixed/g) || []).length, 2);
     assert.ok(html.indexOf('ts-letter-chip-last') > html.indexOf('>B<'),
@@ -511,14 +522,49 @@ describe('team setup — letter chip markup', () => {
      where there is one control. Match the class attribute exactly, or this
      assertion breaks again the next time anything is named after it. */
   it('an enabled row offers exactly one "+"', () => {
-    const html = chipsHtml('amateur', ['A', 'B'], true);
+    const html = chipsHtml('amateur', ['A', 'B'], true, ['A', 'B']);
     assert.strictEqual((html.match(/class="ts-letter-add"/g) || []).length, 1);
   });
 
   it('carries the category on every chip, never an index', () => {
-    const html = chipsHtml('cadet', ['A', 'C'], true);
+    const html = chipsHtml('cadet', ['A', 'C'], true, ['A', 'C']);
     assert.strictEqual((html.match(/data-cat="cadet"/g) || []).length, 3);
     assert.ok(html.includes('data-letter="C"'), 'gaps are preserved, not renumbered');
+  });
+
+  /* ── Choosing the letter (v278) ─────────────────────────────────────
+     A club with one licence for Juvenil C could only ever create Juvenil A.
+     A team not yet saved is now a letter menu; a saved one never is,
+     because its letter keys its roster, its players and its matches. */
+  it('an unsaved team is a letter menu, a saved one a plain chip', () => {
+    const html = chipsHtml('amateur', ['A', 'B'], true, ['A']);
+    assert.strictEqual(menus(html).length, 1, 'exactly one menu, for B');
+    assert.ok(/<span class="ts-letter-chip[^"]*" data-letter="A"/.test(html),
+        'saved A stays a chip');
+    assert.ok(/class="std-sel ts-letter-chip ts-letter-chip-new[^"]*"[^>]*data-letter="B"/.test(html),
+        'unsaved B keeps the chip class and data-letter the collectors read');
+  });
+
+  it('offers every letter the row does not use, then "remove"', () => {
+    const [opts] = menus(chipsHtml('juvenil', ['A', 'C'], true, ['A']));
+    assert.ok(!opts.includes('A'), 'A belongs to another team in the row');
+    assert.ok(opts.includes('C'), 'its own letter stays on offer');
+    assert.ok(opts.includes('B') && opts.includes('Z'), 'free letters, gaps included');
+    assert.strictEqual(opts.length, 26, '25 letters + remove');
+    assert.strictEqual(opts[opts.length - 1], '-', 'remove comes last');
+  });
+
+  it('the lone new team of a just-ticked category can be any letter', () => {
+    // The reported case: one licence, for Juvenil C.
+    const [opts] = menus(chipsHtml('juvenil', ['A'], true, []));
+    assert.strictEqual(opts.length, 27, 'A..Z + remove');
+  });
+
+  it('never marks an unsaved team as the removable last chip', () => {
+    // Removing one is its own menu; the -last click path is deleteTeam.
+    const html = chipsHtml('amateur', ['A', 'B'], true, ['A']);
+    assert.ok(!html.includes('ts-letter-chip-last'), 'B is last but not saved');
+    assert.ok(html.includes('ts-letter-chip-fixed'), 'A is inert while B follows it');
   });
 
   it('is the only place that builds a chip', () => {

@@ -139,8 +139,13 @@ const OTHER_CLUBS = [
 ];
 const CODES = { c1: 'ESQ2026', c2: 'PSC2026', c3: 'GAV2026', c4: 'SAN2025' };
 
-const SETUP = grab('  function _letterChipsHtml(catKey, letters, enabled) {',
+const SETUP = grab('  function _letterChipsHtml(catKey, letters, enabled, saved) {',
     '  // ---------- Profile Setup ----------');
+/* An unsaved team's letter is the app's own dropdown (v278), and the chip
+   builder asks rosterKeys for ONE category's saved letters — so both are the
+   real code, not stand-ins. */
+const STD = grab('  function stdSelect(o) {', '  /**\n   * A place, linked to its map');
+const ROSTER_KEYS = grab('  function rosterKeys(cfg, onlyCategory) {', '\n  /**');
 /* Runs to the END of _loadClubList, not to its comment: the clubs table is
    the most intricate markup on the page and it is built asynchronously, so a
    slice that stopped short would leave the mockup showing "Carregant clubs…"
@@ -162,6 +167,7 @@ function render(over) {
   const api = {
     document: doc,
     window: dom.window,
+    Event: dom.window.Event,
     requestAnimationFrame: (fn) => fn(),
     DAY_VALUES: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
     REMINDER_PUSH_HOURS: 4, REMINDER_LOCK_HOURS: 3, REMINDER_HOURS_MAX: 72,
@@ -171,6 +177,10 @@ function render(over) {
     _clubConfig: club,
     currentPage: 'settings',
     getSession: () => session,
+    /* Steps a frame performs on the mounted page before it is serialised —
+       the new-team frame ticks a category and picks a letter through the real
+       handlers rather than hand-writing the result. */
+    act: (over && over.act) || (() => {}),
     sanitize: esc,
     t: (k) => (k in CA ? CA[k] : k),
     tv: (k, vars) => String(k in CA ? CA[k] : k)
@@ -202,16 +212,6 @@ function render(over) {
       { id: 'k1', label: '1a equipació', shirt: '#ffffff', shorts: '#000000', socks: '#ffffff' }]),
     clubReminders: (c) => (c && c.reminders) || { pushHours: 4, lockHours: 3 },
     clubMaxTeams: () => Math.max(1, Number(club.maxTeams || 1)),
-    rosterKeys: (cfg) => {
-      const cats = (cfg && cfg.categories) || {};
-      const out = [];
-      ['amateur', 'juvenil', 'cadet', 'infantil', 'alevi', 'benjami'].forEach((k) => {
-        if (!cats[k] || !cats[k].enabled) return;
-        (cats[k].letters && cats[k].letters.length ? cats[k].letters : ['A'])
-            .forEach((l) => out.push(k + '-' + l));
-      });
-      return out;
-    },
     isClubOverQuota: () => false,
     STAFF_SUB_ROLES: ['coach', 'fitness', 'delegate'],
     /* Enough Firestore for the real `_loadClubList()` to run: the clubs
@@ -246,6 +246,8 @@ function render(over) {
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
   const fn = new AsyncFunction(...Object.keys(api), `
     ${TIMES}
+    ${ROSTER_KEYS}
+    ${STD}
     ${SETUP}
     ${PAGE}
     _cfgTab = ${JSON.stringify((over && over.tab) || 'club')};
@@ -253,6 +255,7 @@ function render(over) {
     host.innerHTML = renderConfiguracio();
     const page = host.querySelector('.cfg-page');
     if (page) _tsMount(page);
+    act(host, window);
     if (host.querySelector('#club-list')) await _loadClubList();
     /* ⚠ REFLECT LIVE VALUES INTO ATTRIBUTES BEFORE SERIALISING.
        innerHTML writes attributes, not properties, and the kit editor builds
@@ -294,6 +297,24 @@ async function main() {
 const frames = [];
 for (const [tab, label] of TABS) frames.push([label, await render({ tab })]);
 const lead = frames[0][1];
+/* v278: two teams not saved yet, made through the real handlers — Infantil
+   ticked and its team turned into C, and a third Amateur team from "+".
+   Both must read as letter menus ("C ▾"), apart from the saved chips. */
+const newTeams = await render({ tab: 'cats', club: { maxTeams: 6 }, act: (host, win) => {
+  const click = (el) => el.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  const box = host.querySelector('.ts-cat-row[data-cat="infantil"] input[type="checkbox"]');
+  box.checked = true;
+  box.dispatchEvent(new win.Event('change', { bubbles: true }));
+  const menu = host.querySelector('.ts-cat-row[data-cat="infantil"] .ts-letter-chip-new');
+  click(menu.querySelector('.std-sel-t'));
+  click(menu.querySelector('.std-sel-o[data-v="C"]'));
+  click(host.querySelector('.ts-cat-row[data-cat="amateur"] .ts-letter-add'));
+} });
+assert.strictEqual((newTeams.match(/class="std-sel ts-letter-chip ts-letter-chip-new/g) || []).length, 2,
+    'expected two new-team letter menus (Infantil C, Amateur C)');
+assert.ok(/data-std-sel="tsletter" data-value="C" data-letter="C" data-cat="infantil"/.test(newTeams),
+    'Infantil\'s new team did not become C');
+frames.splice(2, 0, ['pestanya Categories — dos equips nous, sense desar (Infantil C, Amateur C)', newTeams]);
 const superadmin = await render({ session: { isAdmin: true }, tab: 'clubs' });
 /* The Club tab as the SUPERADMIN sees it — the only place the crest editor
    is rendered, so without this frame that control is never looked at. */

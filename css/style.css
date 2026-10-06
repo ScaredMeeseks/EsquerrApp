@@ -4737,6 +4737,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    here and shown there — one markup, two dressings. */
 .ts-letter-add .ts-letter-add-l{display:none;}
 .ts-letter-add:hover{border-color:var(--primary);color:var(--primary);}
+/* A team not saved yet: a stdSelect ("A ▾") whose menu picks its letter.
+   Dashed and unfilled, so it reads as "not this club's team yet" beside the
+   solid saved chips. The root is the pill; the trigger fills it. */
+.ts-letter-chip-new{width:auto;min-width:30px;padding:0;border-radius:15px;border-style:dashed;}
+.ts-cat-row.active .ts-letter-chip-new{background:var(--bg);color:var(--primary);border-color:var(--primary);}
+.ts-letter-chip-new .std-sel-t{height:100%;padding:0 .55rem;gap:3px;border:none;font-size:inherit;font-weight:inherit;color:inherit;}
 .ts-fcf-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem;}
 .ts-fcf-label{font-weight:600;font-size:.85rem;min-width:80px;flex-shrink:0;}
 .ts-fcf-row input{flex:1;font-size:.82rem;padding:.4rem .5rem;}
@@ -11177,6 +11183,13 @@ a.ini-ev-name, .ini-ev-name-link {
    as a control that is unavailable BECAUSE THE QUOTA IS FULL — which is the
    one thing it has to communicate. */
 .cfg-page .ts-letter-add-muted { color: var(--pp-ink-2); }
+/* The unsaved team's letter menu, squared like its neighbours and drawn as
+   an outline: the solid ink chips are the club's saved teams. */
+.cfg-page .ts-cat-row.active .ts-letter-chip-new {
+  padding: 0; border-radius: 0; border-style: dashed;
+  background: none; border-color: var(--pp-ink); color: var(--pp-ink);
+}
+.cfg-page .ts-letter-chip-new .std-sel-t { padding: 0 9px; font-size: inherit; }
 
 /* ── Quota line ──────────────────────────────────────────────────── */
 /* ⚠ `margin-top:-14px` against the panel's own 22px gap. The counter is a
