@@ -145,6 +145,37 @@ const BOARDS = {
     {boardId: 'tb3', name: 'Sortida de pilota', tag: 'Salida'}]
 };
 
+/* v278 — the same fixture after its FCF acta was imported. The goals, cards
+   and substitutions are the federation's (src:'fcf'); one of ours came on
+   under a name the import could not place, one name is withheld, and the
+   coach logged a post by hand. The edit form is open on our first goal —
+   the only thing an acta leaves for him to say is the assist and the kind
+   of goal. */
+const ACTA_MATCH = Object.assign({}, MATCH, {id: 8, fcfActaId: '4119501', status: 'played',
+  fcfActa: {at: '2026-09-02T20:45:00.000Z', src: 'auto', unlinked: 2, lineup: [
+    {f: '801', n: 'Pol Serrat', d: '11', t: 1, on: '', u: 'p11', x: 0, a: 1},
+    {f: '802', n: 'Iker Ramos', d: '9', t: 1, on: '', u: 'p9', x: 0, a: 0},
+    {f: '806', n: 'Arnau Puig', d: '10', t: 1, on: '', u: 'p10', x: 0, a: 1},
+    {f: '803', n: 'Nil Bosc', d: '14', t: 0, on: '58', u: '', x: 0, a: 0, c: ['p14']},
+    {f: '804', n: '', d: '22', t: 0, on: '', u: '', x: 0, a: 0, c: []}]}});
+const ACTA_EVENTS = [
+  {id: 'f1', src: 'fcf', fcfKey: 'goal:home:801:12', side: 'home', type: 'goal', minute: '12',
+    playerId: 'p11', fcfPlayerId: '801', playerName: 'Pol Serrat',
+    goalType: 'jugada_oberta', goalDetail: 'assistencia', assistPlayerId: 'p5'},
+  {id: 'f2', src: 'fcf', fcfKey: 'yellow:away:905:27', side: 'away', type: 'yellow', minute: '27',
+    fcfPlayerId: '905', playerName: 'Joan Garriga', playerNumber: '5'},
+  {id: 'f3', src: 'fcf', fcfKey: 'goal:away:909:34', side: 'away', type: 'goal', minute: '34',
+    fcfPlayerId: '909', playerName: 'Dani Ortiz', playerNumber: '9'},
+  {id: 'h1', side: 'home', type: 'pal', minute: '44', playerId: 'p9'},
+  {id: 'f4', src: 'fcf', fcfKey: 'change:home:803>806:58', side: 'home', type: 'change', minute: '58',
+    fcfPlayerInId: '803', fcfPlayerOutId: '806', playerInId: '', playerOutId: 'p10',
+    playerInName: 'Nil Bosc', playerOutName: 'Arnau Puig'},
+  {id: 'f5', src: 'fcf', fcfKey: 'goal:home:802:61', side: 'home', type: 'goal', minute: '61',
+    playerId: 'p9', fcfPlayerId: '802', playerName: 'Iker Ramos', goalType: 'penal'},
+  {id: 'f6', src: 'fcf', fcfKey: 'yellow:home:803:75', side: 'home', type: 'yellow', minute: '75',
+    playerId: '', fcfPlayerId: '803', playerName: 'Nil Bosc'},
+];
+
 // ── The real builders ───────────────────────────────────────────
 
 /* Starts at ptOurSide, which the builders below it call — see the same
@@ -174,6 +205,11 @@ const STRINGS = (() => {
 
 const sanitize = esc;
 
+// eslint-disable-next-line no-new-func
+const NAMES_API = new Function('sanitize',
+    grab('  function resolveEventName', '  function getEventIcon') +
+    '\n return {resolveEventName, getEventPlayerName};')(esc);
+
 /* utils.js does not export posCirclesHtmlGlobal, and it needs no DOM —
    this is the same markup its callers produce. */
 function posCircles(p) {
@@ -199,7 +235,7 @@ const R = new Function(
     'fcfKitPieces', 'fcfShirtSvg', 'shortsSvg', 'kitSockSvg',
     BLOCK + '\n return {ptHead, ptCrestHtml, ptRivalStanding, ptFactsHtml,' +
       ' ptScoreboardHtml, ptCallupHtml, ptBoardsHtml, ptTimelineHtml,' +
-      ' ptAnadaHtml,' +
+      ' ptAnadaHtml, ptActaBarHtml, ptActaLinkHtml,' +
       ' ptEventFormHtml, setForm: function (f) { _evForm = f; }};')(
     (k) => (STRINGS[k] !== undefined ? STRINGS[k] : k),
     sanitize,
@@ -263,14 +299,11 @@ const R = new Function(
         penal_fallat: 'penal%20fallat.png', pal: 'pal.png'};
       return '<img src="img/' + (SRC[ev.type] || 'gol.png') + '" alt="">';
     },
-    (ev, users) => {
-      const p = (users || []).find((u) => String(u.id) === String(ev.playerId));
-      return p ? esc(p.name) : ('Núm. ' + esc(ev.playerNumber || '?'));
-    },
-    (id, name, num, users) => {
-      const p = (users || []).find((u) => String(u.id) === String(id));
-      return p ? esc(p.name) : esc(name || ('Núm. ' + (num || '?')));
-    },
+    /* The REAL name resolvers (v278): an acta row names the rival from the
+       snapshot, and a stand-in that went straight to the shirt number
+       would show the mockup a different timeline from the app's. */
+    NAMES_API.getEventPlayerName,
+    NAMES_API.resolveEventName,
     /* The real stdSelect, sliced out like everything else — the form's
        player pickers ARE that control now, and drawing a fake one here
        would hide the very consolidation this round is about. */
@@ -298,7 +331,7 @@ const R = new Function(
     {get: () => LEG_NOTE, PHASES: ['pre', 'live', 'post']},
     'fa_mn_brief_collapsed',
     (d) => d.split('-').reverse().join('/'),
-    (id) => (id === LEG.id ? LEG_EVENTS : EVENTS),
+    (id) => (id === LEG.id ? LEG_EVENTS : id === ACTA_MATCH.id ? ACTA_EVENTS : EVENTS),
     /* The rival's strips. Two flat colour blocks at the size the page asks
        for — the real fcfShirtSvg draws the federation's five patterns and
        needs its fill vocabulary; what this mockup has to show is the SIZE
@@ -414,9 +447,44 @@ function page(mode) {
   '</div>';
 }
 
+/* v278 — the page after the acta: its line, the locked rows, the edit form
+   open on our goal, and the "Vincula jugadors" block. */
+function actaPage() {
+  const M = ACTA_MATCH;
+  const roster = SQUAD.map((p) => Object.assign({roles: ['player'], category: 'amateur'}, p));
+  R.setForm({mode: 'edit', matchId: M.id, evId: 'f1', side: 'home', type: 'goal', min: '12',
+    who: 'p11', second: 'p5', goalType: 'jugada_oberta'});
+  const events = R.ptHead(STRINGS['pt.events'], ACTA_EVENTS.length + ' ' + STRINGS['pt.events_n']) +
+    R.ptActaBarHtml(M, true, true) +
+    R.ptTimelineHtml(M, ACTA_EVENTS, SQUAD, true) +
+    '<div class="pt-ev-add">' +
+      '<button class="pt-ev-add-btn pt-ev-add-ours">' + STRINGS['pt.add_event'] + ' · L\'Esquerra</button>' +
+      '<button class="pt-ev-add-btn">' + STRINGS['pt.add_event'] + ' · Sauleda</button>' +
+    '</div>' +
+    R.ptEventFormHtml(M, SQUAD) +
+    R.ptActaLinkHtml(M, roster, ACTA_EVENTS);
+  R.setForm(null);
+  return '<div class="pt-page">' +
+    R.ptScoreboardHtml(M, ACTA_EVENTS, true) +
+    '<div class="pt-band pt-play">' +
+      '<div class="pt-col">' + events + '</div>' +
+      '<div class="pt-col">' + R.ptCallupHtml(M, ctx({isStaff: true, isPlayerViewer: false, isPast: true})) + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
 const staffPage = page('staff');
 const playerPage = page('player');
 const awayPage = page('away');
+const afterActa = actaPage();
+
+/* The acta is final: none of its rows may carry the ✕, our open-play goal
+   carries the pencil, and the coach's own post keeps its ✕. */
+assert.ok(!/class="pt-ev-x" data-ev-id="f/.test(afterActa), 'an acta row offers a ✕');
+assert.ok(/class="pt-ev-x" data-ev-id="h1"/.test(afterActa), 'the coach\'s own row lost its ✕');
+assert.ok(/class="pt-ev-edit" data-ev-id="f1"/.test(afterActa), 'our goal has no pencil');
+assert.ok(afterActa.indexOf('pt-acta-badge') !== -1 && afterActa.indexOf('pt-link-row') !== -1,
+    'the acta line or the link block is missing');
 
 assert.ok(playerPage.indexOf('pt-star') === -1,
     'the player page rendered a star — the eleven is leaking');
@@ -523,6 +591,12 @@ ${playerPage}
 </div>
 <div class="mock-shell">
 ${awayPage}
+</div>
+<div class="mock-label">
+  2c · Staff, after the FCF acta (v278) — rows locked, editing our goal's assist, two names to link
+</div>
+<div class="mock-shell">
+${afterActa}
 </div>
 
 </body>

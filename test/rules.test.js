@@ -1204,3 +1204,35 @@ describe("pushQueue — writing here rings real phones", () => {
   });
 });
 });
+
+describe("The FCF acta import's server-only records (v278)", () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (c) => {
+      const d = c.firestore();
+      await d.doc("teams/teamA/fcfActa/4119501").set({category: "cadet", facts: []});
+      await d.doc("clubs/teamA/fcfPlayers/708213").set({uid: A, status: "linked"});
+      await d.doc("fcfActaQueue/teamA__4119501").set({clubId: "teamA", dueAt: 0});
+    });
+  });
+
+  it("a ledger is the server's alone — not even the club's staff read it", async () => {
+    await assertFails(asStaffA().doc("teams/teamA/fcfActa/4119501").get());
+    await assertFails(asLeadA().doc("teams/teamA/fcfActa/4119501").set({facts: []}));
+    await assertFails(asA().doc("teams/teamA/fcfActa/4119501").delete());
+  });
+
+  it("staff read who an acta name is; nobody writes it from a phone", async () => {
+    await assertSucceeds(asStaffA().doc("clubs/teamA/fcfPlayers/708213").get());
+    await assertSucceeds(asLeadA().doc("clubs/teamA/fcfPlayers/708213").get());
+    // A player linking himself to someone else's goals:
+    await assertFails(asA().doc("clubs/teamA/fcfPlayers/708213").set({uid: A2, status: "linked"}));
+    await assertFails(asA().doc("clubs/teamA/fcfPlayers/708213").get());
+    await assertFails(asStaffA().doc("clubs/teamA/fcfPlayers/708213").set({uid: A2}));
+    await assertFails(asB().doc("clubs/teamA/fcfPlayers/708213").get());
+  });
+
+  it("the import queue is machinery nobody's phone touches", async () => {
+    await assertFails(asLeadA().doc("fcfActaQueue/teamA__4119501").get());
+    await assertFails(asStaffA().doc("fcfActaQueue/teamA__4119501").set({dueAt: 1}));
+  });
+});

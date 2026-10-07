@@ -1402,10 +1402,6 @@ async function _syncFcfSquad(clubId, category, letter, club) {
      so a played game keeps saying where the opponent stood that day. */
   const positions = parseFcfPositions(classificacio);
 
-  const ref = db.collection("teams").doc(clubId).collection("data")
-      .doc(shardDocId("fa_matches", category));
-  const snap = await ref.get();
-  const existing = parseDataDoc(snap, []);
   const now = new Date();
   const today = new Intl.DateTimeFormat("en-CA", {timeZone: "Europe/Madrid"})
       .format(now);
@@ -1417,21 +1413,35 @@ async function _syncFcfSquad(clubId, category, letter, club) {
       {timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit",
         hour12: false}).format(now);
 
-  const {matches, summary} = mergeFcfFixtures(
-      Array.isArray(existing) ? existing : [], incoming,
-      {clubName, category, letter, kits, today, nowHM, positions});
+  /* In a transaction since v278: the read, the merge and the write used to be
+     three steps, and a coach's save — or an acta import — landing between
+     the first and the last was overwritten. withDataShards writes `category`
+     with the shard, which the client's where('category','in',…) needs. */
+  const shard = shardDocId("fa_matches", category);
+  const {matches, summary} = await withDataShards(clubId,
+      [{key: "fa_matches", cat: category, fallback: []}], (vals) => {
+        const existing = vals[shard];
+        const res = mergeFcfFixtures(
+            Array.isArray(existing) ? existing : [], incoming,
+            {clubName, category, letter, kits, today, nowHM, positions});
+        const touched = res.summary.added + res.summary.adopted +
+          res.summary.updated + res.summary.removed;
+        // Nothing changed: no write, so updateTeamDates does not re-fire and
+        // the client's onSnapshot does not re-render nightly for every club.
+        if (touched) vals[shard] = res.matches;
+        return res;
+      });
 
-  const touched = summary.added + summary.adopted + summary.updated +
-    summary.removed;
-  // Nothing changed: skip the write, so updateTeamDates does not re-fire and
-  // the client's onSnapshot does not trigger a full-page re-render nightly
-  // for every club in the platform.
-  if (!touched) return summary;
-
-  /* `category` is not decoration — the client queries
-     where('category','in',…) and the rules test the same field, so a shard
-     written without it is invisible to the entire app. */
-  await ref.set({v: JSON.stringify(matches), category}, {merge: true});
+  /* The acta import's queue. Here, before anything can return early, so a
+     quiet night still re-arms a fixture whose acta has not been closed.
+     Not for a seeded demo club: its fixtures carry invented acta ids
+     (9901xxxx), which fcf.cat answers with an empty page — every one would
+     be fetched and logged as unreadable, every fifteen minutes, for days. */
+  try {
+    if (!club.demoSeed) await _enqueueActaImports(clubId, category, matches);
+  } catch (err) {
+    logger.error("acta enqueue failed", {clubId, category, err: String(err)});
+  }
   return summary;
 }
 
@@ -2398,6 +2408,535 @@ exports.runFcfCrawl = onCall({region: "us-central1", timeoutSeconds: 540,
   });
   if (d.aggregate) r.profiles = await _rebuildFcfReferees();
   return r;
+});
+
+// ── 6b. The acta import — a closed acta becomes the match's events ──
+//
+// The federation's acta lists every goal, card and substitution with its
+// minute, and it is final once the referee closes it. This reads it and
+// writes it into fa_match_events, so the result and the scoresheet arrive
+// by themselves about 45 minutes after the final whistle. See
+// functions/acta.js for the rules (FCF wins; players joined by name only)
+// and parseFcfActaEvents in fcf.js for the page.
+//
+// Four pieces, ONE implementation (_importActa):
+//   - fcfActaQueue + scheduledActaImport: the automatic path. The daily
+//     FCF sync queues each fixture; the 15-minute job tries it from
+//     kick-off + 2h45 and backs off until the acta is closed.
+//   - importFcfActa: the Partit page's button.
+//   - linkFcfPlayer: the coach confirming who an acta name is.
+//   - guardFcfActa: the acta is final, and the client cannot be trusted to
+//     know that — an old APK, or a phone that saved offline at the pitch,
+//     writes whole shards back. The guard puts the acta's facts back.
+//
+// Off until `fcfCrawl/actaImport {enabled: true}` — the automatic path
+// only. The button works regardless.
+
+const {
+  resolveActaPlayers, fcfActaToEvents, mergeActaEvents,
+  actaFacts, actaFactsIntact, actaLineup, applyActaLineup, ourSideOfRow,
+  scoreOfEvents, nextActaAttemptMs, planActaQueue,
+} = require("./acta");
+const {parseFcfActaEvents} = require("./fcf");
+
+const ACTA_QUEUE = "fcfActaQueue";
+const ACTA_CFG = "fcfCrawl/actaImport";
+const ACTA_BATCH = 20;
+
+function shardRef(teamId, key, cat) {
+  return db.collection("teams").doc(teamId).collection("data")
+      .doc(shardDocId(key, cat));
+}
+function ledgerRef(teamId, matchId) {
+  return db.collection("teams").doc(teamId).collection("fcfActa").doc(String(matchId));
+}
+function registryCol(clubId) {
+  return db.collection("clubs").doc(clubId).collection("fcfPlayers");
+}
+
+/**
+ * Read-modify-write several data shards of one team in ONE transaction.
+ *
+ * The client writes a whole shard back with no precondition (js/db.js), so a
+ * server read-then-write outside a transaction can lose to — or erase — a
+ * coach's save landing in between. `specs` is `[{key, cat, fallback}]`;
+ * `mutate(vals, tx)` edits `vals["key__cat"]` in place, may `tx.get` more,
+ * and may return a function that adds further writes. Only shards whose JSON
+ * changed are written, always with `category`.
+ */
+async function withDataShards(teamId, specs, mutate) {
+  return db.runTransaction(async (tx) => {
+    const refs = specs.map((s) => shardRef(teamId, s.key, s.cat));
+    const snaps = await tx.getAll(...refs);
+    const vals = {};
+    const before = {};
+    specs.forEach((s, i) => {
+      const id = shardDocId(s.key, s.cat);
+      vals[id] = parseDataDoc(snaps[i], s.fallback);
+      before[id] = JSON.stringify(vals[id]);
+    });
+    const extra = await mutate(vals, tx);
+    specs.forEach((s, i) => {
+      const id = shardDocId(s.key, s.cat);
+      const json = JSON.stringify(vals[id]);
+      if (json !== before[id]) tx.set(refs[i], {v: json, category: s.cat}, {merge: true});
+    });
+    if (typeof extra === "function") return extra(tx);
+    return extra;
+  });
+}
+
+/** The match row with this id, and the category shard it lives in. */
+async function findMatchRow(teamId, matchId) {
+  const shards = await readDataShards(teamId, ["fa_matches"]);
+  for (const s of shards.get("fa_matches") || []) {
+    const list = parseDataDoc(s.snap, []);
+    if (!Array.isArray(list)) continue;
+    const row = list.find((r) => r && String(r.id) === String(matchId));
+    if (row) return {row, cat: s.cat};
+  }
+  return null;
+}
+
+/** `{fcfId: registry doc}` for these FCF ids. */
+async function readRegistry(clubId, fcfIds) {
+  const out = {};
+  if (!fcfIds.length) return out;
+  const snaps = await db.getAll(...fcfIds.map((id) => registryCol(clubId).doc(String(id))));
+  snaps.forEach((s) => {
+    if (s.exists) out[s.id] = s.data() || {};
+  });
+  return out;
+}
+
+async function actaImportConfig() {
+  const snap = await db.doc(ACTA_CFG).get();
+  const c = (snap.exists && snap.data()) || {};
+  return {enabled: c.enabled === true, dryRun: c.dryRun === true};
+}
+
+/**
+ * Import one match's acta. Never throws for an expected outcome; returns
+ * `{status, …}` where status is one of
+ *   imported | not-closed | no-result | awarded | unreadable | mismatch | side-mismatch |
+ *   fetch-failed | no-acta | no-match | no-club | already | dry-run
+ * `already` only for the automatic path (`src:'auto'`) — the button re-runs.
+ */
+async function _importActa(clubId, matchId, opts) {
+  const o = opts || {};
+  const clubSnap = await db.collection("clubs").doc(clubId).get();
+  if (!clubSnap.exists) return {status: "no-club"};
+  const club = clubSnap.data() || {};
+  const clubName = String(club.name || "");
+
+  const found = await findMatchRow(clubId, matchId);
+  if (!found) return {status: "no-match"};
+  const {row, cat} = found;
+  if (!row.fcfActaId || row.fcfRemoved) return {status: "no-acta"};
+  if (o.src === "auto" && row.fcfActa) return {status: "already"};
+  // A demo club's acta ids are invented (see _syncFcfSquad); never chase them.
+  if (o.src === "auto" && club.demoSeed) return {status: "no-acta"};
+  if (o.cats && o.cats.indexOf(cat) === -1) return {status: "forbidden"};
+
+  let html;
+  try {
+    html = await fcfActaHtml(row.fcfActaId);
+  } catch (err) {
+    return {status: "fetch-failed", detail: String(err)};
+  }
+  const acta = parseFcfActaEvents(html);
+  if (!acta.ok) {
+    /* A page we cannot read is the failure that matters: a redesign kills
+       this silently otherwise, the way one killed the referee parser. */
+    logger.error("acta unreadable", {clubId, matchId, actaId: row.fcfActaId,
+      reason: acta.reason, detail: acta.detail});
+    return {status: "unreadable", reason: acta.reason};
+  }
+  if (!acta.closed) return {status: "not-closed", fcfStatus: acta.status};
+  // Closed with no result: the match was not played. Final, and nothing to write.
+  if (acta.played === false) return {status: "no-result"};
+  /* A result awarded with no goals (a forfeit). The app's score is the sum of
+     its goal events, so there is nothing true to write: say what it was. */
+  if (acta.awarded) {
+    logger.info("acta awarded result", {clubId, matchId, actaId: row.fcfActaId});
+    return {status: "awarded", score: acta.score.home + "-" + acta.score.away};
+  }
+
+  const ourSide = ourSideOfRow(row, clubName);
+  if (!sameClubNameOf(acta[ourSide].name, clubName)) {
+    logger.warn("acta side mismatch", {clubId, matchId, actaId: row.fcfActaId});
+    return {status: "side-mismatch"};
+  }
+
+  // Who our acta players are. The roster is the match's category, plus
+  // anyone this match's call-up borrowed from another.
+  const sentNow = parseDataDoc(await shardRef(clubId, "fa_convocatoria_sent", cat).get(), {});
+  const sentEntry = sentNow[String(row.id)];
+  const called = new Set(((sentEntry && (Array.isArray(sentEntry) ? sentEntry : sentEntry.players)) || [])
+      .map(String));
+  const usersSnap = await db.collection("users").where("teamId", "==", clubId).get();
+  const roster = [];
+  usersSnap.forEach((d) => {
+    const u = d.data() || {};
+    if (!Array.isArray(u.roles) || u.roles.indexOf("player") === -1) return;
+    if ((u.category || "") !== cat && !called.has(d.id)) return;
+    roster.push({uid: d.id, name: String(u.name || ""), called: called.has(d.id)});
+  });
+  const ours = acta.players.filter((p) => p.side === ourSide);
+  const registry = await readRegistry(clubId, ours.map((p) => p.id));
+  const resolve = resolveActaPlayers(ours, roster, registry);
+  const imported = fcfActaToEvents(acta, {actaId: row.fcfActaId, ourSide, resolve});
+  const lineup = actaLineup(acta, {ourSide, resolve});
+  const unlinked = lineup.filter((r) => !r.u && !r.x).length;
+  const counts = {goals: acta.goals.length, cards: acta.cards.length,
+    subs: acta.subs.length, unlinked};
+  if (o.dryRun) {
+    return {status: "dry-run", counts,
+      auto: Object.keys(resolve).filter((f) => resolve[f].how === "auto").length};
+  }
+
+  const mid = String(row.id);
+  const at = new Date().toISOString();
+  const out = await withDataShards(clubId, [
+    {key: "fa_match_events", cat, fallback: {}},
+    {key: "fa_matches", cat, fallback: []},
+    {key: "fa_convocatoria_sent", cat, fallback: {}},
+  ], (vals) => {
+    const evMap = vals[shardDocId("fa_match_events", cat)];
+    const rows = vals[shardDocId("fa_matches", cat)];
+    const sent = vals[shardDocId("fa_convocatoria_sent", cat)];
+    const r = Array.isArray(rows) ? rows.find((x) => x && String(x.id) === mid) : null;
+    if (!r) return {status: "no-match"};
+    const merged = mergeActaEvents(evMap[mid] || [], imported, {ourSide, resolve});
+    const sc = scoreOfEvents(merged.events);
+    if (sc.home !== acta.score.home || sc.away !== acta.score.away) {
+      // parseFcfActaEvents already checked this; a merge that disagrees is
+      // a bug here, and writing it would be a wrong final result. Nothing
+      // has been changed yet, so nothing is written.
+      logger.error("acta merge score mismatch", {clubId, matchId: mid});
+      return {status: "mismatch"};
+    }
+    evMap[mid] = merged.events;
+    r.score = sc.home + "-" + sc.away;
+    r.status = "played";
+    r.fcfActa = {at, src: o.src || "manual", unlinked, lineup};
+    const entry = applyActaLineup(sent[mid], lineup);
+    if (entry) sent[mid] = entry;
+    return (tx) => {
+      tx.set(ledgerRef(clubId, mid), {
+        actaId: String(row.fcfActaId), category: cat, ourSide,
+        score: r.score, importedAt: at, src: o.src || "manual",
+        facts: actaFacts(merged.events),
+        events: merged.events.filter((e) => e.src === "fcf"),
+        lineup, fcfIds: ours.map((p) => p.id),
+      });
+      Object.keys(resolve).forEach((f) => {
+        if (resolve[f].how !== "auto") return;
+        tx.set(registryCol(clubId).doc(f), {
+          uid: resolve[f].uid, status: "linked", source: "auto",
+          name: (ours.find((p) => p.id === f) || {}).name || "", at,
+        });
+      });
+      return {status: "imported", counts, summary: merged.summary};
+    };
+  });
+  logger.info("acta import", {clubId, matchId: mid, actaId: row.fcfActaId,
+    src: o.src, status: out.status, counts, summary: out.summary});
+  return out;
+}
+
+/**
+ * Queue a squad's fixtures for the automatic import. Called by the daily
+ * FCF sync with the category's rows; writes only items that are new or whose
+ * kick-off moved, so a quiet night costs one getAll.
+ */
+async function _enqueueActaImports(clubId, category, rows) {
+  const now = Date.now();
+  const plan = planActaQueue(rows, {
+    nowMs: now,
+    kickoffMsOf: (r) => {
+      const d = parseMadridDate(r.date, String(r.time || "").slice(0, 5));
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    },
+    endMsOf: (r) => {
+      const d = activityEndsAt(r, "match");
+      return d ? d.getTime() : 0;
+    },
+  });
+  if (!plan.length) return 0;
+  const refs = plan.map((p) => db.collection(ACTA_QUEUE).doc(clubId + "__" + p.matchId));
+  const snaps = await db.getAll(...refs);
+  const batch = db.batch();
+  let n = 0;
+  plan.forEach((p, i) => {
+    const cur = snaps[i].exists ? snaps[i].data() : null;
+    if (cur && cur.kickoffAt === p.kickoffAt) return;
+    batch.set(refs[i], {clubId, matchId: p.matchId, category, actaId: p.actaId,
+      kickoffAt: p.kickoffAt, dueAt: p.dueAt, attempts: 0, lastStatus: ""});
+    n++;
+  });
+  if (n) await batch.commit();
+  return n;
+}
+
+/* Outcomes after which a queue item has nothing more to wait for. */
+const ACTA_DONE = new Set(["imported", "already", "no-acta", "no-match", "no-club", "no-result",
+  "awarded"]);
+
+exports.scheduledActaImport = onSchedule({
+  schedule: "*/15 * * * *",
+  timeZone: "Europe/Madrid",
+  region: "us-central1",
+  timeoutSeconds: 300,
+}, async () => {
+  const cfg = await actaImportConfig();
+  if (!cfg.enabled) return;
+  const now = Date.now();
+  const snap = await db.collection(ACTA_QUEUE).where("dueAt", "<=", now)
+      .orderBy("dueAt").limit(ACTA_BATCH).get();
+  for (const doc of snap.docs) {
+    const q = doc.data() || {};
+    let r;
+    try {
+      r = await _importActa(q.clubId, q.matchId, {src: "auto", dryRun: cfg.dryRun});
+    } catch (err) {
+      r = {status: "error", detail: String(err)};
+      logger.error("acta import failed", {queue: doc.id, err: String(err)});
+    }
+    if (ACTA_DONE.has(r.status)) {
+      await doc.ref.delete();
+      continue;
+    }
+    if (cfg.dryRun) {
+      logger.info("acta dry run", {queue: doc.id, result: r});
+      await doc.ref.update({dueAt: now + 6 * 3600000, lastStatus: r.status});
+      continue;
+    }
+    const attempts = (Number(q.attempts) || 0) + 1;
+    const next = nextActaAttemptMs(attempts - 1, now, Number(q.kickoffAt) || now);
+    if (next === null) {
+      logger.info("acta import gave up", {queue: doc.id, attempts, last: r.status});
+      await doc.ref.delete();
+      continue;
+    }
+    await doc.ref.update({attempts, dueAt: next, lastStatus: r.status});
+  }
+});
+
+/** Staff or lead of their OWN club — the token decides, never the request. */
+function staffClubOf(request) {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  const token = request.auth.token || {};
+  const clubId = token.teamId;
+  if (!clubId) throw new HttpsError("failed-precondition", "Cap club.");
+  if (token.role !== "staff" && token.role !== "lead") {
+    throw new HttpsError("permission-denied", "Només el cos tècnic.");
+  }
+  return {clubId, cats: Array.isArray(token.cats) ? token.cats : [], uid: request.auth.uid};
+}
+
+exports.importFcfActa = onCall({region: "us-central1", timeoutSeconds: 60},
+    async (request) => {
+      const {clubId, cats} = staffClubOf(request);
+      const matchId = String((request.data || {}).matchId || "");
+      if (!/^\d{1,16}$/.test(matchId)) throw new HttpsError("invalid-argument", "Partit no vàlid.");
+      const r = await _importActa(clubId, matchId, {src: "manual", cats});
+      if (r.status === "forbidden") throw new HttpsError("permission-denied", "Aquest equip no és teu.");
+      if (r.status === "imported") await db.collection(ACTA_QUEUE).doc(clubId + "__" + matchId).delete();
+      return r;
+    });
+
+/**
+ * Re-point one acta player's events, line-up row and call-up at `uid`
+ * ('' to unlink) in every match that lists him. One transaction per match.
+ */
+async function _backfillFcfLink(clubId, fcfId, uid, ignored) {
+  const led = await db.collection("teams").doc(clubId).collection("fcfActa")
+      .where("fcfIds", "array-contains", String(fcfId)).get();
+  let matches = 0;
+  for (const doc of led.docs) {
+    const L = doc.data() || {};
+    const cat = L.category;
+    const mid = doc.id;
+    if (!cat) continue;
+    await withDataShards(clubId, [
+      {key: "fa_match_events", cat, fallback: {}},
+      {key: "fa_matches", cat, fallback: []},
+      {key: "fa_convocatoria_sent", cat, fallback: {}},
+    ], (vals, tx) => {
+      const evMap = vals[shardDocId("fa_match_events", cat)];
+      const rows = vals[shardDocId("fa_matches", cat)];
+      const sent = vals[shardDocId("fa_convocatoria_sent", cat)];
+      const pointAt = (e) => {
+        if (!e || e.src !== "fcf" || e.side !== L.ourSide) return e;
+        if (e.fcfPlayerId === fcfId) e.playerId = uid;
+        if (e.fcfPlayerInId === fcfId) e.playerInId = uid;
+        if (e.fcfPlayerOutId === fcfId) e.playerOutId = uid;
+        return e;
+      };
+      (evMap[mid] || []).forEach(pointAt);
+      const ledgerEvents = (L.events || []).map(pointAt);
+      const lineup = (L.lineup || []).map((r) => {
+        if (r.f !== fcfId) return r;
+        const prevUid = r.u;
+        const next = Object.assign({}, r, {u: uid, x: ignored ? 1 : 0, a: 0});
+        if (uid) delete next.c;
+        // Unlinking takes him back out of what the import filled for him.
+        if (prevUid && prevUid !== uid && sent[mid] && !Array.isArray(sent[mid])) {
+          const e = sent[mid];
+          const fill = e.fcfFill || {};
+          if (fill.xi && Array.isArray(e.startingXI)) e.startingXI = e.startingXI.filter((u) => u !== prevUid);
+          const added = (fill.added || []).indexOf(prevUid) !== -1;
+          if ((fill.players || added) && Array.isArray(e.players)) e.players = e.players.filter((u) => u !== prevUid);
+          if (added) fill.added = fill.added.filter((u) => u !== prevUid);
+        }
+        return next;
+      });
+      const r = Array.isArray(rows) ? rows.find((x) => x && String(x.id) === mid) : null;
+      if (r && r.fcfActa) {
+        r.fcfActa = Object.assign({}, r.fcfActa, {lineup,
+          unlinked: lineup.filter((x) => !x.u && !x.x).length});
+      }
+      const entry = applyActaLineup(sent[mid], lineup);
+      if (entry) sent[mid] = entry;
+      tx.update(doc.ref, {events: ledgerEvents, lineup});
+    });
+    matches++;
+  }
+  return matches;
+}
+
+exports.linkFcfPlayer = onCall({region: "us-central1", timeoutSeconds: 120},
+    async (request) => {
+      const {clubId, uid: by} = staffClubOf(request);
+      const d = request.data || {};
+      const fcfId = String(d.fcfId || "");
+      const raw = String(d.uid === undefined || d.uid === null ? "" : d.uid);
+      if (!/^\d{1,12}$/.test(fcfId)) throw new HttpsError("invalid-argument", "Jugador no vàlid.");
+      const ignore = raw === "__ignore__";
+      const uid = ignore ? "" : raw;
+      if (uid) {
+        const u = await db.collection("users").doc(uid).get();
+        const ud = u.exists ? u.data() || {} : {};
+        if (ud.teamId !== clubId || !Array.isArray(ud.roles) || ud.roles.indexOf("player") === -1) {
+          throw new HttpsError("invalid-argument", "Jugador no vàlid.");
+        }
+      }
+      const at = new Date().toISOString();
+      // One FCF id per player: linking a uid already linked elsewhere MOVES
+      // the link, and the old acta player goes back to the picker.
+      let displaced = "";
+      if (uid) {
+        const prev = await registryCol(clubId).where("uid", "==", uid).get();
+        for (const doc of prev.docs) {
+          if (doc.id === fcfId) continue;
+          displaced = doc.id;
+          await doc.ref.set({uid: "", status: "pending", source: "staff", by, at}, {merge: true});
+        }
+      }
+      await registryCol(clubId).doc(fcfId).set({
+        uid, status: uid ? "linked" : (ignore ? "ignored" : "pending"),
+        source: "staff", by, at,
+      }, {merge: true});
+      const matches = await _backfillFcfLink(clubId, fcfId, uid, ignore);
+      if (displaced) await _backfillFcfLink(clubId, displaced, "", false);
+      return {matches, displaced};
+    });
+
+/**
+ * The acta is final — on the server, where it can be enforced.
+ *
+ * Rules cannot look inside a shard's JSON, and the client writes whole
+ * shards: an old APK that still offers the ✕, or a phone that queued a save
+ * at the pitch and replays it after the import, puts the hand-entered
+ * events straight back. This compares every imported match the write
+ * touched against its ledger and, when the acta's facts are no longer
+ * there, merges them back in — keeping whatever the coach added. The re-run
+ * the repair itself triggers finds everything intact and stops.
+ */
+exports.guardFcfActa = onDocumentWritten({
+  document: "teams/{teamId}/data/{key}",
+  region: "us-central1",
+}, async (event) => {
+  const parts = splitShardId(event.params.key);
+  if (!parts || (parts.key !== "fa_match_events" && parts.key !== "fa_matches")) return;
+  const after = event.data.after.exists ? event.data.after.data() : null;
+  // A deleted or emptied shard is an administrative reset (archiveSeason,
+  // deleteTeam), never a stale phone — those always carry the other matches.
+  if (!after || typeof after.v !== "string" || after.v === "{}" || after.v === "[]") return;
+  const before = event.data.before.exists ? event.data.before.data() : null;
+  const parse = (d, fb) => {
+    try {
+      return d && typeof d.v === "string" ? JSON.parse(d.v) : fb;
+    } catch (e) {
+      return fb;
+    }
+  };
+  const teamId = event.params.teamId;
+  const cat = parts.cat;
+  const suspects = [];
+  if (parts.key === "fa_match_events") {
+    const a = parse(after, {});
+    const b = parse(before, {});
+    const hasFcf = (list) => Array.isArray(list) && list.some((e) => e && e.src === "fcf");
+    new Set(Object.keys(a).concat(Object.keys(b))).forEach((mid) => {
+      if (JSON.stringify(a[mid]) === JSON.stringify(b[mid])) return;
+      if (hasFcf(a[mid]) || hasFcf(b[mid])) suspects.push(mid);
+    });
+  } else {
+    const a = parse(after, []);
+    const b = parse(before, []);
+    const byId = (list) => {
+      const m = {};
+      (Array.isArray(list) ? list : []).forEach((r) => {
+        if (r && r.id !== undefined) m[String(r.id)] = r;
+      });
+      return m;
+    };
+    const A = byId(a);
+    const B = byId(b);
+    Object.keys(B).forEach((mid) => {
+      if (!B[mid].fcfActa || !A[mid]) return;            // a deleted fixture stays deleted
+      const ra = A[mid];
+      if (!ra.fcfActa || ra.score !== B[mid].score || ra.status !== "played") suspects.push(mid);
+    });
+  }
+  if (!suspects.length) return;
+  const ledgers = await db.getAll(...suspects.map((mid) => ledgerRef(teamId, mid)));
+  const live = ledgers.filter((s) => s.exists && (s.data() || {}).category === cat);
+  if (!live.length) return;
+
+  const repaired = await withDataShards(teamId, [
+    {key: "fa_match_events", cat, fallback: {}},
+    {key: "fa_matches", cat, fallback: []},
+  ], (vals) => {
+    const evMap = vals[shardDocId("fa_match_events", cat)];
+    const rows = vals[shardDocId("fa_matches", cat)];
+    const fixed = [];
+    live.forEach((s) => {
+      const L = s.data() || {};
+      const mid = s.id;
+      const r = Array.isArray(rows) ? rows.find((x) => x && String(x.id) === mid) : null;
+      if (!r) return;                                    // fixture deleted: let it go
+      const evOk = actaFactsIntact(evMap[mid] || [], L.facts || []);
+      const rowOk = r.fcfActa && r.score === L.score && r.status === "played";
+      if (evOk && rowOk) return;
+      if (!evOk) {
+        evMap[mid] = mergeActaEvents(evMap[mid] || [], L.events || [],
+            {ourSide: L.ourSide}).events;
+      }
+      if (!rowOk) {
+        r.score = L.score;
+        r.status = "played";
+        r.fcfActa = Object.assign({}, r.fcfActa || {}, {at: L.importedAt, src: L.src,
+          lineup: L.lineup || [],
+          unlinked: (L.lineup || []).filter((x) => !x.u && !x.x).length});
+      }
+      fixed.push(mid);
+    });
+    return fixed;
+  });
+  if (repaired.length) logger.warn("acta guard restored", {teamId, cat, matches: repaired});
 });
 
 // ── Membership helpers (roster email lists) ──────────────────
@@ -3940,6 +4479,16 @@ exports.deleteMember = onCall({region: "us-central1", timeoutSeconds: 300},
           return obj;
         });
 
+        // The acta import's links (v278). The acta player goes back to the
+        // picker, and every match's ledger and line-up forgets the uid — the
+        // events keep the acta's own name for him.
+        const fcfLinks = await registryCol(teamId).where("uid", "==", uid).get();
+        for (const d of fcfLinks.docs) {
+          await d.ref.set({uid: "", status: "pending", source: "staff",
+            at: new Date().toISOString()}, {merge: true});
+          await _backfillFcfLink(teamId, d.id, "", false);
+        }
+
         // Legacy goals blob, same treatment.
         await scrubShards(shards, "fa_match_goals", (obj) => {
           if (!obj || typeof obj !== "object") return null;
@@ -4354,6 +4903,26 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
         if (trShard) await trShard.ref.delete();
       }
       } // end runDataPhase
+
+      /* The acta ledgers of these fixtures go FIRST (v278). guardFcfActa
+         restores an imported match whose events vanish while its row is
+         still there, and the data phase removes the two in separate writes —
+         with a ledger left standing, the guard would put the events back
+         into a squad that is being deleted. */
+      if (deletedMatchIds.length) {
+        let lbatch = db.batch();
+        let lops = 0;
+        for (const mid of deletedMatchIds) {
+          lbatch.delete(ledgerRef(clubId, mid));
+          lbatch.delete(db.collection(ACTA_QUEUE).doc(clubId + "__" + mid));
+          if ((lops += 2) >= 450) {
+            await lbatch.commit();
+            lbatch = db.batch();
+            lops = 0;
+          }
+        }
+        if (lops > 0) await lbatch.commit();
+      }
 
       await runDataPhase(shards);
 
@@ -5042,8 +5611,11 @@ exports.archiveSeason = onRequest(
            it is a per-record collection, not a data/ blob — one document per
            match, keyed by the match id. Archiving it matters more than it
            looks: fa_matches is emptied further down, so a note left behind
-           would point at a fixture that no longer exists, for ever. */
-        for (const coll of ["trainingAvail", "matchAvail", "rpe", "matchNotes"]) {
+           would point at a fixture that no longer exists, for ever.
+           fcfActa (the acta-import ledgers, v278) for the same reason, and
+           it must be gone BEFORE the reset below: guardFcfActa restores an
+           imported match whose events disappear. */
+        for (const coll of ["trainingAvail", "matchAvail", "rpe", "matchNotes", "fcfActa"]) {
           const collSnap = await db.collection("teams").doc(teamId)
               .collection(coll).get();
           if (collSnap.empty) continue;
@@ -5064,6 +5636,8 @@ exports.archiveSeason = onRequest(
           if (rops > 0) await rbatch.commit();
           logger.info("archiveSeason: archived records", {coll, count: collSnap.size});
         }
+        // The club's pending acta imports point at fixtures about to go.
+        await deleteByQuery(db.collection(ACTA_QUEUE).where("clubId", "==", teamId));
 
         // ── Batch 2: Reset source docs, shard by shard ──
         // Every write carries `category`. A reset shard that lost the field

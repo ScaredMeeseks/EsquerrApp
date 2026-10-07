@@ -140,9 +140,11 @@ describe('metrics — the two stores pull opposite ways, on purpose', () => {
         'the catalogue is archived and reset every season');
     /* The record loop archiveSeason empties. `playerMetrics` must not be in
        it — being in neither list IS the "keep everything" behaviour. */
-    const archLoop = fnSrc.slice(fnSrc.indexOf('for (const coll of ["trainingAvail", "matchAvail", "rpe", "matchNotes"]'));
-    assert.ok(archLoop.startsWith('for (const coll of ["trainingAvail", "matchAvail", "rpe", "matchNotes"]'),
-        'the archive record loop moved — check playerMetrics is still out of it');
+    const at = fnSrc.indexOf('for (const coll of ["trainingAvail", "matchAvail", "rpe", "matchNotes"');
+    assert.ok(at !== -1, 'the archive record loop moved — check playerMetrics is still out of it');
+    // The list itself, to its closing bracket: v278 added fcfActa to it.
+    assert.ok(!/playerMetrics/.test(fnSrc.slice(at, fnSrc.indexOf(']', at))),
+        'playerMetrics is archived and emptied every season');
   });
 
   it('is cleaned up when a member or a team goes', () => {

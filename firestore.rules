@@ -241,6 +241,13 @@ service cloud.firestore {
               && resource.data.category in request.auth.token.cats);
       }
 
+      /* The acta-import ledgers (v278): what each imported acta said, which
+         guardFcfActa restores from when a stale phone overwrites it. Written
+         by the Admin SDK only; no client has a reason to read or write one. */
+      match /fcfActa/{matchId} {
+        allow read, write: if false;
+      }
+
       match /seasons/{seasonId} {
         // The season doc itself is just a label and a timestamp.
         allow read: if sameTeam(teamId) || isSuperUser();
@@ -393,6 +400,15 @@ service cloud.firestore {
          ran, and when. */
       match /teamDeletions/{teamKey} {
         allow read: if isLeadOf(clubId) || isSuperUser();
+        allow write: if false;
+      }
+
+      /* Which app player each FCF acta player is (v278). Written only by
+         the server — the import and linkFcfPlayer. Staff may read it; nobody
+         writes it from a phone, because a player linking himself to another
+         acta name would be credited with that player's goals. */
+      match /fcfPlayers/{fcfId} {
+        allow read: if isStaffOf(clubId) || isSuperUser();
         allow write: if false;
       }
 
@@ -592,6 +608,11 @@ service cloud.firestore {
        many requests get aimed at the federation's website, and the queue is a
        hundred-plus entries of machinery nobody's phone should download. */
     match /fcfCrawl/{docId} {
+      allow read, write: if false;
+    }
+
+    /* Pending acta imports (v278) — machinery for scheduledActaImport. */
+    match /fcfActaQueue/{docId} {
       allow read, write: if false;
     }
   }

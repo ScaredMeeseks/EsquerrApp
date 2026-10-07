@@ -712,6 +712,38 @@
     'pt.off_for':        { ca:'Surt', es:'Sale', en:'Off' },
     'pt.no_callup':      { ca:'La convocatòria encara no s\'ha enviat.', es:'La convocatoria aún no se ha enviado.', en:'The call-up has not been sent yet.' },
     'pt.not_found':      { ca:'Partit no trobat', es:'Partido no encontrado', en:'Match not found' },
+    // The FCF acta (v278)
+    'pt.acta_badge':     { ca:'Acta FCF', es:'Acta FCF', en:'FCF report' },
+    'pt.acta_imported_at': { ca:'importada el {when}', es:'importada el {when}', en:'imported {when}' },
+    'pt.acta_pending':   { ca:'La federació encara no ha tancat l\'acta.', es:'La federación aún no ha cerrado el acta.', en:'The federation has not closed the report yet.' },
+    'pt.acta_import':    { ca:'Importa l\'acta', es:'Importar acta', en:'Import report' },
+    'pt.acta_reimport':  { ca:'Torna a importar', es:'Volver a importar', en:'Import again' },
+    'pt.acta_importing': { ca:'Important…', es:'Importando…', en:'Importing…' },
+    'pt.acta_confirm':   { ca:'L\'acta substituirà els gols, targetes i canvis entrats a mà. Les assistències dels gols que coincideixin es mantenen.', es:'El acta sustituirá los goles, tarjetas y cambios introducidos a mano. Las asistencias de los goles que coincidan se mantienen.', en:'The report will replace the goals, cards and substitutions entered by hand. Assists on matching goals are kept.' },
+    'pt.acta_done':      { ca:'Acta importada: {goals} gols, {cards} targetes i {subs} canvis.', es:'Acta importada: {goals} goles, {cards} tarjetas y {subs} cambios.', en:'Report imported: {goals} goals, {cards} cards and {subs} substitutions.' },
+    'pt.acta_to_link':   { ca:'{n} jugadors per vincular.', es:'{n} jugadores por vincular.', en:'{n} players to link.' },
+    'pt.acta_not_closed': { ca:'La federació encara no ha tancat l\'acta. Es tornarà a provar sola.', es:'La federación aún no ha cerrado el acta. Se volverá a intentar sola.', en:'The federation has not closed the report yet. It will be retried automatically.' },
+    'pt.acta_awarded':   { ca:'Resultat administratiu ({score}): l\'acta no registra cap gol, així que no s\'ha importat res.', es:'Resultado administrativo ({score}): el acta no registra ningún gol, así que no se ha importado nada.', en:'Awarded result ({score}): the report lists no goals, so nothing was imported.' },
+    'pt.acta_no_result': { ca:'L\'acta està tancada sense resultat: el partit no es va jugar.', es:'El acta está cerrada sin resultado: el partido no se jugó.', en:'The report is closed with no result: the match was not played.' },
+    'pt.acta_unreadable': { ca:'No s\'ha pogut llegir l\'acta de la federació. No s\'ha canviat res.', es:'No se ha podido leer el acta de la federación. No se ha cambiado nada.', en:'The federation\'s report could not be read. Nothing was changed.' },
+    'pt.acta_failed':    { ca:'No s\'ha pogut importar l\'acta.', es:'No se ha podido importar el acta.', en:'The report could not be imported.' },
+    'pt.acta_locked':    { ca:'De l\'acta de la federació: no es pot modificar', es:'Del acta de la federación: no se puede modificar', en:'From the federation\'s report: cannot be changed' },
+    'pt.edit_event':     { ca:'Edita el gol', es:'Editar el gol', en:'Edit goal' },
+    'pt.save_event':     { ca:'Desa', es:'Guardar', en:'Save' },
+    'pt.link_title':     { ca:'Vincula jugadors de l\'acta', es:'Vincula jugadores del acta', en:'Link players from the report' },
+    'pt.link_hint':      { ca:'Noms de l\'acta que no hem pogut relacionar amb cap jugador. Tria qui és cadascú: es recordarà per als propers partits.', es:'Nombres del acta que no hemos podido relacionar con ningún jugador. Elige quién es cada uno: se recordará para los próximos partidos.', en:'Names on the report we could not match to a player. Pick who each one is: it is remembered for future matches.' },
+    'pt.link_pick':      { ca:'Tria jugador…', es:'Elige jugador…', en:'Pick a player…' },
+    'pt.link_ignore':    { ca:'No és de la plantilla', es:'No es de la plantilla', en:'Not in the squad' },
+    'pt.link_unlink':    { ca:'Desvincula', es:'Desvincular', en:'Unlink' },
+    'pt.link_linked':    { ca:'Vinculats', es:'Vinculados', en:'Linked' },
+    'pt.link_auto':      { ca:'auto', es:'auto', en:'auto' },
+    'pt.link_ignored':   { ca:'ignorat', es:'ignorado', en:'ignored' },
+    'pt.link_done':      { ca:'Vinculat a {n} partits.', es:'Vinculado en {n} partidos.', en:'Linked in {n} matches.' },
+    'pt.link_moved':     { ca:'El nom que tenia vinculat abans torna a quedar per vincular.', es:'El nombre que tenía vinculado antes vuelve a quedar por vincular.', en:'The name previously linked to them is unlinked again.' },
+    'pt.link_failed':    { ca:'No s\'ha pogut vincular.', es:'No se ha podido vincular.', en:'Could not link.' },
+    'pt.unlinked':       { ca:'sense vincular', es:'sin vincular', en:'unlinked' },
+    'pt.hidden_player':  { ca:'Jugador/a', es:'Jugador/a', en:'Player' },
+    'pt.starter':        { ca:'Titular', es:'Titular', en:'Starter' },
 
     // ── Plantilla (staff roster redesign) ──
     'pl.attendance':     { ca:'Assistència', es:'Asistencia', en:'Attendance' },
@@ -2907,7 +2939,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 277;
+  const APP_VERSION = 278;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3564,7 +3596,11 @@
     var byPlayer = {};
     (events || []).forEach(function (e) {
       if (!e || e.type !== 'yellow') return;
-      var key = e.side + '_' + (e.playerId || e.playerNumber || '');
+      /* `fcfPlayerId` between the two (v278): an acta booking of one of
+         ours nobody has linked yet has neither a uid nor a number, and
+         without it every such yellow on a side would count as ONE player's
+         — the second unlinked booking drawn as a sending-off. */
+      var key = e.side + '_' + (e.playerId || e.fcfPlayerId || e.playerNumber || '');
       (byPlayer[key] = byPlayer[key] || []).push(e);
     });
     var out = new Map();
@@ -14625,6 +14661,34 @@
      match would show a half-filled form addressed to the first. */
   let _evForm = null;
 
+  /* ── The FCF acta (v278) ──────────────────────────────────────
+     A closed acta is imported by the server (functions/acta.js) into
+     this match's events. From then on its goals, cards and
+     substitutions are the federation's and FINAL: those rows lose their
+     ✕, those types can no longer be added by hand, and the only things a
+     coach can still change are the ones an acta does not record — the
+     assist, and open play against a direct free kick. The server holds
+     the same line (guardFcfActa); this is the page agreeing with it. */
+  const ACTA_EVENT_TYPES = ['goal', 'own_goal', 'yellow', 'red', 'change'];
+  // Where the ✕ would be, on a row the acta owns. currentColor: --pp-* applies.
+  const PT_LOCK_SVG = '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">' +
+    '<rect x="3" y="7" width="10" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+    '<path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+
+  /** The import stamp on a fixture, or null before its acta arrives. */
+  function ptActaOf(m) {
+    return (m && m.fcfActa) || null;
+  }
+  function ptIsActaEvent(ev) {
+    return !!(ev && ev.src === 'fcf');
+  }
+  /** Our own goals from the acta, penalties excepted — the one row type
+   *  with anything left to say (the assist, the kind of goal). */
+  function ptActaEditable(ev, m) {
+    return ptIsActaEvent(ev) && ev.type === 'goal' &&
+      ev.side === ptOurSide(m) && ev.goalType !== 'penal';
+  }
+
   /**
    * The event types, in the order the design lays the chips out.
    *
@@ -14632,9 +14696,11 @@
    * the chip and the timeline row must draw the same event the same
    * way, and the double-yellow overlap is already that function's
    * business.
+   *
+   * `locked` (the acta is in): only the types an acta never records.
    */
-  function ptEventTypes(side) {
-    return [
+  function ptEventTypes(side, locked) {
+    const all = [
       {v: 'goal', label: t('ev.goal'), icon: 'img/gol.png'},
       {v: 'own_goal', label: t('ev.own_goal'), icon: 'img/gol-propia.png'},
       {v: 'yellow', label: t('ev.yellow'), icon: 'img/groga.png'},
@@ -14643,6 +14709,9 @@
       {v: 'penal_fallat', label: t('ev.penal_miss'), icon: 'img/penal%20fallat.png'},
       {v: 'pal', label: t('ev.post'), icon: 'img/pal.png'}
     ];
+    return locked
+      ? all.filter(function (o) { return ACTA_EVENT_TYPES.indexOf(o.v) === -1; })
+      : all;
   }
 
   /**
@@ -14737,19 +14806,33 @@
       return parseEventMinute(a.minute) - parseEventMinute(b.minute);
     });
 
+    const ourSide = ptOurSide(m);
     return '<div class="pt-ev-list">' + sorted.map(function (ev) {
       const atHome = ev.side === 'home';
       const detail = ptEventDetail(ev, users);
+      const fcf = ptIsActaEvent(ev);
+      /* An acta player nobody has linked yet still has a name (the acta's)
+         but counts for nobody's stats — the coach should see that. */
+      const unlinked = staff && fcf && ev.side === ourSide &&
+        !(ev.type === 'change' ? ev.playerInId : ev.playerId);
       const cell =
         '<span class="pt-ev-txt">' +
-          '<span class="pt-ev-name">' + ptEventName(ev, users) + '</span>' +
+          '<span class="pt-ev-name">' + ptEventName(ev, users) +
+            (unlinked ? ' <span class="pt-ev-tag">' + t('pt.unlinked') + '</span>' : '') +
+          '</span>' +
           (detail ? '<span class="pt-ev-detail">' + detail + '</span>' : '') +
         '</span>' +
         '<span class="pt-ev-icon">' + getEventIcon(ev, yellowOrd.get(ev) || 0) + '</span>';
-      const x = staff
-        ? '<button class="pt-ev-x" data-ev-id="' + sanitize(String(ev.id)) +
-          '" title="' + t('match_detail.event_delete') + '">✕</button>'
-        : '';
+      let x = '';
+      if (staff && !fcf) {
+        x = '<button class="pt-ev-x" data-ev-id="' + sanitize(String(ev.id)) +
+          '" title="' + t('match_detail.event_delete') + '">✕</button>';
+      } else if (staff && ptActaEditable(ev, m)) {
+        x = '<button class="pt-ev-edit" data-ev-id="' + sanitize(String(ev.id)) +
+          '" title="' + t('pt.edit_event') + '">✎</button>';
+      } else if (staff) {
+        x = '<span class="pt-ev-lock" title="' + t('pt.acta_locked') + '">' + PT_LOCK_SVG + '</span>';
+      }
       return '<div class="pt-ev-row">' +
         '<div class="pt-ev-cell pt-ev-home">' + (atHome ? cell : '') + '</div>' +
         '<div class="pt-ev-min">' + formatEventMinute(ev.minute) + '</div>' +
@@ -14774,12 +14857,13 @@
    */
   function ptEventFormHtml(m, users) {
     const f = _evForm;
+    if (f.mode === 'edit') return ptEventEditHtml(m, users);
     const ourSide = ptOurSide(m);
     const ours = f.side === ourSide;
     const teamName = f.side === 'home' ? m.home : m.away;
     const second = ptSecondField(f.type, f.goalType);
 
-    const chips = ptEventTypes(f.side).map(function (o) {
+    const chips = ptEventTypes(f.side, !!ptActaOf(m)).map(function (o) {
       return '<button class="pt-chip' + (f.type === o.v ? ' pt-chip-on' : '') +
         '" data-ev-type="' + o.v + '">' +
         '<img src="' + o.icon + '" class="pt-chip-i" alt="">' +
@@ -14862,6 +14946,173 @@
           t('pt.submit_event') + '</button>' +
         '<button class="pt-ev-cancel">' + t('pt.cancel') + '</button>' +
       '</div>' +
+    '</div>';
+  }
+
+  /**
+   * The same form, editing one of the acta's goals.
+   *
+   * Everything the acta says is shown and NOT editable — minute, scorer,
+   * which goal it was. What is left is what the federation does not
+   * record: open play or a direct free kick (a penalty is the acta's, and
+   * those rows never reach here), and, for open play, who assisted. It
+   * reuses the add form's goal-type chips and `evsecond` picker so the
+   * "an assist only on open play" rule is one handler, not two.
+   */
+  function ptEventEditHtml(m, users) {
+    const f = _evForm;
+    const ev = getMatchEvents(m.id).find(function (e) { return String(e.id) === String(f.evId); });
+    if (!ev) return '';
+    const assist = ptSecondField('goal', f.goalType) === 'assist';
+    const playerOpts = [{value: '', label: t('pt.none')}].concat(
+      users.map(function (p) {
+        return {value: String(p.id),
+          label: p.name + (p.playerNumber ? ' · ' + p.playerNumber : '')};
+      }));
+    return '<div class="pt-ev-form">' +
+      '<div class="pt-ev-form-head">' +
+        '<span class="pt-eyebrow">' + t('pt.edit_event') + '</span>' +
+        '<button class="pt-ev-cancel">' + t('pt.close') + ' ✕</button>' +
+      '</div>' +
+      '<div class="pt-ev-fixed" title="' + t('pt.acta_locked') + '">' +
+        '<span class="pt-ev-icon">' + getEventIcon(ev, 0) + '</span>' +
+        '<span class="pt-ev-fixed-min">' + formatEventMinute(ev.minute) + '</span>' +
+        '<span class="pt-ev-fixed-name">' + ptEventName(ev, getUsers()) + '</span>' +
+        '<span class="pt-ev-lock">' + PT_LOCK_SVG + '</span>' +
+      '</div>' +
+      '<div class="pt-ev-group"><span class="pt-eyebrow">' + t('pt.f_goal_type') + '</span>' +
+        '<div class="pt-chips">' +
+          [{v: 'jugada_oberta', l: t('ev.goal_jugada')},
+            {v: 'falta_directa', l: t('ev.goal_falta')}].map(function (o) {
+            return '<button class="pt-chip' +
+              ((f.goalType || 'jugada_oberta') === o.v ? ' pt-chip-on' : '') +
+              '" data-ev-goaltype="' + o.v + '">' + o.l + '</button>';
+          }).join('') +
+        '</div></div>' +
+      (assist
+        ? '<div class="pt-ev-fields"><label class="pt-field pt-field-wide"><span class="pt-eyebrow">' +
+            t('pt.f_assist') + '</span>' +
+            stdSelect({kind: 'evsecond', cls: 'pt-sel std-sel-esc', value: f.second,
+              options: playerOpts}) +
+          '</label></div>'
+        : '') +
+      '<div class="pt-ev-actions">' +
+        '<button class="pt-ev-submit">' + t('pt.save_event') + '</button>' +
+        '<button class="pt-ev-cancel">' + t('pt.cancel') + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /** "dd/mm hh:mm" of an ISO stamp, on this device's clock; '' if unreadable. */
+  function ptStamp(iso) {
+    const d = new Date(iso);
+    if (!iso || isNaN(d.getTime())) return '';
+    const p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  /**
+   * The acta's line above the timeline.
+   *
+   * Imported: a badge and when. Not yet: nothing until kick-off, then for
+   * staff the button that fetches it now, and — once it is late, 2h45 after
+   * kick-off, when the automatic import first tries — a word that the
+   * federation has not closed it. A fixture with no acta id (a friendly, a
+   * hand-made fixture) has no line at all.
+   */
+  function ptActaBarHtml(m, staff, isPast, nowMs) {
+    const a = ptActaOf(m);
+    if (a) {
+      const when = ptStamp(a.at);
+      return '<div class="pt-acta">' +
+        '<span class="pt-acta-badge">' + t('pt.acta_badge') + '</span>' +
+        (when ? '<span class="pt-acta-note">' +
+          sanitize(t('pt.acta_imported_at').replace('{when}', when)) + '</span>' : '') +
+        (staff ? '<button class="pt-acta-import">' + t('pt.acta_reimport') + '</button>' : '') +
+      '</div>';
+    }
+    if (!m.fcfActaId || !isPast) return '';
+    const kick = new Date(m.date + 'T' + (m.time || '00:00') + ':00').getTime();
+    const late = isFinite(kick) && (nowMs || Date.now()) > kick + 165 * 60000;
+    if (!staff && !late) return '';
+    return '<div class="pt-acta pt-acta-pending">' +
+      (late ? '<span class="pt-acta-note">' + t('pt.acta_pending') + '</span>' : '') +
+      (staff ? '<button class="pt-acta-import">' + t('pt.acta_import') + '</button>' : '') +
+    '</div>';
+  }
+
+  /**
+   * "Vincula jugadors" — who each acta name is, for the coach to settle.
+   *
+   * The server links a name silently only when it cannot be anyone else
+   * (functions/acta.js); every other one is listed here with its
+   * suggestions first and the whole category after. A choice is remembered
+   * for every later acta, so this is asked once per player. Already-linked
+   * names sit folded underneath, with the ones the import linked by itself
+   * tagged "auto" — that is where a wrong guess gets corrected.
+   */
+  function ptActaLinkHtml(m, users, events) {
+    const a = ptActaOf(m);
+    if (!a || !Array.isArray(a.lineup) || !a.lineup.length) return '';
+    const userOf = function (id) {
+      return users.find(function (u) { return String(u.id) === String(id); }) || null;
+    };
+    const squad = users.filter(function (u) {
+      return (u.roles || []).indexOf('player') !== -1 && (!m.category || u.category === m.category);
+    }).sort(function (x, y) { return String(x.name).localeCompare(String(y.name)); });
+    const label = function (r) {
+      return r.n || (t('pt.hidden_player') + (r.d ? ' #' + r.d : ''));
+    };
+    const marks = function (r) {
+      const mine = (events || []).filter(function (e) {
+        return ptIsActaEvent(e) && e.type !== 'change' && e.fcfPlayerId === r.f;
+      });
+      return (r.t ? '<span class="pt-link-tag">' + t('pt.starter') + '</span>' : '') +
+        (r.on ? '<span class="pt-link-tag">▲ ' + sanitize(formatEventMinute(r.on)) + '</span>' : '') +
+        mine.map(function (e) {
+          return '<span class="pt-link-ev">' + getEventIcon(e, 0) +
+            sanitize(formatEventMinute(e.minute)) + '</span>';
+        }).join('');
+    };
+    const picker = function (r) {
+      const linked = !!r.u;
+      const sug = (r.c || []).map(userOf).filter(Boolean);
+      const cur = linked ? userOf(r.u) : null;
+      let opts = [{value: linked ? String(r.u) : '',
+        label: linked ? (cur ? cur.name : '?') : t('pt.link_pick')}];
+      sug.forEach(function (u) { opts.push({value: String(u.id), label: '★ ' + u.name}); });
+      squad.forEach(function (u) {
+        if (sug.indexOf(u) !== -1 || (cur && String(u.id) === String(r.u))) return;
+        opts.push({value: String(u.id), label: u.name});
+      });
+      if (linked) opts.push({value: '__unlink__', label: t('pt.link_unlink')});
+      if (!r.x) opts.push({value: '__ignore__', label: t('pt.link_ignore')});
+      return stdSelect({kind: 'ptlink', cls: 'pt-sel std-sel-esc', value: opts[0].value,
+        options: opts, data: {fcf: r.f}});
+    };
+    const row = function (r) {
+      return '<div class="pt-link-row">' +
+        '<span class="pt-link-d">' + sanitize(r.d || '') + '</span>' +
+        '<span class="pt-link-n">' + sanitize(label(r)) +
+          (r.u && r.a ? ' <span class="pt-ev-tag">' + t('pt.link_auto') + '</span>' : '') +
+          (r.x ? ' <span class="pt-ev-tag">' + t('pt.link_ignored') + '</span>' : '') +
+        '</span>' +
+        '<span class="pt-link-marks">' + marks(r) + '</span>' +
+        '<span class="pt-link-pick">' + picker(r) + '</span>' +
+      '</div>';
+    };
+    const open = a.lineup.filter(function (r) { return !r.u && !r.x; });
+    const done = a.lineup.filter(function (r) { return r.u || r.x; });
+    return '<div class="pt-link">' +
+      (open.length
+        ? ptHead(t('pt.link_title'), String(open.length)) +
+          '<p class="pt-link-hint">' + t('pt.link_hint') + '</p>' +
+          open.map(row).join('')
+        : '') +
+      (done.length
+        ? '<details class="pt-link-done"><summary>' + t('pt.link_linked') +
+            ' (' + done.length + ')</summary>' + done.map(row).join('') + '</details>'
+        : '') +
     '</div>';
   }
 
@@ -14951,7 +15202,9 @@
         addEventHtml = '<div class="pt-ev-add">' +
           ['home', 'away'].map(function (side) {
             const mine = side === ourSide ? ' pt-ev-add-ours' : '';
-            const on = (_evForm && _evForm.side === side) ? ' pt-ev-add-on' : '';
+            // Editing an acta goal is not "adding on this side".
+            const on = (_evForm && _evForm.side === side && _evForm.mode !== 'edit')
+              ? ' pt-ev-add-on' : '';
             return '<button class="pt-ev-add-btn' + mine + on +
               '" data-ev-side="' + side + '">' + label(side) + '</button>';
           }).join('') +
@@ -14968,9 +15221,11 @@
 
       eventsHtml = ptHead(t('pt.events'),
           events.length ? (events.length + ' ' + t('pt.events_n')) : '') +
+        ptActaBarHtml(m, isStaff, isPast) +
         ptTimelineHtml(m, events, users, isStaff) +
         addEventHtml +
-        (isStaff && isPast && _evForm ? ptEventFormHtml(m, calledUsers) : '');
+        (isStaff && isPast && _evForm ? ptEventFormHtml(m, calledUsers) : '') +
+        (isStaff ? ptActaLinkHtml(m, users, events) : '');
     }
 
     /* The rival's two strips, imported from the FCF. They used to be two
@@ -35521,6 +35776,104 @@
   }
 
   /**
+   * Resolves once every key in `keys` has arrived from Firestore, or after
+   * `ms` — whichever is first.
+   *
+   * The Partit page is excluded from the firestore-sync re-render (it holds
+   * the notes editor and the event form), so after a callable rewrites this
+   * match on the server, nothing would redraw it: the coach would press
+   * "import" and see the old timeline. Waiting for the shards themselves is
+   * what makes the redraw show the result. Start it BEFORE the call, or a
+   * fast server answers before anyone is listening.
+   */
+  function ptAwaitSync(keys, ms) {
+    return new Promise(function (resolve) {
+      var left = keys.slice();
+      var timer = null;
+      function finish() {
+        window.removeEventListener('firestore-sync', on);
+        clearTimeout(timer);
+        resolve();
+      }
+      function on(e) {
+        var i = left.indexOf(e.detail && e.detail.key);
+        if (i !== -1) left.splice(i, 1);
+        if (!left.length) finish();
+      }
+      window.addEventListener('firestore-sync', on);
+      timer = setTimeout(finish, ms);
+    });
+  }
+
+  /** What an importFcfActa answer means, for a toast. Plain text. */
+  function ptActaResultText(d) {
+    if (d.status === 'imported') {
+      var c = d.counts || {};
+      return t('pt.acta_done').replace('{goals}', c.goals || 0)
+          .replace('{cards}', c.cards || 0).replace('{subs}', c.subs || 0) +
+        (c.unlinked ? ' ' + t('pt.acta_to_link').replace('{n}', c.unlinked) : '');
+    }
+    if (d.status === 'not-closed') return t('pt.acta_not_closed');
+    if (d.status === 'no-result') return t('pt.acta_no_result');
+    if (d.status === 'awarded') return t('pt.acta_awarded').replace('{score}', d.score || '');
+    if (d.status === 'unreadable' || d.status === 'mismatch' || d.status === 'side-mismatch') {
+      return t('pt.acta_unreadable');
+    }
+    return t('pt.acta_failed');
+  }
+
+  /** The Partit page's "import the acta now". One server path (_importActa)
+   *  for this and the automatic one. */
+  function ptRunActaImport(btn, matchId) {
+    btn.dataset.busy = '1';
+    var label = btn.innerHTML;
+    btn.innerHTML = '⏳ ' + sanitize(t('pt.acta_importing'));
+    var synced = ptAwaitSync(['fa_match_events', 'fa_matches'], 6000);
+    var fn = firebase.app().functions('us-central1').httpsCallable('importFcfActa');
+    fn({ matchId: String(matchId) })
+      .then(function (res) {
+        var d = (res && res.data) || {};
+        _showPushToast(sanitize(t('pt.acta_import')), sanitize(ptActaResultText(d)));
+        return d.status === 'imported' ? synced : null;
+      })
+      .catch(function (err) {
+        _showPushToast(sanitize(t('pt.acta_import')),
+            sanitize((err && err.message) || t('pt.acta_failed')));
+      })
+      .then(function () {
+        delete btn.dataset.busy;
+        btn.innerHTML = label;
+        renderPage(getSession());
+      });
+  }
+
+  /** Link one acta name to a player (or '' to unlink, '__ignore__'). The
+   *  server re-points every match that lists him, so this waits for the
+   *  shards like the import does. */
+  function ptRunFcfLink(root, fcfId, uid) {
+    if (root.dataset.busy) return;
+    root.dataset.busy = '1';
+    root.classList.add('std-sel-busy');
+    var synced = ptAwaitSync(['fa_match_events', 'fa_matches'], 6000);
+    var fn = firebase.app().functions('us-central1').httpsCallable('linkFcfPlayer');
+    fn({ fcfId: String(fcfId), uid: uid })
+      .then(function (res) {
+        var d = (res && res.data) || {};
+        _showPushToast(sanitize(t('pt.link_title')),
+            sanitize(t('pt.link_done').replace('{n}', d.matches || 0) +
+              (d.displaced ? ' ' + t('pt.link_moved') : '')));
+        return synced;
+      })
+      .catch(function (err) {
+        _showPushToast(sanitize(t('pt.link_title')),
+            sanitize((err && err.message) || t('pt.link_failed')));
+      })
+      .then(function () {
+        renderPage(getSession());
+      });
+  }
+
+  /**
    * The referee panel's own bindings.
    *
    * Split out of bindSavedMatchHandlers when the Calendari table went: the
@@ -39736,8 +40089,9 @@
       btn.addEventListener('click', function () {
         var side = btn.dataset.evSide;
         // Clicking the open side's button closes it — the button is the
-        // control that opened it, so it is the one to shut it.
-        _evForm = (_evForm && _evForm.side === side) ? null : {
+        // control that opened it, so it is the one to shut it. An open EDIT
+        // of an acta goal is not that side's add form: the button opens one.
+        _evForm = (_evForm && _evForm.side === side && _evForm.mode !== 'edit') ? null : {
           matchId: detailMatchId, side: side,
           type: '', min: '', who: '', second: '', goalType: 'jugada_oberta'
         };
@@ -39808,6 +40162,37 @@
         var m = (JSON.parse(localStorage.getItem('fa_matches') || '[]'))
           .find(function (x) { return x.id === detailMatchId; });
         if (!m) return;
+
+        /* Editing an acta goal: ONLY the goal type and the assist, written
+           together as the add path writes them — matchPlayerMarks and the
+           timeline need `goalDetail:'assistencia'` beside assistPlayerId,
+           while computePlayerMatchStats reads assistPlayerId alone, so one
+           without the other credits an assist in one place and not another.
+           Re-checked against the stored event, not the form: the form is
+           state, the row is the truth. */
+        if (f.mode === 'edit') {
+          var all = getMatchEvents(detailMatchId);
+          var target = all.find(function (e) { return String(e.id) === String(f.evId); });
+          if (target && ptActaEditable(target, m)) {
+            target.goalType = f.goalType === 'falta_directa' ? 'falta_directa' : 'jugada_oberta';
+            var pick = String(f.second || '').trim();
+            delete target.assistPlayerName;
+            if (pick && ptSecondField('goal', target.goalType) === 'assist') {
+              target.goalDetail = 'assistencia';
+              target.assistPlayerId = pick;
+            } else {
+              target.goalDetail = 'individual';
+              delete target.assistPlayerId;
+            }
+            saveMatchEvents(detailMatchId, all);
+          }
+          _evForm = null;
+          renderPage(getSession());
+          return;
+        }
+        // The acta is final: its types are not added by hand once it is in.
+        if (ptActaOf(m) && ACTA_EVENT_TYPES.indexOf(f.type) !== -1) return;
+
         // The same predicate the form was DRAWN with, or a fixture whose
         // name matches neither side saves the rival's number into playerId.
         var ours = f.side === ptOurSide(m);
@@ -39903,16 +40288,62 @@
       });
     });
 
-    // Delete event
+    // Delete event — never one of the acta's (the row has no ✕, and an old
+    // page in another tab must not be able to either).
     $$('.pt-ev-x').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         var evId = btn.dataset.evId;
         var events = getMatchEvents(detailMatchId);
+        var hit = events.find(function (ev) { return String(ev.id) === String(evId); });
+        if (!hit || ptIsActaEvent(hit)) return;
         events = events.filter(function(ev) { return String(ev.id) !== String(evId); });
         saveMatchEvents(detailMatchId, events);
         renderPage(getSession());
       });
+    });
+
+    // ── The FCF acta (v278) ──
+    $$('.pt-ev-edit').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var ev = getMatchEvents(detailMatchId).find(function (x) {
+          return String(x.id) === String(btn.dataset.evId);
+        });
+        if (!ev) return;
+        _evForm = {
+          mode: 'edit', matchId: detailMatchId, evId: String(ev.id),
+          side: ev.side, type: ev.type, min: ev.minute || '', who: ev.playerId || '',
+          second: ev.goalDetail === 'assistencia' ? (ev.assistPlayerId || '') : '',
+          goalType: ev.goalType === 'falta_directa' ? 'falta_directa' : 'jugada_oberta'
+        };
+        renderPage(getSession());
+      });
+    });
+
+    $$('.pt-acta-import').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (btn.dataset.busy) return;
+        var mid = detailMatchId;
+        /* Hand-entered goals, cards or subs are about to be replaced. Say so
+           first; an import into an empty timeline needs no question. */
+        var hand = getMatchEvents(mid).some(function (e) {
+          return !ptIsActaEvent(e) && ACTA_EVENT_TYPES.indexOf(e.type) !== -1;
+        });
+        if (hand) {
+          showModal(t('pt.acta_import'), t('pt.acta_confirm'), function () {
+            ptRunActaImport(btn, mid);
+          }, {confirmLabel: t('pt.acta_import'), danger: false});
+        } else {
+          ptRunActaImport(btn, mid);
+        }
+      });
+    });
+
+    bindStdSelects(['ptlink'], function (root, value) {
+      var fcf = root.dataset.fcf;
+      if (!fcf || !value) return;
+      ptRunFcfLink(root, fcf, value === '__unlink__' ? '' : value);
     });
 
     // Date tap popup (mobile) — show match teams
@@ -40720,7 +41151,9 @@
          marking a session as injured left the player's percentage stale until
          the next navigation. */
       fa_training_staff_override: ['staff-home', 'player-home', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats', 'staff-player-stats'],
-      fa_convocatoria_sent: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail'],
+      /* The stats pages and Plantilla count minutes off the call-up and the
+         eleven, which the acta import fills in (v278) — so they repaint too. */
+      fa_convocatoria_sent: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail', 'my-stats', 'staff-player-stats', 'manage-roster'],
       /* Both Inici pages read these three since v230: the player's meet time
          and card count, and the staff row's fixture meta. A key a page reads
          but is not listed for does NOT re-render it — the coach setting the
@@ -40728,7 +41161,8 @@
          one until they navigated away and back. */
       fa_convocatoria_callup: ['staff-home', 'player-home', 'calendar', 'convocatoria', 'match-detail'],
       fa_match_goals: ['player-home', 'calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
-      fa_match_events: ['staff-home', 'player-home', 'calendar', 'match-detail', 'my-stats', 'staff-player-stats'],
+      // Plantilla reads goals, cards and minutes from these (computePlayerMatchStats).
+      fa_match_events: ['staff-home', 'player-home', 'calendar', 'match-detail', 'my-stats', 'staff-player-stats', 'manage-roster'],
       /* Both halves of the metrics feature, and only Plantilla draws either.
          The measurements arrive through the record listener, which dispatches
          on `cfg.lsKey` — so the localStorage key goes here, not the

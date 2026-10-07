@@ -12415,3 +12415,74 @@ hurdles use FRONT-view button icons (`TB_PROP_ICON`); the board still draws them
 
 Unit 3674 → **3676**. Version triple → **v277**. Functions deployed. Live check: served `sw.js` →
 `esquerrapp-v277`, served `app.js` has `tactics.g_markers`.
+
+### 2026-10-06 — v278: the FCF acta becomes the match's events
+
+A closed acta (`/ca/competicio/acta/{id}`) is read by the server and written into
+`fa_match_events`: goals (minute, scorer, GOL / GOL PENAL / GOL EN PRÒPIA, both teams), yellow and
+red cards, substitutions, and the starters. **The score is still derived from events** — the
+imported goals are the one source — so the old "results are never imported" rule (fcf.js
+`FCF_OWNED`, HANDOFF parking lot 2) holds in spirit. Owner's decisions: automatic ~45 min after the
+match, daily-sync fallback, a manual button; **FCF wins** over hand-entered events but keeps a
+matching goal's assist; players joined **by name only** (dorsals vary); **the acta is final** — only
+the assist and open play / direct free kick stay editable; starting XI and rival names from the acta.
+
+- **Parser** `parseFcfActaEvents` (functions/fcf.js) reads the page's **RSC flight payload**
+  (`self.__next_f.push`), not the HTML: player ids exist only there, each item appears once, and the
+  line-up component hands each side over as `localNode` / `visitorNode`. ⚠ `T` rows are
+  length-prefixed in **UTF-8 bytes**. Marks are `minute + icon` groups: 14×18 yellow / red boxes, a
+  blue (in) / red (out) arrow, a ball. A double yellow is two yellow boxes (no other glyph; 4119510);
+  a card at "(Final)" has minute `''`; a card in an **Equip Tècnic** row is a coach's and is skipped
+  (credited only to the ONE player in its row); a name with no comma ("IVÁN") is a name, only
+  `Jugador/a` is withheld. Fails closed on any inconsistency (header vs goals, running score, arrows
+  vs Canvis pairs, unknown mark). The card tripwire comments in fcf.js were false and are rewritten.
+- **Pure logic** `functions/acta.js`: `fcfPersonName` (display "Josué Casanovas"), `scoreCandidate`
+  tiers 3/2/1, `resolveActaPlayers` (silent link only when unique AND mutual AND the uid is free),
+  `fcfActaToEvents` (`src:'fcf'`, stable `fcfKey`; our unlinked players get a name but NO
+  `playerNumber`), `mergeActaEvents` (same key → refresh; same type/side/player ±3 min → adopt with
+  its assist; other hand goals/cards/subs removed; penal fallat / pal kept), `actaFacts` (no uids),
+  `actaLineup` / `applyActaLineup` (never creates an empty call-up entry — the app reads any entry as
+  "sent"), queue timing. Parity tests with calcMatchScore / parseEventMinute / ptOurSide /
+  ptSecondField.
+- **Server** (index.js §6b): `withDataShards` (transactional shard read-modify-write; `_syncFcfSquad`
+  now uses it too), `_importActa`, `fcfActaQueue` + `scheduledActaImport` (`*/15`, first try
+  kick-off + 2h45, backs off, gives up 72 h after kick-off; the daily sync re-arms for 10 days),
+  callables `importFcfActa` and `linkFcfPlayer` (one-to-one links; moving one frees the old name;
+  back-fills every match via the ledgers), trigger `guardFcfActa` (restores an imported match a stale
+  client overwrote, keeping enrichments). Storage: ledgers `teams/{id}/fcfActa/{matchId}`, links
+  `clubs/{id}/fcfPlayers/{fcfId}`, queue `fcfActaQueue/{club}__{match}`, the row's `fcfActa`
+  `{at, src, unlinked, lineup}`, switch `fcfCrawl/actaImport {enabled, dryRun}` (missing = off; the
+  button works regardless). deleteMember / deleteTeam / archiveSeason clean up (ledgers go BEFORE
+  the shards, or the guard would restore them).
+- **Partit** (app.js): `ACTA_EVENT_TYPES`, `ptActaOf`, `ptIsActaEvent`, `ptActaEditable`; acta rows
+  carry a lock or (our non-penalty goals) a pencil, never ✕; `ptEventTypes(side, locked)`; edit mode
+  in `ptEventFormHtml` → `ptEventEditHtml`; `ptActaBarHtml` (badge / import button / "pendent" after
+  2h45); `ptActaLinkHtml` ("Vincula jugadors", stdSelect kind `ptlink`); `ptAwaitSync` because
+  firestore-sync never re-renders match-detail. `yellowOrdinals` keys on `fcfPlayerId` too.
+  KEY_PAGES: Plantilla/stats repaint on events and call-ups.
+- Rules: `fcfActa` and `fcfActaQueue` closed; `fcfPlayers` staff-read, nobody writes.
+- **Two closed actas that are not a scoresheet**, both final outcomes (queue item dropped):
+  `Acta Tancada` over `- - -` with no line-ups → `played:false` → `no-result` (4119514); a result
+  over "No hi ha gols registrats" → `awarded` (a forfeit, 3833178: 0-3) — **nothing is imported**,
+  because the app's score is the sum of goal events and nearly every screen reads only that; the
+  button says what the result was. Showing awarded results is a separate change.
+- A `demoSeed` club is never queued (its fixtures carry invented 9901xxxx acta ids).
+
+Checked against reality before shipping: a parse-only corpus of 60 real actas (this season's
+Tercera group + a sample of last season's) — 0 failures, every pipeline score equal to its header;
+and a READ-ONLY dry run on production (REST, CLI token): L'Esquerra's 5 closed actas all merge to
+the acta's score, 1.6–5.9 KB of events per match. Only ~10 amateur players have app accounts, so
+1–3 names per acta link silently and the rest go to "Vincula jugadors" — expected until the squad
+is registered.
+
+Tests: `fcf-acta-events.test.js` (6 anonymised fixtures from `fixtures/capture-acta-events.js` —
+every person rewritten from `fake-names.js`, guarded — plus hand-built payloads),
+`acta.test.js`, `partit-acta.test.js` (real builders + band + handlers in one jsdom scope),
+`acta-import.test.js` (emulator: callables in-process with `fetch` from fixtures, guard as a real
+trigger), rules cases. Mutation passes red on all but one equivalent mutant (an identical shard
+rewrite is a Firestore no-op). Preview 2c renders the page after an acta (desktop + 390 px checked
+in headless Edge). Unit 3676 → **3787**, rules 181, functions 107. Version triple → **v278**.
+
+**Rollout:** deploy rules + functions with the switch off; press the button on a played match;
+then `{enabled:true, dryRun:true}` for a weekend; then `{enabled:true}`. Old APKs still show ✕ on
+acta rows; the guard puts back what they delete.

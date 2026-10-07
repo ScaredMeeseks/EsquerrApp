@@ -293,20 +293,16 @@ function decodeHtmlEntities(s) {
  */
 /* ── The yellow-card tripwire ───────────────────────────────────────────
  *
- * Every acta renders exactly FOUR card-sized boxes and two yellow swatches,
- * and always the same four: they are the legend at the foot of the sheet, not
- * anybody's booking. Verified against a played acta, an unplayed one, and —
- * the one that settles it — acta 3781800, where `sanciones` records BOTH a
- * player sent off for two yellows AND a second man disciplined for his
- * language, and the page still shows four.
+ * Until 2026-09 every acta rendered exactly FOUR card-sized boxes — the
+ * legend at the foot of the sheet, nobody's booking (acta 3781800 settled
+ * it: two sendings-off in `sanciones`, still four boxes).
  *
- * The owner expects the federation to publish cards eventually. Rather than
- * leave that as a note nobody re-reads, the crawler counts these boxes on
- * every acta it fetches: the day one comes back with more than the legend,
- * something is being drawn on the sheet that was not there before, and the
- * job says so in the log. It is a WATCH, not a parser — a redesign that
- * merely restyles the legend will also trip it, which is the right outcome,
- * because that is exactly when this needs looking at again.
+ * ⚠ THE FEDERATION NOW PUBLISHES CARDS (seen 2026-10, the redesigned
+ * site): every booking is a 14×18 box beside the player, with its minute,
+ * and parseFcfActaEvents below reads them. This watch counts only the
+ * 18×22 LEGEND boxes, so it never saw them arrive and still never fires;
+ * it is kept because it costs nothing and still trips if the legend is
+ * restyled, which is when the event parser needs a look too.
  */
 const FCF_ACTA_LEGEND_MARKS = 4;
 const FCF_ACTA_CARD_MARK = /w-\[18px\] h-\[22px\]/g;
@@ -390,6 +386,511 @@ function parseFcfActa(html) {
     if (!principal && role && /principal/i.test(role[1])) principal = name;
   });
   return {referees: out, principal: principal || out[0] || "", cardMarks};
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   A closed acta's EVENTS — goals, cards, substitutions, line-ups (v278)
+   ═══════════════════════════════════════════════════════════════════════
+
+   fcf.cat is a Next.js App Router site, and the HTML is the wrong thing to
+   read for this: it draws every section twice (desktop and mobile), streams
+   row bodies into hidden `<div id="S:…">` segments, and — the decider — does
+   not contain the federation's player ids at all. Those exist only in the
+   React Server Component payload the page carries in its
+   `self.__next_f.push([1,"…"])` scripts. That payload lists each item ONCE,
+   with ids, and the line-up component hands each team over as its own prop
+   (`localNode` / `visitorNode`), so which side a player is on is structure,
+   not a team-name comparison.
+
+   What the sheet draws, per player row, is a list of `minute + icon` groups:
+   a 14×18 yellow box, a red box, a blue arrow (on), a red arrow (off) or a
+   ball. A second booking is simply a second yellow box — there is no
+   dedicated glyph (checked on 4119510, where `sanciones` records a 102). The
+   legend at the foot uses the same colours at 18×22 and has no minute, which
+   is what keeps it out. Staff rows carry cards too (a coach's red on
+   4119504) and are not players, so a card is credited only to the ONE player
+   in its row.
+
+   It FAILS CLOSED. Header score against the goals, the running score row by
+   row, the sub arrows against the Canvis pairs, a mark it cannot classify —
+   any disagreement returns `{ok:false, reason}`. An import overwrites the
+   coach's goals and cards and is then locked as final; a wrong partial
+   scoresheet is far worse than none. */
+
+/** The RSC payload of a Next.js page: every `push([1,"…"])` chunk, decoded and
+ *  concatenated. "" when there is none or a chunk is not a JSON string —
+ *  rows straddle chunks, so a lost chunk corrupts everything after it. */
+function fcfRscPayload(html) {
+  const h = String(html === undefined || html === null ? "" : html);
+  const re = /self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)/g;
+  let out = "";
+  let m;
+  while ((m = re.exec(h))) {
+    try {
+      out += JSON.parse("\"" + m[1] + "\"");
+    } catch (e) {
+      return "";
+    }
+  }
+  return out;
+}
+
+/** Split an RSC payload into `{id: {json}|{text}}` rows.
+ *
+ *  ⚠ `T<hexlen>,` rows are LENGTH-prefixed, not line-terminated, and the
+ *  length is in UTF-8 BYTES: a text row holding an accented name and a
+ *  newline would end in the wrong place if counted in characters. Module and
+ *  hint rows (`I[…]`, `HL[…]`) are skipped; a row that does not parse is
+ *  dropped rather than thrown — whatever needed it fails a check later. */
+function fcfRscRows(payload) {
+  const buf = Buffer.from(String(payload || ""), "utf8");
+  const rows = Object.create(null);
+  let i = 0;
+  while (i < buf.length) {
+    const colon = buf.indexOf(0x3a, i);
+    if (colon === -1) break;
+    const id = buf.toString("utf8", i, colon);
+    if (!/^[0-9a-f]{1,8}$/.test(id)) {
+      const nl = buf.indexOf(0x0a, i);
+      if (nl === -1) break;
+      i = nl + 1;
+      continue;
+    }
+    const head = buf.toString("latin1", colon + 1, Math.min(buf.length, colon + 24));
+    const t = /^T([0-9a-f]{1,8}),/.exec(head);
+    if (t) {
+      const start = colon + 1 + t[0].length;
+      const len = parseInt(t[1], 16);
+      rows[id] = {text: buf.toString("utf8", start, start + len)};
+      i = start + len;
+      continue;
+    }
+    const nl = buf.indexOf(0x0a, colon + 1);
+    const end = nl === -1 ? buf.length : nl;
+    const line = buf.toString("utf8", colon + 1, end);
+    i = end + 1;
+    if (/^[A-Z]{1,2}\[/.test(line)) continue;
+    try {
+      rows[id] = {json: JSON.parse(line)};
+    } catch (e) { /* see above */ }
+  }
+  return rows;
+}
+
+const RSC_REF = /^\$[L@]?([0-9a-f]{1,8})$/;
+const RSC_NODE_BUDGET = 250000;
+
+/** Resolve the rows into one element tree from row `0`.
+ *
+ *  Nodes are `{t, p, k, up}` (type, props, kids, parent); text is `{s, up}`.
+ *  Only an element's `children` yield text — other props are followed only
+ *  for the elements and references they hold, which is how `localNode` and
+ *  `visitorNode` come in (as a `#prop` node named after the prop) while
+ *  `className`, routing data and i18n tables stay out. A reference already
+ *  on the current path is not re-entered, and the node budget bounds a
+ *  hostile payload. */
+function fcfRscTree(rows) {
+  let budget = RSC_NODE_BUDGET;
+  const root = {t: "#root", p: {}, k: [], up: null};
+  function add(parent, v, path, textOk) {
+    if (--budget <= 0) return;
+    if (v === null || v === undefined || typeof v === "boolean") return;
+    if (typeof v === "number") {
+      if (textOk) parent.k.push({s: String(v), up: parent});
+      return;
+    }
+    if (typeof v === "string") {
+      const r = RSC_REF.exec(v);
+      if (r) {
+        const row = rows[r[1]];
+        if (!row || path.indexOf(r[1]) !== -1) return;
+        if (row.json !== undefined) add(parent, row.json, path.concat(r[1]), textOk);
+        else if (textOk && row.text !== undefined) parent.k.push({s: row.text, up: parent});
+        return;
+      }
+      if (!textOk) return;
+      if (v.charAt(0) === "$") {
+        if (v.charAt(1) === "$") parent.k.push({s: v.slice(1), up: parent});
+        return;                                   // $undefined, $Sreact…, $22:props…
+      }
+      parent.k.push({s: v, up: parent});
+      return;
+    }
+    if (Array.isArray(v)) {
+      if (v[0] === "$" && typeof v[1] === "string" && v.length >= 4) {
+        const props = v[3] && typeof v[3] === "object" && !Array.isArray(v[3]) ? v[3] : {};
+        const node = {t: v[1], p: props, k: [], up: parent};
+        parent.k.push(node);
+        add(node, props.children, path, true);
+        Object.keys(props).forEach((key) => {
+          if (key === "children" || key === "style" || key === "player") return;
+          const pv = props[key];
+          if (typeof pv === "string" ? !RSC_REF.test(pv) : !(pv && typeof pv === "object")) return;
+          const slot = {t: "#prop", p: {name: key}, k: [], up: node};
+          node.k.push(slot);
+          add(slot, pv, path, false);
+        });
+        return;
+      }
+      v.forEach((x) => add(parent, x, path, textOk));
+      return;
+    }
+    if (typeof v === "object") Object.keys(v).forEach((key) => add(parent, v[key], path, false));
+  }
+  if (rows["0"] && rows["0"].json !== undefined) add(root, rows["0"].json, ["0"], false);
+  return root;
+}
+
+/** Joined text of a subtree, whitespace collapsed. */
+function rscText(n) {
+  if (n.s !== undefined) return n.s;
+  return n.k.map(rscText).join("");
+}
+
+/** What one element draws, if it is one of the sheet's marks. */
+function rscMarkKind(n) {
+  if (n.s !== undefined) return "";
+  const cls = String(n.p.className || "");
+  if (n.t === "div" && /\brounded-\[2px\]/.test(cls) && /\bbg-\[#/.test(cls)) {
+    if (/bg-\[#FFEB3B\]/i.test(cls)) return "yellow";
+    if (/bg-\[#F30000\]/i.test(cls)) return "red";
+    return "unknown";
+  }
+  if (n.t === "path" && String(n.p.strokeWidth) === "4") {
+    if (/^#0068A9$/i.test(String(n.p.stroke))) return "in";
+    if (/^#F30000$/i.test(String(n.p.stroke))) return "out";
+    return "unknown";
+  }
+  return "";
+}
+
+const ACTA_MINUTE = /^(\d{1,3})(?:\s*\+\s*(\d{1,2}))?\s*[’']$/;
+const ACTA_MINUTE_FINAL = /^\(\s*final\s*\)$/i;
+const ACTA_HIDDEN_NAME = /^jugador(\s*\/\s*a)?$/i;
+const ACTA_GOAL = /\(\s*(GOL(?:\s+PENAL|\s+EN\s+PR[ÒO]PIA)?)\s*\(\s*(\d{1,3})(?:\s*\+\s*(\d{1,2}))?\s*[’']\s*\)\s*\)/i;
+
+/** "45+2’" → "45+2"; "(Final)" → "" (shown after the whistle); else null. */
+function actaMinuteOf(text) {
+  const s = String(text || "").replace(/\s+/g, " ").trim();
+  if (ACTA_MINUTE_FINAL.test(s)) return "";
+  const m = ACTA_MINUTE.exec(s);
+  if (!m) return null;
+  return String(Number(m[1])) + (m[2] ? "+" + Number(m[2]) : "");
+}
+
+/** Sortable value of an app minute string — the server's parseEventMinute. */
+function actaMinuteValue(min) {
+  if (!min) return 999;
+  const parts = String(min).split("+");
+  return (Number(parts[0]) || 0) + (Number(parts[1]) || 0) * 0.01;
+}
+
+/**
+ * Everything a CLOSED acta says happened, from the page's HTML.
+ *
+ * `{ok:true, closed:false, status}` for an acta not yet closed — nothing else
+ * is read, because a pending sheet is a draft. `{ok:true, closed:true,
+ * played:false, status}` for one closed with no result (the match was not
+ * played). For a closed, played one:
+ *
+ *   {ok, closed:true, played:true, status, home:{name}, away:{name}, score:{home, away},
+ *    players: [{id, name, dorsal, side, titular, captain, keeper, hidden}],
+ *    goals:   [{minute, id, side, for, kind:'goal'|'penalty'|'own', running}],
+ *    cards:   [{minute, id, side, kind:'yellow'|'red'}],
+ *    subs:    [{minute, side, inId, outId}],
+ *    warnings: [...]}
+ *
+ * `side` is the player's own team, `for` the team the goal counts for — they
+ * differ only on an own goal. Minutes are app strings ("45+2"; "" for a card
+ * marked "(Final)"). Failure is `{ok:false, reason, detail}`, never a throw.
+ */
+function parseFcfActaEvents(html) {
+  const fail = (reason, detail) => ({ok: false, reason, detail: detail || ""});
+  let root;
+  try {
+    const payload = fcfRscPayload(html);
+    if (!payload) return fail("no-rsc");
+    root = fcfRscTree(fcfRscRows(payload));
+  } catch (e) {
+    return fail("no-rsc", String(e && e.message || e));
+  }
+
+  // One pass: document order, player counts, side slots, texts, marks.
+  const order = [];
+  const texts = [];
+  (function index(n, side) {
+    n.i = order.length;
+    order.push(n);
+    if (n.s !== undefined) {
+      n.pc = 0;
+      const s = n.s.replace(/\s+/g, " ").trim();
+      if (s) texts.push({n, s});
+      return;
+    }
+    if (n.t === "#prop" && (n.p.name === "localNode" || n.p.name === "visitorNode")) {
+      side = n.p.name === "localNode" ? "home" : "away";
+    }
+    n.side = side;
+    n.pc = n.p.player ? 1 : 0;
+    n.k.forEach((c) => {
+      index(c, side);
+      n.pc += c.pc;
+    });
+  })(root, "");
+
+  // ── Header: the status pill, then "h - a". The pill's wording comes from
+  //    the data ("Acta Tancada", "PENDENT", "SUSPÈS"…), so it is found by
+  //    what follows it — the score triple, "-" "-" "-" when there is none. ──
+  const goalsOrDash = /^(\d{1,2}|-)$/;
+  let st = -1;
+  for (let j = 0; j + 3 < texts.length; j++) {
+    if (!goalsOrDash.test(texts[j].s) && goalsOrDash.test(texts[j + 1].s) &&
+        texts[j + 2].s === "-" && goalsOrDash.test(texts[j + 3].s)) {
+      st = j;
+      break;
+    }
+  }
+  if (st === -1) return fail("no-header");
+  const status = texts[st].s;
+  if (!/^acta tancada$/i.test(status)) return {ok: true, closed: false, status};
+  /* Closed with "- - -" and no line-ups: the match was not played (4119514).
+     A final answer, not a failure — there is simply nothing to import. */
+  if (texts[st + 1].s === "-" && texts[st + 3].s === "-") {
+    return {ok: true, closed: true, played: false, status};
+  }
+  if (!/^\d+$/.test(texts[st + 1].s) || !/^\d+$/.test(texts[st + 3].s)) return fail("no-score");
+  const score = {home: Number(texts[st + 1].s), away: Number(texts[st + 3].s)};
+
+  const lineup = order.find((n) => n.p && typeof n.p.localName === "string" &&
+    typeof n.p.visitorName === "string");
+  if (!lineup) return fail("no-lineups");
+  const home = {name: decodeHtmlEntities(lineup.p.localName).trim()};
+  const away = {name: decodeHtmlEntities(lineup.p.visitorName).trim()};
+  const sideOfTeam = (team) => {
+    const t = decodeHtmlEntities(team).trim();
+    if (t && t === home.name) return "home";
+    if (t && t === away.name) return "away";
+    return "";
+  };
+
+  // ── Players: every line-up entry, by id; the row with `titular` wins ──
+  const players = [];
+  const byId = {};
+  order.forEach((n) => {
+    if (!n.p || !n.p.player || !n.side) return;
+    const pl = n.p.player;
+    const id = String(pl.id || "");
+    if (!/^\d{1,12}$/.test(id)) return;
+    const had = byId[id];
+    if (had && (had.fromSheet || pl.titular === undefined)) return;
+    const name = decodeHtmlEntities(pl.nombre || "").replace(/\s+/g, " ").trim();
+    const rec = {
+      id,
+      name,
+      dorsal: String(pl.dorsal === undefined || pl.dorsal === null ? "" : pl.dorsal).trim(),
+      side: n.side,
+      titular: String(pl.titular) === "1",
+      captain: String(pl.capitan) === "1",
+      keeper: String(pl.portero) === "1",
+      /* "Jugador/a" is the federation withholding a name. A name with no
+         comma is NOT that — some players are registered under one name
+         ("IVÁN"); 4119510 has five. */
+      hidden: !name || ACTA_HIDDEN_NAME.test(name),
+      fromSheet: pl.titular !== undefined,
+    };
+    if (had) Object.assign(had, rec);
+    else {
+      byId[id] = rec;
+      players.push(rec);
+    }
+  });
+  if (!players.length) return fail("no-lineups");
+  players.forEach((p) => delete p.fromSheet);
+
+  /** The single player node inside `n`, or null. */
+  const onlyPlayer = (n) => {
+    if (!n || n.pc !== 1) return null;
+    let hit = null;
+    (function find(x) {
+      if (hit || x.s !== undefined) return;
+      if (x.p.player) {
+        hit = x;
+        return;
+      }
+      x.k.forEach(find);
+    })(n);
+    return hit;
+  };
+  const upToPlayers = (n, min) => {
+    let a = n.up;
+    while (a && a.pc < min) a = a.up;
+    return a;
+  };
+
+  // ── Line-up marks: `minute + icon` groups, credited to their row's player ──
+  const marks = [];
+  const inGroup = new Set();
+  let staffCards = 0;
+  for (const n of order) {
+    if (n.s !== undefined || n.pc !== 0 || n.k.length < 2 || !n.side) continue;
+    // The minute is a LEAF (a span of text). Without that the row's
+    // container — whose first kid is the first group — reads as a group too.
+    const first = n.k[0];
+    if (first.s !== undefined || !first.k.length || first.k.some((c) => c.s === undefined)) continue;
+    const minute = actaMinuteOf(rscText(first));
+    if (minute === null) continue;
+    const kinds = n.k.slice(1).map((kid) => {
+      const found = [];
+      (function scan(x) {
+        const k = rscMarkKind(x);
+        if (k) found.push(k);
+        if (x.k) x.k.forEach(scan);
+      })(kid);
+      if (found.length) return found;
+      let svg = false;
+      (function scan(x) {
+        if (x.t === "svg") svg = true;
+        if (x.k) x.k.forEach(scan);
+      })(kid);
+      return [svg ? "ball" : "unknown"];
+    }).reduce((a, b) => a.concat(b), []);
+    if (!kinds.length) continue;
+    (function mark(x) {
+      inGroup.add(x);
+      if (x.k) x.k.forEach(mark);
+    })(n);
+    if (kinds.indexOf("unknown") !== -1) return fail("unknown-mark", minute);
+    const row = upToPlayers(n, 1);
+    const who = row && row.pc === 1 ? onlyPlayer(row) : null;
+    if (!who) {
+      if (kinds.every((k) => k === "yellow" || k === "red")) {
+        staffCards += kinds.length;              // a coach's card: not a player's
+        continue;
+      }
+      return fail("unattached-mark", minute);
+    }
+    const id = String(who.p.player.id);
+    if (!byId[id]) return fail("unknown-player", id);
+    kinds.forEach((kind) => marks.push({kind, minute, id, side: byId[id].side}));
+  }
+
+  // ── Goals: the Gols list, outside both line-ups ──
+  const goals = [];
+  const tally = {home: 0, away: 0};
+  for (const n of order) {
+    if (n.s !== undefined || !n.p.player || n.side) continue;
+    const m = ACTA_GOAL.exec(rscText(n).replace(/\s+/g, " "));
+    if (!m) continue;
+    const id = String(n.p.player.id || "");
+    const side = sideOfTeam(n.p.teamName);
+    if (!id || !side) return fail("goal-team", id);
+    const label = m[1].toUpperCase().replace(/\s+/g, " ");
+    const kind = /PR[ÒO]PIA/.test(label) ? "own" : /PENAL/.test(label) ? "penalty" : "goal";
+    const forSide = kind === "own" ? (side === "home" ? "away" : "home") : side;
+    const minute = String(Number(m[2])) + (m[3] ? "+" + Number(m[3]) : "");
+    // The running score sits in the goal's own row: the widest ancestor
+    // that still holds only this one player.
+    let running = "";
+    for (let a = n.up; a && !running; a = a.up) {
+      if (a.pc > 1) break;
+      const rt = [];
+      (function collect(x) {
+        if (x.s !== undefined) rt.push(x.s.trim());
+        else x.k.forEach(collect);
+      })(a);
+      running = rt.find((s) => /^\d{1,2}\s*-\s*\d{1,2}$/.test(s)) || "";
+    }
+    if (!running) return fail("goal-running", minute);
+    tally[forSide]++;
+    const rm = /^(\d{1,2})\s*-\s*(\d{1,2})$/.exec(running);
+    if (Number(rm[1]) !== tally.home || Number(rm[2]) !== tally.away) {
+      return fail("running-score", running);
+    }
+    goals.push({minute, id, side, for: forSide, kind, running: tally.home + "-" + tally.away});
+  }
+  if (tally.home !== score.home || tally.away !== score.away) {
+    /* A result with NO goal behind it is the committee's, not the pitch's —
+       a forfeit, an ineligible player: "0 - 3" over "No hi ha gols
+       registrats" (3833178, 3833290). A final answer, but not one the app's
+       events can express, so the caller is told rather than given a list. */
+    if (!goals.length) return {ok: true, closed: true, played: true, awarded: true, status, home, away, score};
+    return fail("score-mismatch", tally.home + "-" + tally.away + " vs " + score.home + "-" + score.away);
+  }
+
+  // ── Substitutions: the Canvis pairs ──
+  const subs = [];
+  const seenRows = new Set();
+  for (const n of order) {
+    // Outside both line-ups an arrow is the legend's.
+    if (rscMarkKind(n) !== "in" || inGroup.has(n) || !n.side) continue;
+    // The pair's row is the WIDEST ancestor holding just these two players:
+    // the minute box sits beside the two-player block, not inside it.
+    let row = upToPlayers(n, 2);
+    while (row && row.up && row.up.pc === 2) row = row.up;
+    if (!row || row.pc !== 2 || seenRows.has(row)) return fail("sub-row");
+    seenRows.add(row);
+    const inside = order.slice(row.i, row.i + countNodes(row));
+    let minute = null;
+    let lastPlayer = null;
+    let inId = "";
+    let outId = "";
+    for (const x of inside) {
+      if (minute === null && x.s === undefined && x !== row &&
+          x.k.length && x.k.every((c) => c.s !== undefined)) {
+        const mm = actaMinuteOf(rscText(x));
+        if (mm) minute = mm;
+      }
+      if (x.p && x.p.player) lastPlayer = String(x.p.player.id || "");
+      const k = rscMarkKind(x);
+      if (k === "in" && !inId) inId = lastPlayer || "";
+      if (k === "out" && !outId) outId = lastPlayer || "";
+    }
+    if (!minute || !inId || !outId || inId === outId) return fail("sub-row", minute || "");
+    if (!byId[inId] || !byId[outId] || byId[inId].side !== byId[outId].side ||
+        byId[inId].side !== row.side) {
+      return fail("sub-side", minute);
+    }
+    subs.push({minute, side: row.side, inId, outId});
+  }
+  // The line-up arrows must say exactly what the Canvis pairs say.
+  const arrowKeys = (kind) => marks.filter((x) => x.kind === kind)
+      .map((x) => x.id + "@" + x.minute).sort().join(",");
+  if (arrowKeys("in") !== subs.map((s) => s.inId + "@" + s.minute).sort().join(",") ||
+      arrowKeys("out") !== subs.map((s) => s.outId + "@" + s.minute).sort().join(",")) {
+    return fail("subs-mismatch");
+  }
+
+  // ── Cards. A player cannot hold more than two yellows; FCF sometimes
+  //    draws three (3833222) — the first two by minute are kept. ──
+  const warnings = [];
+  if (staffCards) warnings.push("staff-cards:" + staffCards);
+  const cards = [];
+  const yellowsOf = {};
+  marks.filter((x) => x.kind === "yellow" || x.kind === "red")
+      .sort((a, b) => actaMinuteValue(a.minute) - actaMinuteValue(b.minute))
+      .forEach((x) => {
+        if (x.kind === "yellow") {
+          yellowsOf[x.id] = (yellowsOf[x.id] || 0) + 1;
+          if (yellowsOf[x.id] > 2) {
+            warnings.push("extra-yellow:" + x.id);
+            return;
+          }
+        }
+        cards.push({minute: x.minute, id: x.id, side: x.side, kind: x.kind});
+      });
+  // Balls on the sheet against the Gols list — a cross-check, not a gate:
+  // the score check above already guards what an import writes.
+  const balls = marks.filter((x) => x.kind === "ball").map((x) => x.id).sort().join(",");
+  if (balls !== goals.map((g) => g.id).sort().join(",")) warnings.push("balls-mismatch");
+
+  return {ok: true, closed: true, played: true, status, home, away, score, players, goals, cards,
+    subs, warnings};
+}
+
+/** Nodes in a subtree, the root included. */
+function countNodes(n) {
+  if (n.s !== undefined) return 1;
+  return 1 + n.k.reduce((a, c) => a + countNodes(c), 0);
 }
 
 /**
@@ -720,10 +1221,10 @@ function fcfArticleOffences(value) {
 /**
  * `sanciones` folded to `{actaId: {reds, doubles}}`.
  *
- * This is what makes cards possible at all. FCF publishes NO card markers on
- * an acta — proven against a match whose `sanciones` entry names a player
- * sent off for two yellows, whose acta shows only the constant legend. But
- * every sanction carries `codacta`, so one cheap JSON request per group-season
+ * This is what made cards possible for the referee profiles. Until 2026-09
+ * FCF published NO card markers on an acta (the redesigned site now does —
+ * see parseFcfActaEvents, which the referee crawl does not use yet). Every
+ * sanction carries `codacta`, so one cheap JSON request per group-season
  * attributes every sending-off to the referee who gave it, without scraping a
  * single card.
  *
@@ -824,8 +1325,11 @@ function aggregateFcfReferees(groups, sanctionsByActa) {
 }
 
 /* The fields the federation owns while the coach has not touched them.
-   `score` is NOT here and never will be: the app computes it from the events
-   a coach enters, and two sources of truth for a scoreline is a fight. */
+   `score` is NOT here: the app computes it from a match's events, and two
+   sources of truth for a scoreline is a fight. Since v278 the federation's
+   result does arrive — as the acta's GOALS, imported into those events
+   (acta.js), so the score is still derived from one list and still only
+   there. This merge never writes it. */
 const FCF_OWNED = ["date", "time", "location", "mapLink"];
 
 /**
@@ -1111,6 +1615,10 @@ module.exports = {
   mergeFcfFixtures,
   decodeHtmlEntities,
   parseFcfActa,
+  parseFcfActaEvents,
+  fcfRscPayload,
+  fcfRscRows,
+  actaMinuteValue,
   fcfActaCardMarks,
   FCF_ACTA_LEGEND_MARKS,
   fcfRefereeSlug,

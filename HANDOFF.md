@@ -322,9 +322,11 @@ run were all at render sites and all fixed by the two additions above.
    `splitFcfTally` is written and tested for the day it is wanted.
 1. **Fixture import covers the LEAGUE only.** A cup tie is a different `competicioId`; supporting
    cups means a second link per squad, or a competition picker.
-2. **Results are not imported into the app's own fixtures.** The app computes its scoreline from
+2. ~~**Results are not imported into the app's own fixtures.** The app computes its scoreline from
    coach-entered events. The referee index does store the federation's `gh`/`ga` per acta, so their
-   result is already on the device if that decision is ever taken.
+   result is already on the device if that decision is ever taken.~~ ✅ **v278**: a closed acta's
+   goals, cards and substitutions are imported AS EVENTS (functions/acta.js, ~45 min after the
+   match), so the scoreline still comes from the one list. See CONTEXT.md v278.
 3. **Neither week strip re-renders on a timer.** Pre-existing.
 4. **The cross-category call-up — mostly NOT open, and the wording here was misleading for a
    long time.** It **works today** for anyone whose remit covers both squads: a coach with

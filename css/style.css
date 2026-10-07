@@ -8115,6 +8115,74 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .pt-ev-cancel:hover { color: var(--pp-red); }
 
+/* ── The FCF acta (v278) ──
+   The acta's rows are final, so where the ✕ was they carry a lock — or,
+   on our own goals, a pencil for the two things the acta does not say.
+   Nothing about the row itself changes: an imported goal is a goal. */
+.pt-ev-edit {
+  font: inherit; font-size: 14px; line-height: 1; background: none; border: none;
+  padding: 0; cursor: pointer; color: var(--pp-ink-3);
+}
+.pt-ev-edit:hover { color: var(--pp-ink); }
+.pt-ev-lock { display: inline-flex; color: var(--pp-rule-4); }
+.pt-ev-tag {
+  font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--pp-amber); white-space: nowrap;
+}
+.pt-acta {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px;
+  padding: 2px 0 10px;
+}
+.pt-acta-badge {
+  font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--pp-ink); border: 1px solid var(--pp-ink); padding: 2px 6px;
+}
+.pt-acta-note { font-size: 12.5px; color: var(--pp-ink-3); }
+.pt-acta-import {
+  font: inherit; font-size: 12.5px; background: none; border: none; padding: 0;
+  margin-left: auto; cursor: pointer; color: var(--pp-ink-2);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.pt-acta-import:hover { color: var(--pp-red); }
+.pt-acta-pending .pt-acta-import { margin-left: 0; }
+/* Editing an acta goal: the fixed part reads as one line of the timeline. */
+.pt-ev-fixed {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 14px; font-size: 14px; color: var(--pp-ink);
+}
+.pt-ev-fixed-min { color: var(--pp-ink-2); font-variant-numeric: tabular-nums; }
+.pt-ev-fixed-name { min-width: 0; overflow-wrap: anywhere; }
+
+/* ── Vincula jugadors ── */
+.pt-link { padding-top: 18px; }
+.pt-link-hint { font-size: 12.5px; color: var(--pp-ink-3); margin: 0 0 8px; }
+.pt-link-row {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto minmax(150px, 210px);
+  align-items: center; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid var(--pp-rule-2);
+}
+.pt-link-d {
+  font-size: 12.5px; color: var(--pp-ink-2); text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pt-link-n { font-size: 14px; color: var(--pp-ink); min-width: 0; overflow-wrap: anywhere; }
+.pt-link-marks { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pt-link-tag, .pt-link-ev {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11.5px; color: var(--pp-ink-3); white-space: nowrap;
+}
+.pt-link-ev img { width: 13px; height: 15px; object-fit: contain; }
+.pt-link-done { margin-top: 12px; }
+.pt-link-done > summary {
+  cursor: pointer; font-size: 12.5px; color: var(--pp-ink-2); padding: 4px 0;
+}
+.std-sel-busy { opacity: .5; pointer-events: none; }
+/* Phone: the picker drops under the name rather than squeezing it. */
+@media (max-width: 560px) {
+  .pt-link-row { grid-template-columns: 28px minmax(0, 1fr); }
+  .pt-link-marks, .pt-link-pick { grid-column: 2; }
+}
+
 /* ═══════════════════════════════════════════════════════════════
    The two blocks that keep their own MARKUP inside .pt-page:
    the coach's notes, and the anada briefing.
