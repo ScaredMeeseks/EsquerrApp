@@ -31,7 +31,7 @@ const {
   mergeFcfFixtures,
   parseFcfActa, fcfRefereeSlug, fcfList, pickFcfTiers, fcfRefIndexId,
   fcfActasDue, fcfActaEntry, parseFcfSanctionsByActa, aggregateFcfReferees,
-  fcfShouldRebuild,
+  fcfShouldRebuild, fcfLinkedGroups, fcfLabelsById, fcfScopeKey,
   FCF_SENIOR_TIERS, FCF_DISCIPLINE_F11, FCF_ACTA_LEGEND_MARKS,
 } = require("./fcf");
 admin.initializeApp();
@@ -1948,7 +1948,9 @@ exports.scheduledWeatherSync = onSchedule({
    HTML of the acta page — so this is the one scraping job in the app, and it
    is bounded accordingly: the five senior tiers of Futbol 11, which is 64
    groups and ~14,400 matches a season rather than the 532 groups and
-   ~106,000 matches that all of Futbol 11 would be.
+   ~106,000 matches that all of Futbol 11 would be. PLUS every group some
+   club has linked, in any league (since 2026-10-07 — fcfLinkedGroups): a
+   club's own squads are the fixtures somebody is actually looking at.
 
    Two jobs share one crawler:
 
@@ -2027,6 +2029,10 @@ async function fcfCrawlConfig() {
       c.seasons.map(String) : [],
     tiers,
     onlyGroups: (Array.isArray(c.onlyGroups) ? c.onlyGroups : []).map(String),
+    /* Every group a club has linked is crawled too, whatever its league —
+       see fcfLinkedGroups. On unless set to a literal false, which is the
+       way to switch it off without a deploy. */
+    linkedGroups: c.linkedGroups !== false,
     budgetMs: Number(c.budgetMs) > 0 ? Number(c.budgetMs) : FCF_CRAWL_BUDGET_MS,
     concurrency: Number(c.concurrency) > 0 ?
       Math.min(Number(c.concurrency), 5) : FCF_CRAWL_CONCURRENCY,
@@ -2041,7 +2047,7 @@ async function fcfCrawlConfig() {
  * every time the queue is built. A hardcoded id would not fail; it would
  * quietly backfill the wrong year, which is far worse.
  */
-async function fcfBuildQueue(cfg) {
+async function fcfBuildQueue(cfg, linked) {
   const out = [];
   for (const season of cfg.seasons) {
     const comps = await fcfGet("competicions?disciplinaId=" +
@@ -2062,13 +2068,57 @@ async function fcfBuildQueue(cfg) {
       });
     }
   }
+
+  /* Then every group a club has linked that the tiers did not already give
+     us, in ANY league (fcfLinkedGroups says why). The labels are looked up
+     because the referee profiles are kept per division by `comp`; one
+     `competicions` call per discipline and season and one `grupos` call per
+     competition, cached for this build. A lookup that fails leaves the label
+     empty rather than dropping the group — the panel then says "this
+     division", and the referees are still there. */
+  const have = new Set(out.map((e) => e.grupId));
+  const latest = cfg.seasons.slice().sort((a, b) => Number(a) - Number(b)).pop() || "";
+  const compLabels = {};
+  const grupLabels = {};
+  const labelsFrom = async (cache, key, path) => {
+    if (!cache[key]) {
+      try {
+        cache[key] = fcfLabelsById(await fcfGet(path));
+      } catch (err) {
+        logger.warn("crawl label lookup failed", {path, err: String(err)});
+        cache[key] = {};
+      }
+    }
+    return cache[key];
+  };
+  for (const g of linked || []) {
+    if (have.has(g.grupId)) continue;
+    // A bare grupId carries no season; group ids are per season, so the
+    // newest configured one is the one it belongs to.
+    const season = g.season || latest;
+    if (!season) continue;
+    let comp = "";
+    let grup = "";
+    if (g.competicioId) {
+      const disc = g.disciplinaId || FCF_DISCIPLINE_F11;
+      comp = (await labelsFrom(compLabels, disc + "|" + season,
+          "competicions?disciplinaId=" + disc + "&temporada=" +
+          encodeURIComponent(season)))[g.competicioId] || "";
+      grup = (await labelsFrom(grupLabels, g.competicioId,
+          "grupos?competicioId=" + g.competicioId))[g.grupId] || "";
+    }
+    out.push({season, competicioId: g.competicioId, comp, grupId: g.grupId, grup,
+      linked: true});
+    have.add(g.grupId);
+  }
   return out;
 }
 
-/** A scope fingerprint, so the queue is rebuilt when the config changes. */
-function fcfScopeKey(cfg) {
-  return [cfg.seasons.join(","), cfg.tiers.join(","),
-    cfg.onlyGroups.slice().sort().join(",")].join("|");
+/** Every group a club has linked — read on each run, so a new club counts. */
+async function _fcfLinkedGroupsNow(cfg) {
+  if (!cfg.linkedGroups) return [];
+  const snap = await db.collection("clubs").get();
+  return fcfLinkedGroups(snap.docs.map((d) => d.data() || {}));
 }
 
 /**
@@ -2217,12 +2267,13 @@ async function _runFcfCrawl(opts) {
 
   const stateRef = db.doc(o.stateDoc || FCF_CRAWL_STATE);
   const state = (await stateRef.get()).data() || {};
-  const scope = fcfScopeKey(cfg);
+  const linked = await _fcfLinkedGroupsNow(cfg);
+  const scope = fcfScopeKey(cfg, linked);
 
   let queue = Array.isArray(state.queue) ? state.queue : [];
   let at = Number(state.at) || 0;
   if (fcfShouldRebuild(state, scope, o.freshFor)) {
-    queue = await fcfBuildQueue(cfg);
+    queue = await fcfBuildQueue(cfg, linked);
     at = 0;
     await stateRef.set({
       scope, queue, at,

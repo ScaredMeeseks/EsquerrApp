@@ -33,6 +33,11 @@
  *               crawling". Starting narrow means the first run finishes in
  *               seconds and the result is visible immediately; widening is
  *               another edit of the same document with no deploy.
+ *               ⚠ Since 2026-10-07 this narrows only the TIER SWEEP. Every
+ *               group some club has linked is crawled anyway, in any league
+ *               (fcfLinkedGroups), unless the config holds
+ *               `linkedGroups: false`. So a new club no longer needs this
+ *               script to get referees.
  *
  * `tiers`, `budgetMs` and `concurrency` are left exactly as they are.
  *

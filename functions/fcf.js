@@ -1006,6 +1006,88 @@ function fcfShouldRebuild(state, scope, freshFor) {
   return false;
 }
 
+/**
+ * Every FCF group some club has linked, as `[{grupId, season, competicioId,
+ * disciplinaId}]` sorted by grupId — each group once, however many clubs
+ * link it.
+ *
+ * ── Why the crawl reads these on top of its tiers ───────────────────────
+ * The tier sweep only ever covered the five senior Futbol 11 leagues, and
+ * `onlyGroups` narrowed even that to one club's groups. A club whose squad
+ * plays anywhere else — a juvenil league, say — was never crawled, so its
+ * fixtures showed no referee, past or future, and nothing anywhere said why
+ * (2026-10-07: a new club with one Juvenil C squad). A group a club has
+ * LINKED is one somebody is looking at, which is the whole case for paying
+ * to crawl it, so these are crawled whatever their league and whatever
+ * `onlyGroups` says.
+ *
+ * Same squad rule as fcfSquadsOf in index.js: a link left behind for a
+ * disabled category, or a letter the club no longer has, is not a squad.
+ * A seeded demo club is skipped — its links are not anybody's real squad.
+ *
+ * The ids come out of the pasted URL (`?temporadaId=22&disciplinaId=…
+ * &competicioId=…&grupId=…`). Any of the first three may be missing — a
+ * bare grupId is accepted by fcfGrupIdOf — and comes back as "".
+ */
+function fcfLinkedGroups(clubs) {
+  const out = [];
+  const seen = {};
+  const param = (url, name) => {
+    const m = new RegExp("[?&]" + name + "=(\\d{1,15})\\b").exec(url);
+    return m ? m[1] : "";
+  };
+  (clubs || []).forEach((club) => {
+    const c = club || {};
+    if (c.demoSeed) return;
+    const links = c.fcfLinks || {};
+    const cats = c.categories || {};
+    Object.keys(links).forEach((key) => {
+      const url = String(links[key] === undefined || links[key] === null ? "" : links[key]);
+      const grupId = fcfGrupIdOf(url);
+      if (!grupId || seen[grupId]) return;
+      const i = key.indexOf("-");
+      if (i === -1) return;
+      const cfg = cats[key.slice(0, i)];
+      if (!cfg || !cfg.enabled) return;
+      if (Array.isArray(cfg.letters) && cfg.letters.indexOf(key.slice(i + 1)) === -1) return;
+      seen[grupId] = true;
+      out.push({
+        grupId,
+        season: param(url, "temporadaId"),
+        competicioId: param(url, "competicioId"),
+        disciplinaId: param(url, "disciplinaId"),
+      });
+    });
+  });
+  return out.sort((a, b) => a.grupId.localeCompare(b.grupId));
+}
+
+/** `{value: label}` of one of FCF's `{value,label}` lists, labels trimmed. */
+function fcfLabelsById(json) {
+  const out = {};
+  fcfList(json).forEach((r) => {
+    const v = String((r || {}).value || "");
+    if (v) out[v] = String((r || {}).label || "").trim();
+  });
+  return out;
+}
+
+/**
+ * The crawl scope as one string, so a stored queue built for another scope
+ * is thrown away (fcfShouldRebuild).
+ *
+ * The linked groups are part of it. Without them a club linking a new group
+ * would wait for the running queue to finish before its group was even
+ * listed — and the Friday pass would carry on with a queue that cannot
+ * contain it until the next week.
+ */
+function fcfScopeKey(cfg, linked) {
+  const c = cfg || {};
+  return [(c.seasons || []).join(","), (c.tiers || []).join(","),
+    (c.onlyGroups || []).slice().sort().join(","),
+    (linked || []).map((g) => g.grupId).sort().join(",")].join("|");
+}
+
 /** The document id of a group's raw referee index. */
 function fcfRefIndexId(season, grupId) {
   return String(season) + "_" + String(grupId);
@@ -1629,6 +1711,9 @@ module.exports = {
   fcfMatchResult,
   fcfRefIndexId,
   fcfShouldRebuild,
+  fcfLinkedGroups,
+  fcfLabelsById,
+  fcfScopeKey,
   fcfActasDue,
   fcfActaEntry,
   parseFcfSanctionsByActa,

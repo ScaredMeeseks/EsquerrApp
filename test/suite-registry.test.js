@@ -115,7 +115,7 @@ describe('every stub names something the app actually has', () => {
          board-geom.js and its siblings assign them to `window`. Both are real
          and a stub for either is legitimate. */
       /,\s*([A-Za-z_$][\w$]*)\s*=/g,
-      /([A-Za-z_$][\w$]*)\s*\./g,
+      /\b([A-Za-z_$][\w$]*)\s*\./g,
       /* The UMD tail every module here ends with: `else root.BG = api;`. That
          is the only place `BG`, `BS`, `TB` and `MN` are ever named as
          themselves, so without this the four module globals read as

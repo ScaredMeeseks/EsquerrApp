@@ -257,7 +257,14 @@ async function main() {
     (cfg.enabled === true ? "" : "   ← every crawl is a no-op while this is not true"));
   log(`  seasons   : ${(cfg.seasons || []).join(", ") || "(none)"}`);
   log(`  tiers     : ${(cfg.tiers || []).join(", ") || "(default: all senior)"}`);
-  log(`  onlyGroups: ${(cfg.onlyGroups || []).join(", ") || "(none — every group in scope)"}`);
+  log(`  onlyGroups: ${(cfg.onlyGroups || []).join(", ") || "(none — every group in scope)"}` +
+      "   (narrows the tier sweep only)");
+  /* Since 2026-10-07 every group a club has linked is queued too, whatever
+     its league — so "NOT IN THE QUEUE" below now means the queue was built
+     before the link existed (the next run rebuilds it), or this switch. */
+  (cfg.linkedGroups !== false ? ok : bad)(`linkedGroups: ${cfg.linkedGroups !== false}` +
+    (cfg.linkedGroups !== false ? "   (clubs' own groups are always crawled)" :
+      "   ← linked groups outside the sweep are NOT crawled"));
   log(`  budgetMs  : ${cfg.budgetMs || "(default 480000)"}   ` +
       `concurrency: ${cfg.concurrency || "(default 3)"}`);
   for (const [label, docPath] of [["weekly (appointments, Fri 6/7/8)", "fcfCrawl/weekly"],

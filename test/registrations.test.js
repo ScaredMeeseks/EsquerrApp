@@ -395,7 +395,7 @@ describe('the positions are in the row, not behind a popover', () => {
      'reg2-pop'].forEach(function (dead) {
       assert.ok(!bare.includes(dead), dead + ' should be gone entirely');
     });
-    assert.ok(!/\.reg2-pop/.test(css), 'and its styles with it');
+    assert.ok(!/\.reg2-pop\b/.test(css), 'and its styles with it');
   });
 
   it("the chips save through the delegated writer, untouched", () => {

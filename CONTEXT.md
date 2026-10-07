@@ -12524,3 +12524,38 @@ old server guard — all red. Rendered in headless Edge against the real CSS on 
 `build-configuracio-preview.js` gains a frame with two unsaved teams made through the handlers.
 
 Unit 3787 → **3798**, functions 107 → **113**, rules 181. Version triple → **v279** (v278 went to the FCF acta work, landed in parallel).
+
+### 2026-10-07 — Referee crawl: every group a club has linked (functions only, no version bump)
+
+A new club (`kKS8em6wr3VNOoeR1HQ2`, one Juvenil C squad) showed no referee on any game. Two reasons, the
+second sufficient alone: `fcfCrawl/config.onlyGroups` held Esquerra's two groups (logs: every nightly run
+`groups: 2`), and `fcfBuildQueue` only ever listed the five senior Futbol 11 tiers — a juvenil group
+was dropped before `onlyGroups` was even consulted.
+
+- **`fcfLinkedGroups(clubs)`** (fcf.js, pure): every group some club links, once, sorted, with
+  `season`/`competicioId`/`disciplinaId` read out of the pasted URL ("" when absent — a bare grupId is
+  accepted). Same squad rule as `fcfSquadsOf` (disabled category or removed letter → not a squad); a
+  `demoSeed` club is skipped. A disabled squad's link cannot claim a group a live squad also links.
+- **`fcfBuildQueue(cfg, linked)`** appends those the tier sweep did not already list, in ANY league,
+  bypassing `onlyGroups` (which now narrows the sweep only). Division/group labels come from
+  `competicions?disciplinaId&temporada` and `grupos?competicioId`, cached per build; a failed lookup
+  leaves the label "" (the panel says "this division"), never drops the group. A bare id takes the
+  newest configured season. Entries carry `linked: true`.
+- **`fcfScopeKey(cfg, linked)`** moved to fcf.js and now includes the linked ids, so a newly linked
+  group rebuilds the queue on the next run instead of waiting for the running queue to finish. The
+  format change itself forces one rebuild of both queues after deploy.
+- Kill switch: `fcfCrawl/config.linkedGroups: false`. `diagnose-referees.js` prints it;
+  `set-fcf-crawl-config.js` documents that it is no longer needed per new club.
+- **Cost:** one `clubs` collection read per run plus the new groups' actas (closed ones nightly, ~10
+  unplayed per group on Fridays). Inside the free tier at today's size.
+
+Tests (`fcf-referees.test.js`, +17): the pure helpers, and the real `fcfBuildQueue` sliced and run over
+a stubbed API (juvenil group queued with its labels, no duplicate of a sweep group, one lookup per
+competition, bare id → newest season, failed lookup keeps the group), plus the wiring in
+`_runFcfCrawl`/`fcfCrawlConfig`. 15 mutations, all red.
+
+**Two dead assertions revived on the way.** `suite-registry.test.js` and `registrations.test.js` each
+held a literal BACKSPACE byte (0x08) where `\b` was meant — the mangling CLAUDE.md warns about. The
+guard's `name.` shape could never match (so `logger`, used only as `logger.info(…)`, read as an
+invented stub), and `!/\.reg2-pop<BS>/` could never fail. Both now `\b`; both still pass on the real
+code. Unit 3798 → **3815**, functions 113.

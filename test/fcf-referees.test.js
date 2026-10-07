@@ -557,6 +557,182 @@ describe('when to rebuild the crawl queue', () => {
   });
 });
 
+/* ── Every group a club has linked (2026-10-07) ────────────────────────
+   A new club with one Juvenil C squad showed no referee on any game, past
+   or future: the crawl covered the five senior tiers, `onlyGroups` held
+   Esquerra's two groups, and a juvenil league is in neither. A linked group
+   is now crawled whatever its league. */
+describe('groups a club has linked', () => {
+  const LINK = (grup, comp) => 'https://www.fcf.cat/ca/competicio?temporadaId=22' +
+    '&disciplinaId=19308233&competicioId=' + comp + '&grupId=' + grup + '&tab=classificacio';
+  const club = (links, categories, extra) => Object.assign(
+      {fcfLinks: links, categories}, extra || {});
+
+  it('reads the ids out of a pasted link — a juvenil league included', () => {
+    const got = F.fcfLinkedGroups([club(
+        {'juvenil-C': LINK('59000001', '58161926')},
+        {juvenil: {enabled: true, letters: ['C']}})]);
+    assert.deepStrictEqual(got, [{grupId: '59000001', season: '22',
+      competicioId: '58161926', disciplinaId: '19308233'}]);
+  });
+
+  it('lists a group once however many clubs link it, sorted', () => {
+    const got = F.fcfLinkedGroups([
+      club({'amateur-A': LINK('58161914', '1'), 'amateur-B': LINK('58161881', '1')},
+          {amateur: {enabled: true, letters: ['A', 'B']}}),
+      club({'amateur-A': LINK('58161881', '1')}, {amateur: {enabled: true, letters: ['A']}}),
+    ]);
+    assert.deepStrictEqual(got.map((g) => g.grupId), ['58161881', '58161914']);
+  });
+
+  it('skips a link left behind for a disabled category or a removed letter', () => {
+    const got = F.fcfLinkedGroups([club(
+        {'cadet-A': LINK('1', '1'), 'amateur-C': LINK('2', '1'), 'amateur-A': LINK('3', '1')},
+        {cadet: {enabled: false, letters: ['A']}, amateur: {enabled: true, letters: ['A']}})]);
+    assert.deepStrictEqual(got.map((g) => g.grupId), ['3']);
+  });
+
+  it('still counts a group a disabled squad ALSO links, when a live one does', () => {
+    // The dedupe must not let the dead link claim the group first.
+    const got = F.fcfLinkedGroups([
+      club({'cadet-A': LINK('7', '1')}, {cadet: {enabled: false, letters: ['A']}}),
+      club({'cadet-A': LINK('7', '1')}, {cadet: {enabled: true, letters: ['A']}}),
+    ]);
+    assert.deepStrictEqual(got.map((g) => g.grupId), ['7']);
+  });
+
+  it('skips a seeded demo club', () => {
+    const got = F.fcfLinkedGroups([club({'amateur-A': LINK('1', '1')},
+        {amateur: {enabled: true, letters: ['A']}}, {demoSeed: true})]);
+    assert.deepStrictEqual(got, []);
+  });
+
+  it('takes a bare group id, with nothing else known', () => {
+    const got = F.fcfLinkedGroups([club({'amateur-A': '58161881'},
+        {amateur: {enabled: true, letters: ['A']}})]);
+    assert.deepStrictEqual(got, [{grupId: '58161881', season: '',
+      competicioId: '', disciplinaId: ''}]);
+  });
+
+  it('survives clubs with no links, no categories, or nothing at all', () => {
+    assert.deepStrictEqual(F.fcfLinkedGroups([{}, null, {fcfLinks: {'a-A': null}}]), []);
+    assert.deepStrictEqual(F.fcfLinkedGroups(undefined), []);
+  });
+
+  it('labels by id, trimmed', () => {
+    assert.deepStrictEqual(F.fcfLabelsById({data: [{value: 5, label: ' LLIGA NACIONAL JUVENIL '},
+      {label: 'no id'}]}), {5: 'LLIGA NACIONAL JUVENIL'});
+  });
+
+  it('a newly linked group changes the scope, so the queue is rebuilt', () => {
+    const cfg = {seasons: ['22'], tiers: ['LLIGA ELIT'], onlyGroups: ['2', '1']};
+    const before = F.fcfScopeKey(cfg, [{grupId: '1'}]);
+    assert.notStrictEqual(F.fcfScopeKey(cfg, [{grupId: '1'}, {grupId: '9'}]), before);
+    assert.strictEqual(F.fcfScopeKey(cfg, [{grupId: '1'}]), before, 'stable for the same set');
+    assert.strictEqual(F.fcfScopeKey(cfg, [{grupId: '9'}, {grupId: '1'}]),
+        F.fcfScopeKey(cfg, [{grupId: '1'}, {grupId: '9'}]), 'order-insensitive');
+  });
+});
+
+/* The queue builder itself, sliced out of index.js and RUN over a stubbed
+   API — the joining of tiers and linked groups is where this can go wrong. */
+describe('the crawl queue takes in linked groups', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'functions', 'index.js'), 'utf8');
+  const cut = (from, to) => {
+    const i = src.indexOf(from);
+    const j = src.indexOf(to, i);
+    assert.ok(i !== -1 && j !== -1, 'marker not found: ' + from);
+    return src.slice(i, j);
+  };
+  const BUILD = cut('async function fcfBuildQueue(cfg, linked) {',
+      '/** Every group a club has linked — read on each run');
+
+  const API = {
+    'competicions?disciplinaId=19308233&temporada=22': {data: [
+      {value: '58161869', label: 'TERCERA CATALANA'},
+      {value: '58161926', label: 'LLIGA NACIONAL JUVENIL'},
+    ]},
+    'grupos?competicioId=58161869': [{value: '58161881', label: 'GRUP 10'},
+      {value: '58161900', label: 'GRUP 11'}],
+    'grupos?competicioId=58161926': [{value: '59000001', label: 'GRUP 3'}],
+    'competicions?disciplinaId=19308233&temporada=21': {data: []},
+  };
+  function build(cfg, linked, failing) {
+    const calls = [];
+    const fcfGet = async (p) => {
+      calls.push(p);
+      if (failing && failing.indexOf(p) !== -1) throw new Error('down');
+      if (!(p in API)) throw new Error('unexpected request ' + p);
+      return API[p];
+    };
+    // eslint-disable-next-line no-new-func
+    const fn = new Function('fcfGet', 'pickFcfTiers', 'fcfList', 'fcfLabelsById',
+        'FCF_DISCIPLINE_F11', 'logger', BUILD + '\nreturn fcfBuildQueue;')(
+        fcfGet, F.pickFcfTiers, F.fcfList, F.fcfLabelsById, F.FCF_DISCIPLINE_F11,
+        {warn: () => {}});
+    return fn(cfg, linked).then((q) => ({q, calls}));
+  }
+  const CFG = {seasons: ['22'], tiers: ['TERCERA CATALANA'], onlyGroups: ['58161881']};
+  const JUV = {grupId: '59000001', season: '22', competicioId: '58161926',
+    disciplinaId: '19308233'};
+
+  it('queues a juvenil group a club linked, with its division and group named', async () => {
+    const {q} = await build(CFG, [JUV]);
+    const juv = q.find((e) => e.grupId === '59000001');
+    assert.ok(juv, 'the linked juvenil group is not in the queue');
+    assert.deepStrictEqual(juv, {season: '22', competicioId: '58161926',
+      comp: 'LLIGA NACIONAL JUVENIL', grupId: '59000001', grup: 'GRUP 3', linked: true});
+  });
+
+  it('keeps the tier sweep, and onlyGroups still narrows only the sweep', async () => {
+    const {q} = await build(CFG, [JUV]);
+    assert.deepStrictEqual(q.map((e) => e.grupId), ['58161881', '59000001']);
+  });
+
+  it('never queues a group twice when the sweep already has it', async () => {
+    const tierDup = {grupId: '58161881', season: '22', competicioId: '58161869',
+      disciplinaId: '19308233'};
+    const {q} = await build(CFG, [tierDup, JUV]);
+    assert.strictEqual(q.filter((e) => e.grupId === '58161881').length, 1);
+    assert.strictEqual(q[0].linked, undefined, 'the sweep\'s own entry is kept');
+  });
+
+  it('looks each competition up once per build', async () => {
+    const other = Object.assign({}, JUV, {grupId: '59000002'});
+    const {calls} = await build(CFG, [JUV, other]);
+    assert.strictEqual(calls.filter((c) => c === 'grupos?competicioId=58161926').length, 1);
+  });
+
+  it('a bare group id goes in under the newest season, unlabelled', async () => {
+    const {q, calls} = await build({seasons: ['21', '22'], tiers: [], onlyGroups: []},
+        [{grupId: '59000009', season: '', competicioId: '', disciplinaId: ''}]);
+    assert.deepStrictEqual(q, [{season: '22', competicioId: '', comp: '',
+      grupId: '59000009', grup: '', linked: true}]);
+    assert.ok(!calls.some((c) => /^grupos/.test(c)), 'nothing to look up without a competition');
+  });
+
+  it('a failed label lookup leaves the label empty, not the group out', async () => {
+    const {q} = await build(CFG, [JUV], ['grupos?competicioId=58161926']);
+    const juv = q.find((e) => e.grupId === '59000001');
+    assert.ok(juv, 'one failed lookup dropped the group');
+    assert.strictEqual(juv.comp, 'LLIGA NACIONAL JUVENIL');
+    assert.strictEqual(juv.grup, '');
+  });
+
+  it('every run reads the linked groups into BOTH the scope and the build', () => {
+    // The wiring: a group in the build but not the scope waits a whole queue.
+    const run = cut('async function _runFcfCrawl(opts) {', 'exports.crawlFcfActas');
+    assert.ok(/const linked = await _fcfLinkedGroupsNow\(cfg\)/.test(run));
+    assert.ok(/fcfScopeKey\(cfg, linked\)/.test(run));
+    assert.ok(/fcfBuildQueue\(cfg, linked\)/.test(run));
+  });
+
+  it('the switch is on unless set to a literal false', () => {
+    const conf = cut('async function fcfCrawlConfig() {', '/**\n * Every group-season in scope');
+    assert.ok(/linkedGroups: c\.linkedGroups !== false/.test(conf));
+  });
+});
+
 describe('the index document id', () => {
   it('is season and group, so two seasons never overwrite each other', () => {
     assert.strictEqual(F.fcfRefIndexId('21', '54322937'), '21_54322937');
