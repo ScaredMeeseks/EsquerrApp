@@ -9,6 +9,11 @@
  *   --link-existing   also add `firstLegId` to notes that ALREADY exist and
  *                     have never been asked the first-leg question. One
  *                     field, nothing else touched. See its note below.
+ *   --fill-empty      also write the phases (`pre`/`live`/`post`) and video
+ *                     links of notes that ALREADY exist but nobody has
+ *                     written in. A phase with text, or with an author, is
+ *                     never touched. See its note below.
+ *   --today YYYY-MM-DD  pretend it is another day (tests, rehearsals).
  *
  * ─── Why a second script rather than more of topup-demo-season.js ────────
  *
@@ -22,9 +27,13 @@
  *   - refuses any club not stamped `demoSeed: true`, and any PROTECTED_CLUB;
  *   - create-only per document — a note a real coach typed from a demo login
  *     is worth more than a fabricated one, so an existing doc is never
- *     touched, not even to add a field;
+ *     touched, not even to add a field (the two flags above are the named,
+ *     narrow exceptions);
  *   - writes nothing dated before the club's `seasonBoundary`;
  *   - dry run by default.
+ *
+ * Every decision is made by `plan()`, which is pure: it takes what main()
+ * read and returns what would be written. test/topup-demo.test.js runs it.
  *
  * ─── What it fills ──────────────────────────────────────────────────────
  *
@@ -57,23 +66,8 @@
  * Referees are not a field on a match. `mdRefereeFor()` joins `m.fcfActaId`
  * against the global `fcfRefIndex` collection, and the app only ever loads
  * the index for grup ids it finds in `clubs/{id}.fcfLinks` — so mock
- * referees mean setting `fcfLinks` on the demo club.
- *
- * That is the whole cost, and it is paid on two OTHER pages. `fcfLinks` is
- * also what switches on Classificació and Sancions: getActiveFcfLeagues()
- * returns nothing while it is empty (a clean "no link configured" card), and
- * the moment it is set both pages start fetching live from the federation
- * against a grup id that does not exist. `_leagueErrors` exists precisely so
- * the table "can say so instead of showing nothing" — so the trade is one
- * populated referee panel against two pages that visibly fail to load.
- *
- * On a demo that is a bad trade, so it is not made here. If it is ever
- * wanted, the shapes are: `fcfRefIndex/{season}_{grupId}` holding
- * `{grupId, season, comp, actas: {actaId: {r:[names], c:true, res:'H'|'D'|'A',
- * gh, ga, d}}, cards: {actaId: {reds, doubles, off:{key:n}}}}`, and
- * `fcfReferees/{slug}` — though that one is REBUILT wholesale from
- * fcfRefIndex by the Friday job (_rebuildFcfReferees), so writing profiles by
- * hand is temporary and only the index is worth writing.
+ * referees mean setting `fcfLinks` on the demo club. That trade, and the
+ * script that makes it, is `topup-demo-referees.js`.
  */
 "use strict";
 
@@ -89,17 +83,6 @@ const PROTECTED_CLUBS = new Set([
   "lly4GkUxIpBkSgZvzldT", // F.C.Barcelona test club
   "default",
 ]);
-
-// ── CLI ──
-const argv = process.argv.slice(2);
-const has = (f) => argv.includes(f);
-const val = (f, d) => {
-  const i = argv.indexOf(f);
-  return i !== -1 && argv[i + 1] ? argv[i + 1] : d;
-};
-const APPLY = has("--apply");
-const CLUB = val("--club", "");
-const SEED = Number(val("--seed", "20260918"));
 
 /* ── --link-existing ──────────────────────────────────────────────────
    The one deliberate exception to create-only, and it is narrow on purpose.
@@ -123,17 +106,21 @@ const SEED = Number(val("--seed", "20260918"));
    the top of that would undo a decision he made deliberately.
 
    Nothing else on the document is touched — update(), not set(merge:true),
-   so no phase, video or board can be disturbed by this path. */
-const LINK_EXISTING = has("--link-existing");
+   so no phase, video or board can be disturbed by this path.
 
-function die(msg) {
-  console.error("\nERROR: " + msg + "\n");
-  process.exit(1);
-}
-const log = (s) => console.log(s);
-const step = (s) => console.log("\n── " + s + " " + "─".repeat(Math.max(0, 56 - s.length)));
+   ── --fill-empty ─────────────────────────────────────────────────────
+   Read from production on 2026-10-09: most of the club's recent fixtures
+   held a notes document with NO text in any phase — a stub, with nothing
+   typed since. Create-only skips every one of them, so the fixtures a demo
+   is most likely to open were the ones with a blank notes block. Juvenil's
+   09-26 and 10-03 had their plan from the last run but, having been played
+   since, no debrief.
 
-if (!CLUB) die("--club <id> is required.");
+   So this flag fills a phase only where it is EMPTY AND UNAUTHORED: no text
+   and no `updatedBy`. A phase somebody wrote in — or deliberately cleared,
+   which leaves their name on it — is left exactly as it is. Video links are
+   added only to a note that has none. update(), for the reason given above:
+   a note deleted meanwhile must not come back as a stub. */
 
 // ── Deterministic RNG, so a dry run and the apply that follows agree ──
 function mulberry32(a) {
@@ -144,16 +131,10 @@ function mulberry32(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-let rnd = mulberry32(SEED);
+// Re-seeded per category inside plan().
+let rnd = mulberry32(20260918);
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 const chance = (p) => rnd() < p;
-
-// ── Firebase ──
-const admin = require("firebase-admin");
-admin.initializeApp({projectId: "esquerrapp"});
-const db = admin.firestore();
-
-const todayStr = new Date().toISOString().slice(0, 10);
 
 /* Calendar arithmetic, NOT milliseconds — the same reason the other two
    scripts spell this out: Spain has a 25-hour day at the autumn transition,
@@ -168,21 +149,11 @@ function dayBefore(s) {
 }
 
 /** Season start for a boundary like "03-01", mirroring utils.js seasonStartStr. */
-function seasonStart(boundary) {
+function seasonStart(boundary, todayStr) {
   const b = /^\d{2}-\d{2}$/.test(boundary || "") ? boundary : "08-15";
-  const y = new Date().getFullYear();
+  const y = Number(todayStr.slice(0, 4));
   return todayStr >= y + "-" + b ? y + "-" + b : (y - 1) + "-" + b;
 }
-
-const blobOf = (doc) => {
-  if (!doc || !doc.exists) return null;
-  const d = doc.data() || {};
-  if (typeof d.v !== "string") return null;
-  try { return JSON.parse(d.v); } catch (e) {
-    die(`${doc.id} holds unparseable JSON. Inspect it by hand before re-running.`);
-  }
-  return null;
-};
 
 /* ── The Catalan a coach actually writes ───────────────────────────────
    Short, specific, and built from the fixture in front of it — the venue,
@@ -239,37 +210,31 @@ const VIDEO_URLS = [
 
 function fill(s, rival) { return s.replace(/\{rival\}/g, rival); }
 
-async function main() {
-  step("Preflight");
-  if (PROTECTED_CLUBS.has(CLUB)) {
-    die(`${CLUB} is a PROTECTED club. This script will not touch it.`);
-  }
-  const clubSnap = await db.collection("clubs").doc(CLUB).get();
-  if (!clubSnap.exists) die(`clubs/${CLUB} does not exist.`);
-  const club = clubSnap.data() || {};
-  if (club.demoSeed !== true) {
-    die(`clubs/${CLUB} is not stamped demoSeed:true.\n` +
-        "    Only clubs seed-demo-club.js created may be topped up.");
-  }
-  const clubName = club.name || "";
-  const start = seasonStart(club.seasonBoundary);
-  log(`club        : ${clubName || "(unnamed)"}`);
-  log(`seasonBound : ${club.seasonBoundary || "(default 08-15)"}  → season starts ${start}`);
-  log(`today       : ${todayStr}`);
-  log(`mode        : ${APPLY ? "APPLY (will write)" : "DRY RUN (no writes)"}`);
+/** A phase nobody has written in: no text, and no author. */
+function phaseIsEmpty(p) {
+  return !(p && String(p.text || "").trim()) && !(p && p.updatedBy);
+}
 
-  const dataCol = db.collection("teams").doc(CLUB).collection("data");
-  const notesCol = db.collection("teams").doc(CLUB).collection("matchNotes");
-  const [dataSnap, notesSnap] = await Promise.all([dataCol.get(), notesCol.get()]);
-  const docs = new Map(dataSnap.docs.map((d) => [d.id, d]));
-  /* Their VALUES, not merely their ids: --link-existing has to see whether
-     the coach already answered the first-leg question on each one. */
-  const haveNote = new Map(notesSnap.docs.map((d) => [d.id, d.data() || {}]));
-  const cats = [...new Set(dataSnap.docs
-      .map((d) => d.id.split(Shard.SEP)[1])
-      .filter((c) => c && c !== "none"))];
-  log(`categories  : ${cats.join(", ") || "(none)"}`);
-  log(`existing    : ${haveNote.size} matchNotes documents (never overwritten)`);
+/**
+ * PURE. `state` is what main() read:
+ *   club    clubs/{id} data
+ *   shards  Map docId → parsed blob ({v} docs)
+ *   notes   Map matchId → existing matchNotes data
+ * Returns {creates, updates, summary, sample, report}.
+ */
+function plan(state, opts) {
+  const todayStr = opts.today;
+  const club = state.club || {};
+  const clubName = club.name || "";
+  const start = seasonStart(club.seasonBoundary, todayStr);
+  const haveNote = new Map(state.notes);
+  const blob = (id) => {
+    const v = state.shards.get(id);
+    return v == null ? null : JSON.parse(JSON.stringify(v));
+  };
+  const cats = [...new Set([...state.shards.keys()]
+      .map((id) => id.split(Shard.SEP)[1])
+      .filter((c) => c && c !== "none"))].sort();
 
   /* The author. Every note carries one, and the coach's own name under his
      own note is the difference between a demo and a form with text in it.
@@ -277,34 +242,31 @@ async function main() {
      Xavier Bonet and the uid prefix is not derivable from the club id. */
   let leadUid = "";
   for (const cat of cats) {
-    const users = blobOf(docs.get("fa_users" + Shard.SEP + cat)) || [];
+    const users = blob("fa_users" + Shard.SEP + cat) || [];
     const staff = users.filter((u) => Array.isArray(u.roles) && u.roles.includes("staff"));
     const lead = staff.filter((u) => u.isTeamLead)[0] || staff[0];
     if (lead) { leadUid = String(lead.id || lead.uid || ""); break; }
   }
-  log(`author      : ${leadUid || "(none found — notes will carry no updatedBy)"}`);
 
   /* `boards` may only ever name a board that EXISTS. A chip pointing at a
      deleted board is a dead control on the one screen this is built for. */
   const matchBoards = {};
   for (const cat of cats) {
-    Object.assign(matchBoards,
-        blobOf(docs.get("fa_tactic_match_boards" + Shard.SEP + cat)) || {});
+    Object.assign(matchBoards, blob("fa_tactic_match_boards" + Shard.SEP + cat) || {});
   }
 
-  const writes = [];
+  const creates = [];
   const updates = [];
+  const report = [];
   const summary = {notes: 0, legs: 0, skipped: 0, pre: 0, live: 0, post: 0,
-    videos: 0, linked: 0, dismissed: 0, already: 0};
+    videos: 0, linked: 0, dismissed: 0, already: 0, filled: 0};
   let sample = null;
 
   for (const cat of cats) {
-    rnd = mulberry32(SEED + cat.length); // stable per category
-    const matches = blobOf(docs.get("fa_matches" + Shard.SEP + cat)) || [];
-    const events = blobOf(docs.get("fa_match_events" + Shard.SEP + cat)) || {};
-    if (!matches.length) { log(`\n${cat}: no fixtures — skipped`); continue; }
-
-    step(`${cat} — ${matches.length} fixtures`);
+    const matches = blob("fa_matches" + Shard.SEP + cat) || [];
+    const events = blob("fa_match_events" + Shard.SEP + cat) || {};
+    if (!matches.length) continue;
+    rnd = mulberry32((opts.seed == null ? 20260918 : opts.seed) + cat.length); // stable per category
 
     /* ourSideOf() is EXACT equality on the club name and falls back to
        "away" — deliberately, so a renamed club loses the pairing rather than
@@ -315,53 +277,97 @@ async function main() {
        just be wrong. So refuse rather than write it. */
     const homeCount = matches.filter((m) => U.ourSideOf(m, clubName) === "home").length;
     if (!homeCount) {
-      die(`${cat}: not one of ${matches.length} fixtures has ` +
+      throw new Error(`${cat}: not one of ${matches.length} fixtures has ` +
           `home === "${clubName}".\n` +
           "    The club's `name` does not match its own fixture rows, so every\n" +
           "    note would be written from the wrong side. Fix the name first.");
     }
 
-    /* findFirstLeg pairs within one category AND one team letter, so the
-       whole category's fixtures are the right haystack: amateur-A and
-       amateur-B share fa_matches__amateur and the function itself keeps them
-       apart. Passing the club name is what decides which side is ours. */
-    let legs = 0; let notes = 0; let linked = 0;
+    let legs = 0; let notes = 0; let linked = 0; let filled = 0;
 
     for (const m of matches) {
       if (!m || !m.date || m.date < start) continue;
       const id = String(m.id);
       if (!m.category) continue; // unreadable by everyone — MN.save refuses too
 
+      /* findFirstLeg pairs within one category AND one team letter, so the
+         whole category's fixtures are the right haystack. */
       const first = U.findFirstLeg(m, matches, clubName, start);
+      const played = m.date < todayStr;
+      const ourSide = U.ourSideOf(m, clubName);
+      const rival = U.opponentOf(m, clubName) || "el rival";
+      const atHome = ourSide === "home";
 
-      /* An existing note is never rebuilt. Under --link-existing it may gain
-         the one field the coach was never asked for — see the flag's note. */
+      /* The timestamps are the phase's OWN moment, not the run's: a debrief
+         stamped the same second as the plan is the one detail that gives a
+         seeded note away, and a plan for next Saturday stamped NEXT SATURDAY
+         would render as edited in the future. Hence the clamp. */
+      const stamp = (day, hm) => {
+        const d = day > todayStr ? todayStr : day;
+        return d + "T" + hm + ":00.000Z";
+      };
+      const kickoff = m.time || "18:00";
+      const phases = () => {
+        const ph = {pre: {text: fill(pick(atHome ? PRE_HOME : PRE_AWAY), rival),
+          updatedAt: stamp(dayBefore(m.date), "19:30"), updatedBy: leadUid}};
+        if (played) {
+          const ev = events[id] || [];
+          const goals = (side) => ev.filter((e) =>
+            e && e.type === "goal" && e.side === side).length;
+          const ours = goals(ourSide);
+          const theirs = goals(ourSide === "home" ? "away" : "home");
+          const bank = ours > theirs ? POST_WIN : (ours === theirs ? POST_DRAW : POST_LOSS);
+          // Half time: kick-off plus about three quarters of an hour.
+          if (chance(0.55)) ph.live = {text: pick(LIVE), updatedAt: stamp(m.date, kickoff), updatedBy: leadUid};
+          ph.post = {text: pick(bank), updatedAt: stamp(m.date, "22:15"), updatedBy: leadUid};
+        }
+        return ph;
+      };
+      // One or two links, phase-tagged the way the editor writes them.
+      const videos = () => {
+        const out = [];
+        const nVid = played ? (chance(0.5) ? 2 : 1) : (chance(0.4) ? 1 : 0);
+        for (let i = 0; i < nVid; i++) {
+          const [title, phase] = pick(played ? VIDEO_TITLES : VIDEO_TITLES.slice(0, 2));
+          out.push({id: "mv_demo_" + id + "_" + i, title, url: pick(VIDEO_URLS), comment: "", phase});
+        }
+        return out;
+      };
+
       const existing = haveNote.get(id);
       if (existing) {
         summary.skipped++;
-        if (LINK_EXISTING && first) {
+        const upd = {};
+        if (opts.linkExisting && first) {
           if (existing.firstLegId) summary.already++;
           else if (existing.legDismissed) summary.dismissed++;
-          else {
-            updates.push({ref: notesCol.doc(id),
-              data: {firstLegId: String(first.id)}});
-            summary.linked++;
-            linked++;
-          }
+          else { upd.firstLegId = String(first.id); summary.linked++; linked++; }
         }
+        if (opts.fillEmpty && (played || first)) {
+          const ph = phases();
+          /* `live` only alongside a missing debrief. Half the fixtures have
+             no half-time note on purpose (the 55% above), and re-drawing that
+             on every run would fill them all in a few runs — a note that
+             already has its debrief has had its half-time question asked. */
+          const debriefMissing = phaseIsEmpty(existing.post);
+          ["pre", "live", "post"].forEach((k) => {
+            if (k === "live" && !debriefMissing) return;
+            if (ph[k] && phaseIsEmpty(existing[k])) { upd[k] = ph[k]; summary[k]++; }
+          });
+          if (!Array.isArray(existing.videos) || !existing.videos.length) {
+            const v = videos();
+            if (v.length) { upd.videos = v; summary.videos += v.length; }
+          }
+          if (upd.pre || upd.live || upd.post || upd.videos) { summary.filled++; filled++; }
+        }
+        if (Object.keys(upd).length) updates.push({id, data: upd});
         continue;
       }
-
-      const played = m.date < todayStr;
 
       /* A fixture with neither a first leg nor a history is not worth a
          document: MN.isEmpty() would call it empty, and an empty note is
          noise in the collection and a blank block on the page. */
       if (!first && !played) continue;
-
-      const ourSide = U.ourSideOf(m, clubName);
-      const rival = U.opponentOf(m, clubName) || "el rival";
-      const atHome = ourSide === "home";
 
       const note = {
         matchId: id,
@@ -376,56 +382,10 @@ async function main() {
         legDismissed: false,
       };
       if (first) { legs++; summary.legs++; }
-
-      /* The plan is written BEFORE the match, so an upcoming fixture gets
-         one too — that is the state a coach is actually in when he opens
-         the page during a demo. `live` and `post` only exist afterwards.
-
-         The timestamps are the phase's OWN moment, not the run's: a debrief
-         stamped the same second as the plan is the one detail that gives a
-         seeded note away, and a plan for next Saturday stamped NEXT SATURDAY
-         would render as edited in the future. Hence the clamp. */
-      const stamp = (day, hm) => {
-        const d = day > todayStr ? todayStr : day;
-        return d + "T" + hm + ":00.000Z";
-      };
-      const kickoff = m.time || "18:00";
-      note.pre = {
-        text: fill(pick(atHome ? PRE_HOME : PRE_AWAY), rival),
-        updatedAt: stamp(dayBefore(m.date), "19:30"),
-        updatedBy: leadUid,
-      };
-      summary.pre++;
-
-      if (played) {
-        const ev = events[id] || [];
-        const goals = (side) => ev.filter((e) =>
-          e && e.type === "goal" && e.side === side).length;
-        const ours = goals(ourSide);
-        const theirs = goals(ourSide === "home" ? "away" : "home");
-        const bank = ours > theirs ? POST_WIN : (ours === theirs ? POST_DRAW : POST_LOSS);
-
-        if (chance(0.55)) {
-          // Half time: kick-off plus about three quarters of an hour.
-          note.live = {text: pick(LIVE),
-            updatedAt: stamp(m.date, kickoff), updatedBy: leadUid};
-          summary.live++;
-        }
-        note.post = {text: pick(bank),
-          updatedAt: stamp(m.date, "22:15"), updatedBy: leadUid};
-        summary.post++;
-      }
-
-      // One or two links, phase-tagged the way the editor writes them.
-      const nVid = played ? (chance(0.5) ? 2 : 1) : (chance(0.4) ? 1 : 0);
-      for (let i = 0; i < nVid; i++) {
-        const [title, phase] = pick(played ? VIDEO_TITLES : VIDEO_TITLES.slice(0, 2));
-        note.videos.push({
-          id: "mv_demo_" + id + "_" + i,
-          title, url: pick(VIDEO_URLS), comment: "", phase,
-        });
-        summary.videos++;
-      }
+      const ph = phases();
+      ["pre", "live", "post"].forEach((k) => { if (ph[k]) { note[k] = ph[k]; summary[k]++; } });
+      note.videos = videos();
+      summary.videos += note.videos.length;
 
       const bs = matchBoards[id];
       if (Array.isArray(bs) && bs.length) {
@@ -436,60 +396,102 @@ async function main() {
         })).filter((b) => b.boardId);
       }
 
-      writes.push({ref: notesCol.doc(id), data: note});
+      creates.push({id, data: note});
       haveNote.set(id, note);
       notes++; summary.notes++;
       if (!sample) sample = {m, note, first};
     }
 
-    log(`  notes to create: ${notes}   first-leg links: ${legs}` +
-      (LINK_EXISTING ? `   links added to existing notes: ${linked}` : ""));
+    report.push(`${cat}: notes to create ${notes}, first-leg links ${legs}` +
+      (opts.linkExisting ? `, links added to existing notes ${linked}` : "") +
+      (opts.fillEmpty ? `, existing notes filled ${filled}` : ""));
   }
+  return {creates, updates, summary, sample, report, leadUid, start};
+}
 
-  if (sample) {
+async function main() {
+  const argv = process.argv.slice(2);
+  const has = (f) => argv.includes(f);
+  const val = (f, d) => {
+    const i = argv.indexOf(f);
+    return i !== -1 && argv[i + 1] ? argv[i + 1] : d;
+  };
+  const die = (msg) => { console.error("\nERROR: " + msg + "\n"); process.exit(1); };
+  const log = (s) => console.log(s);
+  const step = (s) => console.log("\n── " + s + " " + "─".repeat(Math.max(0, 56 - s.length)));
+  const APPLY = has("--apply");
+  const CLUB = val("--club", "");
+  const opts = {today: val("--today", new Date().toISOString().slice(0, 10)),
+    seed: Number(val("--seed", "20260918")),
+    linkExisting: has("--link-existing"), fillEmpty: has("--fill-empty")};
+  if (!CLUB) die("--club <id> is required.");
+  if (PROTECTED_CLUBS.has(CLUB)) die(`${CLUB} is a PROTECTED club. This script will not touch it.`);
+
+  const admin = require("firebase-admin");
+  admin.initializeApp({projectId: "esquerrapp"});
+  const db = admin.firestore();
+
+  step("Preflight");
+  const clubSnap = await db.collection("clubs").doc(CLUB).get();
+  if (!clubSnap.exists) die(`clubs/${CLUB} does not exist.`);
+  const club = clubSnap.data() || {};
+  if (club.demoSeed !== true) {
+    die(`clubs/${CLUB} is not stamped demoSeed:true.\n    Only clubs seed-demo-club.js created may be topped up.`);
+  }
+  const dataCol = db.collection("teams").doc(CLUB).collection("data");
+  const notesCol = db.collection("teams").doc(CLUB).collection("matchNotes");
+  const [dataSnap, notesSnap] = await Promise.all([dataCol.get(), notesCol.get()]);
+  const shards = new Map();
+  dataSnap.docs.forEach((d) => {
+    const data = d.data() || {};
+    if (typeof data.v !== "string") return;
+    try { shards.set(d.id, JSON.parse(data.v)); } catch (e) {
+      die(`${d.id} holds unparseable JSON. Inspect it by hand before re-running.`);
+    }
+  });
+  const notes = new Map(notesSnap.docs.map((d) => [d.id, d.data() || {}]));
+
+  let out;
+  try { out = plan({club, shards, notes}, opts); } catch (e) { die(e.message); }
+  log(`club        : ${club.name || "(unnamed)"}`);
+  log(`season      : from ${out.start}   today ${opts.today}`);
+  log(`existing    : ${notes.size} matchNotes documents`);
+  log(`author      : ${out.leadUid || "(none found — notes will carry no updatedBy)"}`);
+  log(`mode        : ${APPLY ? "APPLY (will write)" : "DRY RUN (no writes)"}` +
+    `${opts.linkExisting ? "  +link-existing" : ""}${opts.fillEmpty ? "  +fill-empty" : ""}`);
+  out.report.forEach((r) => log("  " + r));
+
+  if (out.sample) {
     step("Sample (the first note this run would create)");
-    const {m, note, first} = sample;
+    const {m, note, first} = out.sample;
     log(`  ${m.date}  ${m.home} vs ${m.away}   [${note.category}${note.team ? " " + note.team : ""}]`);
     if (first) log(`  anada  → ${first.date}  ${first.home} vs ${first.away}  (id ${first.id})`);
-    else log("  anada  → none (no venue-swapped earlier fixture this season)");
-    ["pre", "live", "post"].forEach((p) => {
-      if (note[p].text) log(`  ${p.padEnd(5)}: ${note[p].text}`);
-    });
-    note.videos.forEach((v) => log(`  video: [${v.phase}] ${v.title}`));
+    ["pre", "live", "post"].forEach((p) => { if (note[p].text) log(`  ${p.padEnd(5)}: ${note[p].text}`); });
   }
 
+  const S = out.summary;
   step("Summary");
-  log(`  matchNotes to create  : ${summary.notes}`);
-  log(`  first-leg links       : ${summary.legs}   ← these render the anada briefing`);
-  log(`  pre / live / post     : ${summary.pre} / ${summary.live} / ${summary.post}`);
-  log(`  video links           : ${summary.videos}`);
-  log(`  left alone (existing) : ${summary.skipped}`);
-  if (LINK_EXISTING) {
-    log(`  --link-existing:`);
-    log(`    firstLegId added    : ${summary.linked}   ← one field, nothing else touched`);
-    log(`    already linked      : ${summary.already}`);
-    log(`    declined by coach   : ${summary.dismissed}   (legDismissed — never overridden)`);
-  } else if (summary.skipped) {
-    log(`\n  ${summary.skipped} existing notes were skipped entirely. If the fixtures you`);
-    log("  demo are missing their anada briefing, re-run with --link-existing:");
-    log("  it adds firstLegId to notes the coach was never asked about, and");
-    log("  changes nothing else on them.");
+  log(`  matchNotes to create  : ${S.notes}`);
+  log(`  first-leg links       : ${S.legs}   ← these render the anada briefing`);
+  log(`  pre / live / post     : ${S.pre} / ${S.live} / ${S.post}`);
+  log(`  video links           : ${S.videos}`);
+  log(`  existing notes        : ${S.skipped}`);
+  if (opts.linkExisting) {
+    log(`    firstLegId added    : ${S.linked}   (already ${S.already}, declined ${S.dismissed})`);
   }
+  if (opts.fillEmpty) log(`    filled in           : ${S.filled}   ← empty, unauthored phases only`);
 
-  if (!APPLY) {
-    log("\nDRY RUN — nothing was written. Re-run with --apply to commit.");
-    return;
-  }
+  if (!APPLY) { log("\nDRY RUN — nothing was written. Re-run with --apply to commit."); return; }
 
   step("Writing");
   const CHUNK = 400; // well inside the 500-op batch limit
-  for (let i = 0; i < writes.length; i += CHUNK) {
+  for (let i = 0; i < out.creates.length; i += CHUNK) {
     const batch = db.batch();
     /* create(), not set() — the read above and the write below are not one
        transaction, and a coach typing a note from a demo login in between
        must win. create() throws on a doc that appeared meanwhile; set()
        would silently flatten it. */
-    writes.slice(i, i + CHUNK).forEach((w) => batch.create(w.ref, w.data));
+    out.creates.slice(i, i + CHUNK).forEach((w) => batch.create(notesCol.doc(w.id), w.data));
     try {
       await batch.commit();
     } catch (e) {
@@ -501,17 +503,15 @@ async function main() {
       throw e;
     }
   }
-  log(`  ${writes.length} matchNotes documents created`);
+  log(`  ${out.creates.length} matchNotes documents created`);
 
   /* update(), never set(merge:true). Both would leave the other fields
      alone, but update() also REFUSES a document that has gone away, and
      that is the difference worth having: a note deleted between the read
-     and the write must not be resurrected as a stub holding nothing but a
-     firstLegId, which is a document the UI would render as an empty notes
-     block a coach cannot account for. */
-  for (let i = 0; i < updates.length; i += CHUNK) {
+     and the write must not be resurrected as a stub. */
+  for (let i = 0; i < out.updates.length; i += CHUNK) {
     const batch = db.batch();
-    updates.slice(i, i + CHUNK).forEach((u) => batch.update(u.ref, u.data));
+    out.updates.slice(i, i + CHUNK).forEach((u) => batch.update(notesCol.doc(u.id), u.data));
     try {
       await batch.commit();
     } catch (e) {
@@ -523,9 +523,12 @@ async function main() {
       throw e;
     }
   }
-  if (updates.length) log(`  ${updates.length} existing notes gained a firstLegId`);
-
-  log("\nDone. Open any fixture from matchday 18 on to see the anada briefing.");
+  if (out.updates.length) log(`  ${out.updates.length} existing notes updated`);
+  log("\nDone.");
 }
 
-main().catch((e) => die(e.message));
+if (require.main === module) {
+  main().catch((e) => { console.error("\nERROR: " + e.message + "\n"); process.exit(1); });
+}
+
+module.exports = {plan, phaseIsEmpty, PROTECTED_CLUBS};

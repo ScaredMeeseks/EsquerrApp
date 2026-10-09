@@ -12559,3 +12559,58 @@ held a literal BACKSPACE byte (0x08) where `\b` was meant — the mangling CLAUD
 guard's `name.` shape could never match (so `logger`, used only as `logger.info(…)`, read as an
 invented stub), and `!/\.reg2-pop<BS>/` could never fail. Both now `\b`; both still pass on the real
 code. Unit 3798 → **3815**, functions 113.
+
+### 2026-10-09 — The demo club topped up to today: four scripts, one of them a fix (scripts only, no version bump)
+
+Owner's ask: Sant Andreu (`Tm96gel58VSQvxgynf45`) with every player's RPE, goals, assists, cards,
+injuries, results and events, coach comments, trainings and metrics, up to today. Read first
+(REST, read-only): RPE and availability stopped at 09-17, three fixtures past but `upcoming`,
+`playerMetrics` empty, 3 of 138 sessions with a plan, most recent notes empty stubs.
+
+- **`topup-demo-season.js` rewritten around a pure `plan()`.** ⚠ **It had been building every
+  call-up from `players.slice(0, 18)` of the CATEGORY shard**, which lists Amateur B first — so the
+  Amateur A fixtures of 08-08, 08-15, 09-05 and 09-12 were played by eighteen B players, goals and
+  match RPE included. Now: the fixture's own squad, the seeder's model (match availability, 2 GK +
+  16, 4-3-3 by position, assists by position weight, cards both ways, 7% red, 3 subs, score derived
+  from events, match RPE from the events' minutes). `--repair-cross-squad` rebuilt the four
+  fixtures and deleted only the match RPE with `source:'topup'`. **Injuries first**: the 8 seeded
+  cases still "active" two months past their expected return (8 players `injured` with no RPE since
+  July) are closed INSIDE the gap — never before the player's own last `injured` answer — with a
+  discharge note; each squad with no case in 3 weeks gets 2 resolved, 1 recovering, 2 active, each
+  with a coach's note; `fa_injury_notes`/`fa_injury_zone`/roster fitness follow. The gap starts
+  after the newest SCRIPT-written answer (`source` seed/topup), so one real answer next week cannot
+  move it.
+- ⚠ **Availability and training RPE are written under the SESSION key now** (`{uid}_{sessionId}`,
+  `{uid}_training_{sessionId}` — `recordKey`). The coach's session page (`staff-training-detail`,
+  js/app.js ~26147) reads `availData[recordKey(...)]` with **no legacy fallback**, so every
+  date-keyed answer (the seeder's and every earlier top-up's) shows **N/A** there while the bar
+  above it counts them. Today's 831 records were re-keyed; the older seeded ones still read N/A on
+  that one page — an app inconsistency, not fixed here.
+- **`topup-demo-extras.js --fill-empty`** (also refactored to a pure `plan()`): fills a phase only
+  when it has no text AND no `updatedBy`; videos only on a note with none; `live` only alongside a
+  missing debrief, or re-runs would keep re-drawing the 55%. 49 notes filled.
+- **New `topup-demo-plans.js`**: 27 sessions (09-15 → +21 days) get a plan in `stdPlan` shape —
+  warm-up, rondo, the session's focus, game, cool-down (90′) — bib teams from players called AND
+  fit (looking FORWARD: an open case keeps a player out until its expected return), petos, duty,
+  material, `plannedRpe`, `endTime`. No `boardId`: the library holds only test boards.
+- **New `topup-demo-metrics.js`**: CMJ / Sprint 30 m / Yo-Yo IR1 in each squad's
+  `fa_metric_catalog`, and 2869 `playerMetrics` for 76 players — weight every second Monday (misses
+  from a hash of uid+date, so a re-run cannot fill them), height once (Juvenil twice), tests at the
+  first session of each month, skipping the injured.
+
+All four are dry-run by default, refuse non-`demoSeed`/protected clubs, and a second run over the
+first's result writes nothing (each has a test for exactly that). Run locally with a temporary
+`authorized_user` ADC from the CLI's marna96 refresh token; a JSON backup of every data shard,
+note and match RPE was taken before the writes. Checked in the real app (headless Chrome over CDP,
+demo coach on localhost): Inici, Plantilla, Mèdic, Partit, a planned session.
+
+⚠ **Not fixed, found on the way:** `computePlayerMatchStats` (js/app.js ~3804) counts a fixture as
+the player's own when the team LETTER matches and ignores the category, so a Juvenil A player's
+"Partits" includes every Amateur A fixture (62 = 31 + 31 on the demo).
+
+`test/topup-demo.test.js` (47): squad by team, no self-assist over 300 fixtures, injured never
+called, score = the app's own `calcMatchScore`, keys = the app's own `recordKey`, plans through the
+app's real `stdPlan`, slugs = the app's `plmSlug`, records = db.js `toEntry`'s fields. Mutations:
+season 27/27, extras 9/9, plans 11/11, metrics 12/13 (the survivor is equivalent). ⚠ The mutation
+runner now refuses to start unless the unmutated suite passes: one round "killed" 9/9 because a
+quoting slip had broken the test file's syntax. Unit 3815 → **3862**.
