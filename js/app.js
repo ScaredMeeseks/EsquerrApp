@@ -2019,6 +2019,12 @@
     'cfg.members':        { ca:'Membres', es:'Miembros', en:'Members' },
     'cfg.since':          { ca:'des de', es:'desde', en:'since' },
     'cfg.copy_code':      { ca:'Copiar codi', es:'Copiar código', en:'Copy code' },
+    // Superadmin club visit (v281) — see visitClub().
+    'cfg.open_club':      { ca:'Obrir', es:'Abrir', en:'Open' },
+    'cfg.su_no_club':     { ca:'No ets membre de cap club. Obre\'n un des de la taula de clubs.', es:'No eres miembro de ningún club. Abre uno desde la tabla de clubes.', en:'You are not a member of any club. Open one from the clubs table.' },
+    'visit.banner':       { ca:'Estàs veient {club} com a superadmin', es:'Estás viendo {club} como superadmin', en:'You are viewing {club} as superadmin' },
+    'visit.back':         { ca:'Tornar a {club}', es:'Volver a {club}', en:'Back to {club}' },
+    'visit.back_none':    { ca:'Tornar', es:'Volver', en:'Back' },
     'cfg.new_club_sub':   { ca:'Neix buit, amb el responsable i el codi de registre ja posats.', es:'Nace vacío, con el responsable y el código de registro ya puestos.', en:'It starts empty, with its lead and join code already set.' },
     'cfg.create_club':    { ca:'Crea el club', es:'Crea el club', en:'Create the club' },
     'cfg.create_club_hint':{ ca:'Cal el nom i el correu del responsable.', es:'Hacen falta el nombre y el correo del responsable.', en:'The name and the lead\'s address are required.' },
@@ -2866,6 +2872,11 @@
         profile.profilePic = '';
       }
       db.collection('users').doc(auth.currentUser.uid).set(profile, { merge: true }).catch(console.error);
+      /* Visiting another club (v281): fa_users is THAT club's member list,
+         and the superadmin is not one of its members. Pushing the session
+         in would put them on its rosters — the profile above is all a
+         visit may write. */
+      if (_visitHome) return;
       // Also update localStorage for compat with roster/availability code
       let users = getUsers();
       // Remove any duplicates by same id OR same email
@@ -2888,6 +2899,90 @@
        clamps to getVisibleCategories() so a stale value was never a leak,
        but "Totes" would have carried over as a filter nobody selected. */
     _viewCategory = null;
+    _visitHome = null;
+  }
+
+  /* ── Superadmin club visit (v281) ──────────────────────────────
+     The superadmin opens any club from the Clubs table WITHOUT joining it.
+     Until v281 the only way into a club was to belong to it, and a user
+     belongs to exactly one: creating C.E. Europa with the superadmin as its
+     responsable re-pointed users/{uid}.teamId away from Esquerra, and handing
+     Europa to its real lead then left the superadmin in no club at all —
+     with Configuració, the one page that lists the clubs, refusing to render.
+
+     A visit swaps the IN-MEMORY session only. users/{uid}, the custom claims
+     and the club's member list never hear of it, and a reload ends it. The
+     rules already let isSuperUser() read and write every club, so nothing
+     server-side is involved. `_visitHome` holds the home membership while a
+     visit is on; null means not visiting. */
+  let _visitHome = null;
+  const VISIT_FIELDS = ['teamId', 'roles', 'isTeamLead', 'staffCategories',
+    'staffRole', 'category', 'team'];
+
+  function hasClub(teamId) {
+    return !!teamId && teamId !== 'none' && teamId !== 'default';
+  }
+
+  async function visitClub(clubId) {
+    const s = getSession();
+    if (!s || !s.isAdmin || !clubId) return;
+    const home = _visitHome ? _visitHome.teamId : s.teamId;
+    if (clubId === home) return leaveVisit();
+    if (!_visitHome) {
+      const saved = { clubName: hasClub(s.teamId) && _clubConfig ? (_clubConfig.name || '') : '' };
+      VISIT_FIELDS.forEach((f) => { saved[f] = Array.isArray(s[f]) ? s[f].slice() : s[f]; });
+      _visitHome = saved;
+    }
+    /* Staff on no list of their own: every staff page shows, and
+       getVisibleCategories() hands an isAdmin session every enabled
+       category. NOT isTeamLead — navigate() would send a lead into this
+       club's first-run setup or its over-quota screen, which are the real
+       lead's to resolve. */
+    Object.assign(s, {
+      teamId: clubId, roles: ['staff'], isTeamLead: false,
+      staffCategories: [], staffRole: '', category: '', team: ''
+    });
+    _currentSession = s;
+    _viewCategory = null;
+    _viewSquad = 'all';
+    try {
+      await loadClubConfig(clubId);
+      await DB.init(clubId, getVisibleCategories());
+    } catch (e) {
+      // Half a visit is worse than none: go home, then report.
+      await leaveVisit();
+      throw e;
+    }
+    navigate('staff-home');
+  }
+
+  async function leaveVisit() {
+    const s = getSession();
+    if (!s || !_visitHome) return;
+    VISIT_FIELDS.forEach((f) => { s[f] = _visitHome[f]; });
+    _visitHome = null;
+    _currentSession = s;
+    _viewCategory = null;
+    _viewSquad = 'all';
+    await loadClubConfig(s.teamId);   // 'none' clears the config
+    if (hasClub(s.teamId)) await DB.init(s.teamId, getVisibleCategories());
+    else DB.flush();
+    navigate('settings');
+  }
+
+  /** The strip that says whose club this is while visiting, and the way back. */
+  function renderVisitBanner() {
+    if (!_visitHome) return '';
+    const name = (_clubConfig && _clubConfig.name) || '';
+    const back = _visitHome.clubName
+      ? t('visit.back').replace('{club}', sanitize(_visitHome.clubName))
+      : sanitize(t('visit.back_none'));
+    return '<div class="upd-banner visit-banner">' +
+      '<span class="upd-text">' +
+        t('visit.banner').replace('{club}', '<b>' + sanitize(name) + '</b>') + '</span>' +
+      // The push soft-ask's button: the one action a banner of this kind offers.
+      '<button class="upd-link push-ask-btn" id="visit-back">' + back + '</button>' +
+      '</div>';
   }
 
   // ---------- View switching ----------
@@ -2946,7 +3041,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 280;
+  const APP_VERSION = 281;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3489,36 +3584,42 @@
     pruneStaleLeagueCache();
     setSeasonBoundary(_clubConfig && _clubConfig.seasonBoundary);
     if (_clubConfig) _clubConfig.rosters = await loadRosters(clubId, _clubConfig);
-    // Update splash badge and cache image as base64 for instant next load
-    var splashImg = document.getElementById('splash-badge');
-    if (_clubConfig && _clubConfig.badgeUrl) {
-      if (splashImg) { splashImg.src = _clubConfig.badgeUrl; splashImg.style.visibility = ''; }
-      // Cache base64 version if URL changed
-      if (localStorage.getItem('_splash_badge_url') !== _clubConfig.badgeUrl) {
-        /* The URL first, so the crest and tab icon are this club's straight
-           away; the data URL replaces it when (if) the fetch succeeds. */
-        var badgeUrl = _clubConfig.badgeUrl;
-        localStorage.setItem('_splash_badge', badgeUrl);
-        localStorage.setItem('_splash_badge_url', badgeUrl);
-        try {
-          var resp = await fetch(badgeUrl);
-          var blob = await resp.blob();
-          var reader = new FileReader();
-          reader.onloadend = function () {
-            if (localStorage.getItem('_splash_badge_url') !== badgeUrl) return;
-            localStorage.setItem('_splash_badge', reader.result);
-            paintCrest();
-          };
-          reader.readAsDataURL(blob);
-        } catch (e) { /* the URL form is already cached */ }
+    /* The device's crest and club name belong to the HOME club (v281). The
+       splash and the sign-in screen read them before anyone is signed in, so
+       a superadmin who reloads mid-visit must not find the visited club's
+       there — and skipping the crest download keeps a visit quicker. */
+    if (!_visitHome) {
+      // Update splash badge and cache image as base64 for instant next load
+      var splashImg = document.getElementById('splash-badge');
+      if (_clubConfig && _clubConfig.badgeUrl) {
+        if (splashImg) { splashImg.src = _clubConfig.badgeUrl; splashImg.style.visibility = ''; }
+        // Cache base64 version if URL changed
+        if (localStorage.getItem('_splash_badge_url') !== _clubConfig.badgeUrl) {
+          /* The URL first, so the crest and tab icon are this club's straight
+             away; the data URL replaces it when (if) the fetch succeeds. */
+          var badgeUrl = _clubConfig.badgeUrl;
+          localStorage.setItem('_splash_badge', badgeUrl);
+          localStorage.setItem('_splash_badge_url', badgeUrl);
+          try {
+            var resp = await fetch(badgeUrl);
+            var blob = await resp.blob();
+            var reader = new FileReader();
+            reader.onloadend = function () {
+              if (localStorage.getItem('_splash_badge_url') !== badgeUrl) return;
+              localStorage.setItem('_splash_badge', reader.result);
+              paintCrest();
+            };
+            reader.readAsDataURL(blob);
+          } catch (e) { /* the URL form is already cached */ }
+        }
+      } else if (_clubConfig) {
+        // A club with no crest must not go on showing the previous club's.
+        localStorage.removeItem('_splash_badge');
+        localStorage.removeItem('_splash_badge_url');
       }
-    } else if (_clubConfig) {
-      // A club with no crest must not go on showing the previous club's.
-      localStorage.removeItem('_splash_badge');
-      localStorage.removeItem('_splash_badge_url');
+      if (_clubConfig && _clubConfig.name) localStorage.setItem('_splash_club_name', _clubConfig.name);
+      paintCrest();
     }
-    if (_clubConfig && _clubConfig.name) localStorage.setItem('_splash_club_name', _clubConfig.name);
-    paintCrest();
     // Enabled categories are part of the visible set, so the scope moves
     // with the config as well as with the session.
     syncDbScope();
@@ -7441,6 +7542,13 @@
     if (LEAD_PAGES.has(currentPage) && !session.isAdmin && !session.isTeamLead) {
       currentPage = fallbackPage();
     }
+    /* A superadmin in no club (v281). Every other page reads a club that is
+       not loaded; Configuració holds the Clubs table, and the board pages
+       edit the platform library, which belongs to no club. */
+    if (session.isAdmin && !hasClub(session.teamId) &&
+        ['settings', 'admin-boards', 'tactics'].indexOf(currentPage) === -1) {
+      currentPage = 'settings';
+    }
 
     // Recorded AFTER the role checks above, which can redirect: the page we
     // came from is the one that actually rendered, not the one requested.
@@ -7531,7 +7639,7 @@
          category, and hiding them is the one thing it must never do. */
       var CATEGORY_PAGES = new Set(['staff-home', 'registrations', 'calendar', 'convocatoria', 'manage-roster', 'medical', 'player-home', 'player-actions', 'sancions', 'staff-notifications', 'users']);
       var catBar = CATEGORY_PAGES.has(currentPage) ? renderCategoryBar() : '';
-      content.innerHTML = renderUpdateBanner() + renderPushBanner() +
+      content.innerHTML = renderVisitBanner() + renderUpdateBanner() + renderPushBanner() +
         renderIosInstallBanner() + catBar + fn(session);
     } else {
       content.innerHTML = '<div class="empty-state"><div class="empty-icon">🚧</div><p>' + t('empty.page_not_found') + '</p></div>';
@@ -34394,6 +34502,20 @@
   function renderConfiguracio() {
     const session = getSession();
     if (!session) return '';
+    /* The superadmin in no club still manages the platform from here (v281).
+       This early return used to cover them too, so the Clubs table — the
+       one list of every club — was unreachable exactly when they needed it
+       to get back into one. The Clubs panel alone: no other tab has a club
+       to show, and with no save bar nothing can collect an empty form. */
+    if (!_clubConfig && session.isAdmin) {
+      _cfgTab = 'clubs';
+      return '<div class="cfg-page" data-cfg-active="clubs"><div class="cfg-hero"><div class="cfg-hero-l">' +
+        '<h1 class="cfg-h1">' + t('page.settings') + '</h1>' +
+        '<div class="cfg-hero-sub">' + t('cfg.su_no_club') + '</div></div></div>' +
+        '<div class="cfg-body"><div class="cfg-main">' +
+          '<section class="cfg-panel" data-cfg-panel="clubs">' + _cfgClubsHtml() + '</section>' +
+        '</div></div></div>';
+    }
     if (!_clubConfig) {
       return '<div class="cfg-page"><div class="cfg-hero"><div class="cfg-hero-l">' +
         '<h1 class="cfg-h1">' + t('page.settings') + '</h1>' +
@@ -34488,6 +34610,8 @@
       }));
 
       let rows = '';
+      // The club on screen right now: "Obrir" on its own row does nothing.
+      const here = (getSession() || {}).teamId;
       snap.forEach(d => {
         const c = d.data();
         const code = codeByClub[d.id] || '—';
@@ -34527,6 +34651,7 @@
                    title="${t('club.feature_board3d')}">
           </td>
           <td class="cfg-cl-act">
+            <button class="btn btn-small btn-outline btn-open-club" data-club="${d.id}"${d.id === here ? ' disabled' : ''}>${t('cfg.open_club')}</button>
             <button class="btn btn-small btn-outline btn-copy-code" data-code="${sanitize(code)}" title="${t('cfg.copy_code')}">📋</button>
             <button class="btn btn-small btn-primary btn-save-lead" data-club="${d.id}" title="${t('club.change_lead')}" disabled>💾</button>
           </td>
@@ -34559,6 +34684,26 @@
          maxTeams, `features` is commercial and the rules refuse a
          client write, so the callable is the only sanctioned writer —
          and it logs who flipped it. */
+      /* Open a club without joining it (v281) — see visitClub(). */
+      listEl.querySelectorAll('.btn-open-club').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          /* A switch downloads a whole club — seconds on a big one — and the
+             page does not change until it is done. Spin the pressed button,
+             and hold the others so a second click cannot start a second
+             switch underneath the first. */
+          var all = listEl.querySelectorAll('.btn-open-club');
+          var was = [];
+          all.forEach(function (b) { was.push(b.disabled); b.disabled = true; });
+          var label = btn.innerHTML;
+          btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>' + label;
+          visitClub(btn.dataset.club).catch(function (err) {
+            console.error('visitClub failed:', err);
+            all.forEach(function (b, i) { b.disabled = was[i]; });
+            btn.innerHTML = label;
+            _showPushToast(t('save.sync_title'), t('save.error'));
+          });
+        });
+      });
       listEl.querySelectorAll('.club-feature-3d').forEach(function (box) {
         box.addEventListener('change', function () {
           box.disabled = true;
@@ -40790,15 +40935,32 @@
           resultEl.hidden = false;
           nameEl.value = ''; emailEl.value = ''; badgeEl.value = '';
           if (townEl) townEl.value = '';
-          // If the superuser is also the team lead, auto-join them to this club
+          /* Join the new club ONLY when the superadmin belongs to none (v281).
+             A user has one teamId, so joining here used to MOVE them: that is
+             how creating C.E. Europa took the superadmin out of Esquerra, and
+             handing Europa to its real lead then left them in no club at
+             all. A club of their own is never given up any more — the Clubs
+             table opens any club without joining it (visitClub).
+             And through joinClub rather than a raw users/{uid} write, which
+             left the custom claims on the old club. */
           var sess = getSession();
-          if (sess && club.leadEmail === (sess.email || '').toLowerCase()) {
-            sess.teamId = club.id;
-            sess.isTeamLead = true;
+          if (sess && !_visitHome && !hasClub(sess.teamId) &&
+              club.leadEmail === (sess.email || '').toLowerCase()) {
+            const joinFn = firebase.app().functions('us-central1').httpsCallable('joinClub');
+            const joined = (await joinFn({ code: club.code })).data || {};
+            Object.assign(sess, {
+              teamId: joined.clubId || club.id,
+              isTeamLead: !!joined.isTeamLead,
+              roles: joined.roles || [],
+              category: joined.category || '',
+              team: joined.team || '',
+              staffCategories: joined.staffCategories || [],
+              staffRole: joined.staffRole || ''
+            });
             _currentSession = sess;  // update in-memory immediately
-            await db.collection('users').doc(sess.id).set({ teamId: club.id, isTeamLead: true }, { merge: true });
-            await loadClubConfig(club.id);
-            await DB.init(club.id, getVisibleCategories());
+            try { await auth.currentUser.getIdToken(true); } catch (tokenErr) { console.warn('Token refresh failed:', tokenErr); }
+            await loadClubConfig(sess.teamId);
+            await DB.init(sess.teamId, getVisibleCategories());
           }
           _loadClubList();
           // Re-render so the new club appears in the hero and the rail.
@@ -40825,6 +40987,15 @@
         /* Notification soft-ask. THE tap that carries the user gesture into
            Notification.requestPermission() — the whole reason this banner
            exists rather than asking on login. */
+        // The visit banner's way back to the superadmin's own club (v281).
+        const visitBack = e.target.closest('#visit-back');
+        if (visitBack) {
+          // The home club downloads before the page changes — spin meanwhile.
+          visitBack.disabled = true;
+          visitBack.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>' + visitBack.innerHTML;
+          leaveVisit().catch((err) => { console.error('leaveVisit failed:', err); });
+          return;
+        }
         if (e.target.closest('#push-ask')) {
           const bar = e.target.closest('.upd-banner');
           Push.requestPermission()
@@ -41220,6 +41391,26 @@
               const claimTeam = res.claims.teamId;
               const s = getSession();
               if (!s) return;
+              /* Visiting another club (v281): the change is to the HOME
+                 membership. Keep it for the way back and leave the visit
+                 alone — re-pointing here would yank the superadmin out of
+                 the club on screen, and the same-club branch below would
+                 hand the visit their home roles. */
+              if (_visitHome) {
+                const h = doc.data();
+                const homeTeam = hasClub(h.teamId) ? h.teamId : 'none';
+                // A different home club: its name is not loaded, so the way
+                // back says just "Tornar" rather than the old club's name.
+                if (homeTeam !== _visitHome.teamId) _visitHome.clubName = '';
+                _visitHome.teamId = homeTeam;
+                _visitHome.isTeamLead = h.isTeamLead === true;
+                _visitHome.roles = Array.isArray(h.roles) ? h.roles : [];
+                _visitHome.staffCategories = Array.isArray(h.staffCategories) ? h.staffCategories : [];
+                _visitHome.staffRole = typeof h.staffRole === 'string' ? h.staffRole : '';
+                _visitHome.category = h.category || '';
+                _visitHome.team = h.team || '';
+                return;
+              }
               if (claimTeam && s.teamId !== claimTeam) {
                 s.teamId = claimTeam;
                 _currentSession = s;

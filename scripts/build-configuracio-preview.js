@@ -174,7 +174,8 @@ function render(over) {
     CATEGORY_ORDER: ['amateur', 'juvenil', 'cadet', 'infantil', 'alevi', 'benjami'],
     CATEGORY_LABELS: { amateur: 'Amateur', juvenil: 'Juvenil', cadet: 'Cadet',
       infantil: 'Infantil', alevi: 'Aleví', benjami: 'Benjamí' },
-    _clubConfig: club,
+    // `noClub`: the superadmin in no club (v281), which renders with no config.
+    _clubConfig: (over && over.noClub) ? null : club,
     currentPage: 'settings',
     getSession: () => session,
     /* Steps a frame performs on the mounted page before it is serialised —
@@ -254,7 +255,8 @@ function render(over) {
     const host = document.getElementById('dashboard-content');
     host.innerHTML = renderConfiguracio();
     const page = host.querySelector('.cfg-page');
-    if (page) _tsMount(page);
+    // Gated like the real binder, which mounts only when a club is loaded.
+    if (page && _clubConfig) _tsMount(page);
     act(host, window);
     if (host.querySelector('#club-list')) await _loadClubList();
     /* ⚠ REFLECT LIVE VALUES INTO ATTRIBUTES BEFORE SERIALISING.
@@ -319,6 +321,11 @@ const superadmin = await render({ session: { isAdmin: true }, tab: 'clubs' });
 /* The Club tab as the SUPERADMIN sees it — the only place the crest editor
    is rendered, so without this frame that control is never looked at. */
 const superClub = await render({ session: { isAdmin: true }, tab: 'club' });
+/* v281: the superadmin in NO club still gets the Clubs table — the page used
+   to stop at a bare "not linked" notice, which hid every club from them. */
+const superNoClub = await render({ session: { isAdmin: true, teamId: 'none' }, noClub: true });
+assert.ok(/id="club-list"/.test(superNoClub) && /btn-open-club/.test(superNoClub),
+    'the superadmin in no club has no club table');
 assert.ok(/cfg-crest-edit/.test(superClub), 'the crest editor is missing for the superadmin');
 
 /* The rules this page exists to enforce, asserted here too so the mockup can
@@ -345,6 +352,7 @@ assert.strictEqual((lead.match(/ts-kit-block/g) || []).length, 2, 'kit count mov
 frames.forEach(([label, h]) => assertNoRawKeys(h, label));
 assertNoRawKeys(superadmin, 'superadmin');
 assertNoRawKeys(superClub, 'superadmin club tab');
+assertNoRawKeys(superNoClub, 'superadmin in no club');
 assert.ok(/cfg-dot-bad/.test(lead), 'the rail does not flag the squad with no session');
 assert.ok(/Cadet A/.test(lead), 'the rail does not name the squad with no session');
 /* The kit names are set as a PROPERTY by the real builder; if the reflection
@@ -389,6 +397,8 @@ ${frames.map(([label, h], i) =>
 <div class="mock-shell">${superClub}</div>
 <div class="mock-h">${frames.length + 2} · superadmin — la pestanya Clubs · superadmin</div>
 <div class="mock-shell">${superadmin}</div>
+<div class="mock-h">${frames.length + 3} · superadmin sense cap club — només la pestanya Clubs (v281)</div>
+<div class="mock-shell">${superNoClub}</div>
 </body>
 </html>
 `;

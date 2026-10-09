@@ -140,12 +140,15 @@ describe('login — paintCrest', () => {
 });
 
 describe('login — the crest cache (loadClubConfig)', () => {
-  function run(club, cache) {
+  /* `visiting`: a superadmin visiting another club (v281), whose home club's
+     cache must survive the visit. */
+  function run(club, cache, visiting) {
     const {w, api} = page(cache);
     let fetched = 0;
     // eslint-disable-next-line no-new-func
     const load = new Function('document', 'localStorage', 'paintCrest', 'getClub', 'fetch', 'FileReader',
         'let _clubConfig = null;' +
+        'let _visitHome = ' + (visiting ? '{ teamId: "club1" }' : 'null') + ';' +
         'const pruneStaleLeagueCache = () => {}; const setSeasonBoundary = () => {};' +
         'const syncDbScope = () => {}; const loadRosters = async () => ({});' +
         grab('  async function loadClubConfig(clubId) {', '  // Get the club display name') +
@@ -172,6 +175,20 @@ describe('login — the crest cache (loadClubConfig)', () => {
     assert.strictEqual(r.w.localStorage.getItem('_splash_club_name'), 'C.F. Nou');
     const img = r.w.document.querySelector('#view-login img[data-crest]');
     assert.ok(img.hidden && !img.getAttribute('src'));
+  });
+
+  /* v281. The superadmin opening another club from the Clubs table: the
+     visited club is on screen, but the device still belongs to the home
+     club — a reload mid-visit must find the home crest on the sign-in screen. */
+  it('a superadmin VISITING another club leaves the home club\'s cache alone', async () => {
+    const r = run({name: 'C.E. Europa', badgeUrl: 'https://x/europa.png'},
+        {_splash_badge: BADGE, _splash_badge_url: 'https://old', _splash_club_name: CLUB}, true);
+    const cfg = await r.load('club2');
+    assert.strictEqual(cfg.name, 'C.E. Europa', 'the visited club was not loaded');
+    assert.strictEqual(r.w.localStorage.getItem('_splash_badge'), BADGE);
+    assert.strictEqual(r.w.localStorage.getItem('_splash_badge_url'), 'https://old');
+    assert.strictEqual(r.w.localStorage.getItem('_splash_club_name'), CLUB);
+    assert.strictEqual(r.fetched(), 0, 'it downloaded the visited club\'s crest');
   });
 
   it('signing out (no club) leaves the cache alone', async () => {

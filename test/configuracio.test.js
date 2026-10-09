@@ -124,7 +124,8 @@ function render(over) {
     CATEGORY_ORDER: ['amateur', 'juvenil', 'cadet', 'infantil', 'alevi', 'benjami'],
     CATEGORY_LABELS: { amateur: 'Amateur', juvenil: 'Juvenil', cadet: 'Cadet',
       infantil: 'Infantil', alevi: 'Aleví', benjami: 'Benjamí' },
-    _clubConfig: club,
+    // `noClub`: a session in no club, which renders with no config at all.
+    _clubConfig: (over && over.noClub) ? null : club,
     currentPage: 'settings',
     getSession: () => session,
     sanitize: esc,
@@ -184,7 +185,8 @@ function render(over) {
     }
     host.innerHTML = renderConfiguracio();
     const page = host.querySelector('.cfg-page');
-    if (page) _tsMount(page);
+    // Gated like the real binder, which mounts only when a club is loaded.
+    if (page && _clubConfig) _tsMount(page);
     return { host: host, api: {
       collectReminders: _collectRemindersFromDom,
       collectKits: _collectKitsFromDom,
@@ -402,6 +404,30 @@ describe('Configuració — what each role may see and write', () => {
     const { host } = render({ session: { isAdmin: true }, tab: 'clubs' });
     assert.ok(host.querySelector('[data-cfg-tab="clubs"]'), 'the superadmin has no Clubs tab');
     assert.ok(host.querySelector('#club-list'), 'the superadmin has no club table mount point');
+  });
+
+  /* v281. A superadmin in NO club. This page used to return a bare "not
+     linked" notice before building any tab, which hid the one table that
+     lists every club exactly when the superadmin needed it to get back in. */
+  it('shows the superadmin the Clubs table even with no club', () => {
+    const { host, errors } = render({ session: { isAdmin: true, teamId: 'none' }, noClub: true });
+    assert.strictEqual(errors.length, 0, 'errors during render: ' + errors.join(' | '));
+    const page = host.querySelector('.cfg-page');
+    assert.ok(page, 'no page at all');
+    assert.strictEqual(page.dataset.cfgActive, 'clubs', 'the Clubs panel is not the one showing');
+    assert.ok(page.querySelector('.cfg-panel[data-cfg-panel="clubs"] #club-list'),
+        'no club table mount point inside the Clubs panel');
+    assert.ok(page.querySelector('#btn-create-club'), 'no way to create a club');
+    assert.strictEqual(page.querySelectorAll('.cfg-panel').length, 1,
+        'panels for a club that is not loaded');
+    assert.ok(!page.querySelector('#btn-save-team-setup'), 'a save bar with no club to save into');
+    assert.ok(page.textContent.includes(CA['cfg.su_no_club']), 'nothing says why the page is short');
+  });
+
+  it('still tells anyone else in no club only that they are not linked', () => {
+    const { host } = render({ session: { teamId: 'none', isTeamLead: false }, noClub: true });
+    assert.ok(!host.querySelector('#club-list'), 'a member with no club is served the club table');
+    assert.ok(host.textContent.includes(CA['settings.cat_no_club']));
   });
 
   /* firestore.rules lets a lead write only `fcfLinks` and `schedules` on the
