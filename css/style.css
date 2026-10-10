@@ -245,6 +245,67 @@ a:hover { text-decoration: underline; }
 
 .auth-switch { text-align: center; margin-top: 1.2rem; font-size: .88rem; color: var(--text-secondary); }
 
+/* ── Sign-in and register, on paper (v280) ─────────────────────────────
+   The two screens before a session, dressed in the paper system the rest of
+   the app wears: a white card with a hairline on the desk colour instead of
+   the red gradient, an eyebrow over a 36px title, underlined fields and a
+   flat red button. SCOPED under `.lg-view` because `.auth-container` and
+   `.auth-card` also dress the join, team-setup and profile screens, which
+   are not part of this change.
+
+   The crest is the club's, cached by loadClubConfig() and painted by
+   paintCrest(). The first visit on a device has none, and the space is not
+   reserved: a blank square over the title would read as a broken image. */
+.lg-view .auth-container { background: var(--pp-desk); }
+.lg-view .auth-card {
+  background: #FFFFFF; border: 1px solid var(--pp-rule); border-radius: 0;
+  box-shadow: none; padding: 40px 40px 30px; max-width: 400px; color: var(--pp-ink);
+}
+.lg-crest { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 0 22px; }
+.lg-crest[hidden] { display: none; }
+.lg-eyebrow {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--pp-ink-3);
+  /* A long club name stays on one line rather than pushing the title down. */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 96px;
+}
+.lg-h1 {
+  margin: 8px 0 6px; font-size: 36px; font-weight: 400; line-height: 1.1;
+  letter-spacing: -.01em; color: var(--pp-ink);
+}
+.lg-sub { font-size: 14px; color: var(--pp-ink-2); margin: 0 0 28px; }
+.lg-view .form-group { margin-bottom: 22px; }
+.lg-view .form-group label {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 400;
+  color: var(--pp-ink-3); margin-bottom: 4px;
+}
+.lg-view .form-group input {
+  border: 0; border-bottom: 1px solid var(--pp-input-line); border-radius: 0;
+  padding: 8px 0; font-size: 16px; background: transparent; color: var(--pp-ink);
+}
+.lg-view .form-group input:focus { border-bottom-color: var(--pp-ink); }
+.lg-view .password-wrap input { padding-right: 2rem; }
+.lg-view .pw-eye { right: 0; color: var(--pp-ink-3); }
+.lg-view .pw-eye:hover { color: var(--pp-ink); }
+.lg-view .pw-eye.pw-eye-active { color: var(--pp-red); }
+.lg-view .btn-primary.btn-full {
+  background: var(--pp-red); border: 0; border-radius: 2px; box-shadow: none;
+  font-size: 15px; letter-spacing: .06em; text-transform: uppercase; padding: 12px; margin-top: 8px;
+}
+.lg-view .btn-primary.btn-full:hover { background: var(--pp-red-dark); }
+.lg-view .error-msg {
+  background: var(--pp-med-inj-bg); color: var(--pp-med-inj-ink); border-radius: 0; font-size: 13px;
+}
+.lg-view .auth-switch {
+  text-align: left; margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--pp-rule-2);
+  font-size: 13px; color: var(--pp-ink-2);
+}
+.lg-view .auth-switch a { color: var(--pp-red); }
+.lg-view .auth-lang { top: 16px; right: 18px; }
+.lg-view .lang-link { color: var(--pp-ink-4); font-weight: 400; letter-spacing: .12em; }
+.lg-view .lang-link:hover { color: var(--pp-ink); }
+.lg-view .lang-link.active { color: var(--pp-ink); background: none; }
+/* Its phone sizes live in the 600px block under "Auth pages". */
+
 /* ===== Role Selection ===== */
 .roles-container {
   flex: 1; display: flex; flex-direction: column; align-items: center;
@@ -4196,6 +4257,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   /* ── Auth pages ── */
   .auth-container { padding: .75rem; }
   .auth-card { padding: 1.5rem; max-width: 100%; }
+  /* Sign-in and register on paper (v280). Here, not beside their block: a
+     700px query up there would be the first in the file, and layout.test
+     reads the first one as the shared band's breakpoint. */
+  .lg-view .auth-container { padding: 16px; }
+  .lg-view .auth-card { padding: 32px 22px 24px; }
+  .lg-h1 { font-size: 30px; }
 
   /* ── Page titles ── */
   .page-title { font-size: 1.15rem; margin-bottom: .8rem; }

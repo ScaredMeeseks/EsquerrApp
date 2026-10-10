@@ -12614,3 +12614,58 @@ app's real `stdPlan`, slugs = the app's `plmSlug`, records = db.js `toEntry`'s f
 season 27/27, extras 9/9, plans 11/11, metrics 12/13 (the survivor is equivalent). ⚠ The mutation
 runner now refuses to start unless the unmutated suite passes: one round "killed" 9/9 because a
 quoting slip had broken the test file's syntax. Unit 3815 → **3862**.
+
+### 2026-10-09 — v280: sign-in on paper, the club's crest instead of Esquerra's, two fixes
+
+**The owner's ask:** a sign-in page that matches the rest of the app, no Esquerra logo by default —
+blank the first time, then the user's club crest, also after logout — and the crest in the browser
+tab if possible. Three directions were mocked from the real stylesheet; the owner chose the **paper
+card**.
+
+- **Sign-in and register** (`#view-login`, `#view-register`, class `lg-view`): desk background
+  instead of the red gradient, a white card with a hairline, eyebrow over a 36px title, underlined
+  fields, flat red button. All rules scoped `.lg-` (the join, team-setup and profile screens share
+  `.auth-container`/`.auth-card` and are untouched); phone sizes sit in the existing 600px block
+  under "Auth pages" — ⚠ a 700px query in the auth region would be the FIRST in the file, and
+  `layout.test` reads the first one as the shared band's breakpoint.
+- **The crest.** `paintCrest()` paints `img[data-crest]`, `[data-crest-name]` and the
+  `[data-crest-i18n]` "first|returning" keys from loadClubConfig()'s cache (`_splash_badge`, plus a
+  new `_splash_club_name`). It switches the `data-i18n` ATTRIBUTE, so a language change keeps
+  "Benvingut de nou". The cache survives logout by construction (DB.cleanup/flush only touch synced
+  keys — a test runs them). loadClubConfig now caches the URL at once (the data URL replaces it when
+  the fetch succeeds) and **clears** the crest for a club that has none. The splash is blank without
+  a cache; the join screen shows no crest at all (that person has no club yet).
+- **Tab icon.** `<link rel="icon" id="app-favicon">`, a transparent GIF by default (there was no
+  icon link at all, so tabs showed a generic icon after a `/favicon.ico` 404), set from the cache by
+  an inline script in `<head>` and kept current by paintCrest(). Chrome/Edge/Firefox honour it;
+  Safari largely ignores dynamic tab icons; the installed-PWA and APK icons stay the app's.
+  ⚠ The comment beside it must not name the app script: `board-state.test` checks script ORDER by
+  searching index.html for the file names, and a comment mentioning it came first.
+- Copy: `auth.subtitle` no longer says "the best club in town" (the screen serves every club); new
+  `auth.welcome`, `auth.welcome_back`, `auth.subtitle_back`, `auth.register_title`. Button and link
+  texts unchanged.
+
+**Two fixes found while checking the demo club (owner approved):**
+- **The coach's session page read date-keyed answers as N/A** — `availData[recordKey(...)]` with no
+  legacy fallback, while the attendance bar above it used `readRecord()`. Now `readRecord()`.
+- **"Partits" counted the other category's same-letter fixtures** — `computePlayerMatchStats`
+  matched on the team letter alone, so a Juvenil A player had every Amateur A fixture too (62 on a
+  31-fixture season). Same category now; a row with no category keeps the letter-only rule.
+
+Checked in headless Chrome against the real page (localhost): first visit and returning, 1280 and
+390 px, no horizontal overflow, tab icon href; as the demo coach, Juvenil players show 31 and a
+September session lists its answers. ⚠ A first screenshot of that session still said N/A — the page
+had rendered before 8 277 availability records finished loading; it repaints on the sync.
+
+`test/login.test.js` (19): index.html's inline scripts run by jsdom, paintCrest over the real
+markup, the loadClubConfig slice (crest, no crest, sign-out), db.js's cleanup/flush for real, the
+scoping, i18n, and both fixes (the real `computePlayerMatchStats` run over two categories).
+Mutations: app.js 13/13, index.html 5/5. Unit 3862 → **3881**.
+
+⚠ **Functions suite: 112 passing, 1 failing — pre-existing.** `acta-import.test.js` "puts the acta
+back when a stale phone writes over it" (0 !== 17) fails identically with this release's only
+functions change (the check-deploy constant) stashed. Not investigated. Also: a background
+`emulators:exec` from Git Bash exited 0 without running mocha and left the Firestore emulator on
+8080 — run the suite from PowerShell.
+
+Version triple → **v280**.

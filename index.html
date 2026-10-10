@@ -16,6 +16,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="EsquerrApp">
   <link rel="apple-touch-icon" href="img/logo-192.png">
+  <!-- The browser-tab icon is the club's crest once this device has seen a
+       sign-in (paintCrest() keeps it current), and blank before that. Set
+       here, before anything renders, so the tab never flashes another club's
+       logo. ⚠ Do not name the app script file in this comment: a test checks
+       the ORDER of the script tags by searching for their file names. -->
+  <link rel="icon" id="app-favicon" href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+  <script>
+  (function(){try{var b=localStorage.getItem('_splash_badge');if(b)document.getElementById('app-favicon').href=b;}catch(e){}})();
+  </script>
 
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -37,8 +46,10 @@
   </div>
   <script>
   (function(){
-    var cached=localStorage.getItem('_splash_badge');
-    document.getElementById('splash-badge').src=cached||'img/logo.png';
+    // The club's crest once this device has seen a sign-in; blank before.
+    var cached=null;try{cached=localStorage.getItem('_splash_badge');}catch(e){}
+    var sb=document.getElementById('splash-badge');
+    if(cached)sb.src=cached;else sb.style.visibility='hidden';
     var msgs=['Preparant la tàctica','Estirant els isquios','Escalfant el porter','Sortint al camp','Revisant la convocatòria','Inflant pilotes','Netejant les botes','Col·locant els cons','Repartint petos','Fent un rondo','Protestant a l\'àrbitre','Pintant les línies','Posant a lloc la barrera','Triant on xutar el penal'];
     var el=document.getElementById('splash-text');
     var idx=Math.floor(Math.random()*msgs.length);
@@ -52,7 +63,7 @@
   </script>
 
   <!-- ========== LOGIN VIEW ========== -->
-  <div id="view-login" class="view" hidden>
+  <div id="view-login" class="view lg-view" hidden>
     <div class="auth-container">
       <div class="auth-card">
         <span class="lang-switcher auth-lang">
@@ -60,11 +71,10 @@
           <a href="#" class="lang-link" data-lang="es">ES</a>
           <a href="#" class="lang-link" data-lang="en">EN</a>
         </span>
-        <div class="auth-header">
-          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
-          <h1>EsquerrApp</h1>
-          <p class="subtitle" data-i18n="auth.subtitle">Benvingut al millor club del barri</p>
-        </div>
+        <img class="lg-crest" data-crest alt="" hidden>
+        <div class="lg-eyebrow" data-crest-name>EsquerrApp</div>
+        <h1 class="lg-h1" data-crest-i18n="auth.welcome|auth.welcome_back" data-i18n="auth.welcome">Benvingut</h1>
+        <p class="lg-sub" data-crest-i18n="auth.subtitle|auth.subtitle_back" data-i18n="auth.subtitle">Entra amb el correu del teu club.</p>
         <form id="form-login" autocomplete="off">
           <div class="form-group">
             <label for="login-email" data-i18n="auth.email">Email</label>
@@ -86,7 +96,7 @@
   </div>
 
   <!-- ========== REGISTER VIEW ========== -->
-  <div id="view-register" class="view" hidden>
+  <div id="view-register" class="view lg-view" hidden>
     <div class="auth-container">
       <div class="auth-card">
         <span class="lang-switcher auth-lang">
@@ -94,11 +104,10 @@
           <a href="#" class="lang-link" data-lang="es">ES</a>
           <a href="#" class="lang-link" data-lang="en">EN</a>
         </span>
-        <div class="auth-header">
-          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
-          <h1>EsquerrApp</h1>
-          <p class="subtitle" data-i18n="auth.register_subtitle">Ets a punt de fer història</p>
-        </div>
+        <img class="lg-crest" data-crest alt="" hidden>
+        <div class="lg-eyebrow" data-crest-name>EsquerrApp</div>
+        <h1 class="lg-h1" data-i18n="auth.register_title">Crea el teu perfil</h1>
+        <p class="lg-sub" data-i18n="auth.register_subtitle">Ets a punt de fer història</p>
         <form id="form-register" autocomplete="off">
           <div class="form-group">
             <label for="reg-name" data-i18n="auth.name">Nom</label>
@@ -139,7 +148,8 @@
     <div class="auth-container">
       <div class="auth-card" style="max-width:420px;">
         <div class="auth-header">
-          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
+          <!-- No crest: this person belongs to no club yet, and a crest cached
+               on this device would be somebody else's. -->
           <h1 data-i18n="auth.join_title">Uneix-te a un equip</h1>
           <p class="subtitle" data-i18n="auth.join_subtitle">Introdueix el codi que t'ha donat el teu club</p>
         </div>
@@ -179,7 +189,7 @@
     <div class="auth-container">
       <div class="auth-card" style="max-width:480px;">
         <div class="auth-header">
-          <div class="logo"><img src="img/logo.png" alt="Logo" class="logo-img"></div>
+          <div class="logo"><img class="logo-img" data-crest alt="" hidden></div>
           <h1 data-i18n="auth.profile_title">Welcome!</h1>
           <p class="subtitle" data-i18n="auth.profile_subtitle">Set up your profile to get started</p>
         </div>

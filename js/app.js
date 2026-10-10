@@ -2146,7 +2146,14 @@
     'fitness.injury':        { ca:'Lesió', es:'Lesión', en:'Injury' },
 
     // ── Auth (login/register/join) ──
-    'auth.subtitle':         { ca:'Benvingut al millor club del barri', es:'Bienvenido al mejor club del barrio', en:'Welcome to the best club in town' },
+    /* v280: the sign-in screen serves every club, so it no longer speaks as
+       one ("the best club in town"). `_back` is the returning device's —
+       see paintCrest(). */
+    'auth.welcome':          { ca:'Benvingut', es:'Bienvenido', en:'Welcome' },
+    'auth.welcome_back':     { ca:'Benvingut de nou', es:'Bienvenido de nuevo', en:'Welcome back' },
+    'auth.subtitle':         { ca:'Entra amb el correu del teu club.', es:'Entra con el correo de tu club.', en:'Sign in with your club email.' },
+    'auth.subtitle_back':    { ca:'Entra per veure la teva setmana.', es:'Entra para ver tu semana.', en:'Sign in to see your week.' },
+    'auth.register_title':   { ca:'Crea el teu perfil', es:'Crea tu perfil', en:'Create your profile' },
     'auth.email':            { ca:'Email', es:'Email', en:'Email' },
     'auth.password':         { ca:'Contrasenya', es:'Contraseña', en:'Password' },
     'auth.password_ph':      { ca:'Mínim 6 caràcters', es:'Mínimo 6 caracteres', en:'Min. 6 characters' },
@@ -2939,7 +2946,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 279;
+  const APP_VERSION = 280;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3485,24 +3492,33 @@
     // Update splash badge and cache image as base64 for instant next load
     var splashImg = document.getElementById('splash-badge');
     if (_clubConfig && _clubConfig.badgeUrl) {
-      if (splashImg) splashImg.src = _clubConfig.badgeUrl;
+      if (splashImg) { splashImg.src = _clubConfig.badgeUrl; splashImg.style.visibility = ''; }
       // Cache base64 version if URL changed
       if (localStorage.getItem('_splash_badge_url') !== _clubConfig.badgeUrl) {
+        /* The URL first, so the crest and tab icon are this club's straight
+           away; the data URL replaces it when (if) the fetch succeeds. */
+        var badgeUrl = _clubConfig.badgeUrl;
+        localStorage.setItem('_splash_badge', badgeUrl);
+        localStorage.setItem('_splash_badge_url', badgeUrl);
         try {
-          var resp = await fetch(_clubConfig.badgeUrl);
+          var resp = await fetch(badgeUrl);
           var blob = await resp.blob();
           var reader = new FileReader();
           reader.onloadend = function () {
+            if (localStorage.getItem('_splash_badge_url') !== badgeUrl) return;
             localStorage.setItem('_splash_badge', reader.result);
-            localStorage.setItem('_splash_badge_url', _clubConfig.badgeUrl);
+            paintCrest();
           };
           reader.readAsDataURL(blob);
-        } catch (e) {
-          localStorage.setItem('_splash_badge', _clubConfig.badgeUrl);
-          localStorage.setItem('_splash_badge_url', _clubConfig.badgeUrl);
-        }
+        } catch (e) { /* the URL form is already cached */ }
       }
+    } else if (_clubConfig) {
+      // A club with no crest must not go on showing the previous club's.
+      localStorage.removeItem('_splash_badge');
+      localStorage.removeItem('_splash_badge_url');
     }
+    if (_clubConfig && _clubConfig.name) localStorage.setItem('_splash_club_name', _clubConfig.name);
+    paintCrest();
     // Enabled categories are part of the visible set, so the scope moves
     // with the config as well as with the session.
     syncDbScope();
@@ -3512,6 +3528,46 @@
   // Get the club display name (for matching in stored data)
   function getClubName() {
     return (_clubConfig && _clubConfig.name) ? _clubConfig.name : 'Esquerra';
+  }
+
+  /* ── The crest before sign-in (v280) ─────────────────────────────────
+     The sign-in, register and profile screens used to show the Esquerra logo
+     to every club. They now show NOTHING on a device that has never signed
+     in, and the club's crest and name on one that has. The cache is
+     loadClubConfig()'s — `_splash_badge` (a data URL, or the download URL if
+     the fetch was refused), `_splash_club_name` — and it SURVIVES LOGOUT:
+     DB.cleanup() removes only the synced keys, which is the point.
+
+     Also the browser-tab icon (`#app-favicon`, blank by default). That much a
+     page can change; the installed-app and APK icons come from the manifest
+     and the Android build and stay the app's own. */
+  const BLANK_ICON = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  function cachedCrest() {
+    try {
+      return { badge: localStorage.getItem('_splash_badge') || '',
+        name: localStorage.getItem('_splash_club_name') || '' };
+    } catch (e) { return { badge: '', name: '' }; }
+  }
+  function paintCrest() {
+    const c = cachedCrest();
+    document.querySelectorAll('img[data-crest]').forEach(function (img) {
+      if (c.badge) { img.src = c.badge; img.hidden = false; }
+      else { img.removeAttribute('src'); img.hidden = true; }
+    });
+    document.querySelectorAll('[data-crest-name]').forEach(function (el) {
+      el.textContent = c.name || 'EsquerrApp';
+    });
+    /* "first|returning" i18n keys. The ATTRIBUTE is switched, not just the
+       text, so a language change re-applies the right one. */
+    const back = !!(c.badge || c.name);
+    document.querySelectorAll('[data-crest-i18n]').forEach(function (el) {
+      const keys = el.getAttribute('data-crest-i18n').split('|');
+      const key = back ? (keys[1] || keys[0]) : keys[0];
+      el.setAttribute('data-i18n', key);
+      el.textContent = t(key);
+    });
+    const fav = document.getElementById('app-favicon');
+    if (fav) fav.href = c.badge || BLANK_ICON;
   }
 
   /** The club crest, or the app logo. The `|| 'img/logo.png'` fallback was
@@ -3801,7 +3857,13 @@
       var sentPlayers = (sent && Array.isArray(sent.players)) ? sent.players : [];
       var inConvocatoria = sentPlayers.indexOf(String(playerId)) !== -1 || sentPlayers.indexOf(Number(playerId)) !== -1;
       var matchTeam = m.team || '';
-      var isOwnTeam = playerTeam && matchTeam === playerTeam;
+      /* Same CATEGORY as well as the same letter (v280). The letter alone
+         made every Juvenil A player's "Partits" include each Amateur A
+         fixture too — 62 on a 31-fixture season — because staff hold every
+         category's fixtures in one blob. A row with no category on either
+         side keeps the old letter-only rule rather than vanishing. */
+      var sameCat = !m.category || !player || !player.category || m.category === player.category;
+      var isOwnTeam = playerTeam && matchTeam === playerTeam && sameCat;
 
       // Include match if player's team OR player was called up
       if (!isOwnTeam && !inConvocatoria) return;
@@ -26145,7 +26207,10 @@
     const _stdFitCtx = fitnessContext();
     const playerRows = players.map(p => {
       const key = recordKey(p.id, tr, 'avail');
-      const playerAnswer = availData[key] || (locked ? 'na' : null);
+      /* readRecord, not availData[key] (v280): a date-keyed answer — every
+         one filed before the session re-key — read as N/A here while the
+         bar above, which goes through readRecord, counted it. */
+      const playerAnswer = readRecord(availData, p.id, tr, 'avail') || (locked ? 'na' : null);
       const staffAnswer = overrides[key] || null;
       const effective = staffAnswer || playerAnswer;
       const playerLabel = playerAnswer ? labels[playerAnswer] : '—';
@@ -34621,9 +34686,12 @@
       // new one is picked up rather than the old base64 copy.
       const session = getSession();
       if (session && session.teamId === clubId) {
-        localStorage.removeItem('_splash_badge');
+        // The new URL straight away (tab icon too); the next loadClubConfig
+        // upgrades it to a data URL.
+        localStorage.setItem('_splash_badge', badgeUrl);
         localStorage.removeItem('_splash_badge_url');
         if (_clubConfig) _clubConfig.badgeUrl = badgeUrl;
+        paintCrest();
       }
       _showPushToast(t('club.change_badge'), t('club.badge_changed'));
       _loadClubList();
@@ -40868,6 +40936,7 @@
 
     // Apply saved language to HTML data-i18n elements
     document.documentElement.setAttribute('data-lang', _lang);
+    paintCrest(); // before the i18n pass: it picks which keys the titles use
     applyI18nHtml();
 
     $('#form-login').addEventListener('submit', handleLogin);
