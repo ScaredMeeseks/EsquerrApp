@@ -12785,3 +12785,34 @@ Tests:
 **Deploy order:** `.\deploy.ps1 functions` FIRST (the new frontend points at endpoints that don't exist until then), check both URLs answer, then push.
 
 Version triple → **v283**.
+
+### 2026-10-12 — v284: "Partits" is this season's call-ups
+
+**The owner's report:** his own profile said 34 partits.
+
+**Read from production** (counts only):
+- His squad's past fixtures were 27 from 2025-26, all `fcfRemoved` (the FCF sync withdrew them when the new group arrived), plus 7 this season.
+- `computePlayerMatchStats` counted every one: no season bound, no withdrawn check, and `totals.matches++` for NC rows too.
+- He had been called up 3 times.
+
+**Changes:**
+- **`computePlayerMatchStats`:**
+  - Only matches from `seasonStartStr(now)` (the club's boundary, default 08-15).
+  - No `fcfRemoved` rows.
+  - `totals.matches` counts **call-ups** (in the convocatòria: Titular, Suplent, or "—" when no XI is recorded). That was the owner's choice.
+  - NC rows stay in `matchRows`, because Plantilla's T / S / NC and the rail's history read them.
+- **Les meves estadístiques:** the player's own list shows only his call-ups.
+- **`msTeamMatchdays`** ("N jornades disputades") uses the same window.
+- **Ripple:** Inici's hero, Plantilla's Partits column and the staff player page all read `totals.matches`, so they show call-ups this season too. The readiness engine was already season-bound.
+
+⚠ **Two-squad members:**
+- The owner is on both the amateur-A and amateur-B rosters, as player and as staff.
+- His `users` doc says team A (server-derived). His `fa_users` row says B, and the reconcile never copies `team` (db.js PROFILE_FIELDS).
+- Counting call-ups makes "Partits" right whichever letter is stored. The NC rows and the jornades still follow the `fa_users` letter. Not fixed: the model has one letter per person.
+
+**Verification:**
+- The real function over the production blobs gives **3** (1 Titular, 1 Suplent, 1 "—", 4 NC rows).
+- Tests: `login.test.js` +6 (the owner's case, the season bound, withdrawn, NC rows kept, the other squad's call-up); `ms.test.js` +1, and the matchday test rewritten. Mutations 6/6.
+- Unit 4002 → **4009**.
+
+Version triple → **v284**.

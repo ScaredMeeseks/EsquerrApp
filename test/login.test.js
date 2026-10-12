@@ -325,10 +325,13 @@ describe('v280 — "Partits" counts the player\'s own category', () => {
   ];
   const stats = (() => {
     // eslint-disable-next-line no-new-func
-    return new Function('getUsers', 'isOurTeam', 'localStorage',
+    // A FIXED season start: the fixtures below are dated, and a real
+    // seasonStartStr() would move them into "last season" one August.
+    return new Function('getUsers', 'isOurTeam', 'localStorage', 'seasonStartStr',
         grab('  function calcMatchScore(events)', '  function formatEventMinute') +
         grab('  function getStartingXI(matchId, sentData)', '  // ── Match history table builder ──') +
-        'return computePlayerMatchStats;')(() => players, (n) => n === 'Club', {getItem: () => null});
+        'return computePlayerMatchStats;')(() => players, (n) => n === 'Club', {getItem: () => null},
+        () => '2026-08-15');
   })();
   const m = (id, cat, team) => ({id, date: '2026-09-05', time: '18:00', home: 'Club', away: 'X', team, category: cat});
   const ctx = {
@@ -340,12 +343,74 @@ describe('v280 — "Partits" counts the player\'s own category', () => {
   it('a Juvenil A player: his fixtures, a call-up up a category, a legacy row — not the rest', () => {
     const s = stats('j1', ctx);
     assert.deepStrictEqual(s.matchRows.map((r) => r.matchId).sort(), [1, 3, 4]);
-    assert.strictEqual(s.totals.matches, 3);
+    // v284: "Partits" is his CALL-UPS — one, match 3. Rows 1 and 4 are NC.
+    assert.strictEqual(s.totals.matches, 1);
   });
 
   it('an Amateur A player still has all of Amateur A', () => {
     const s = stats('a1', ctx);
     assert.deepStrictEqual(s.matchRows.map((r) => r.matchId).sort(), [2, 3, 4]);
+  });
+});
+
+/* v284 — the owner's own profile read "34 partits": last season's 27 fixtures
+   of his squad (all withdrawn by the FCF sync once the new group arrived),
+   plus this season's 7, none of them asked whether he had been called up
+   (he had, 3 times). The real computePlayerMatchStats over that shape. */
+describe('v284 — "Partits" is this season\'s call-ups', () => {
+  const players = [{id: 'me', team: 'B', category: 'amateur'}];
+  const stats = new Function('getUsers', 'isOurTeam', 'localStorage', 'seasonStartStr',
+      grab('  function calcMatchScore(events)', '  function formatEventMinute') +
+      grab('  function getStartingXI(matchId, sentData)', '  // ── Match history table builder ──') +
+      'return computePlayerMatchStats;')(() => players, (n) => n === 'Club', {getItem: () => null},
+      () => '2026-08-15');
+  const fx = (id, date, extra) => Object.assign(
+      {id, date, time: '18:00', home: 'Club', away: 'X', team: 'B', category: 'amateur'}, extra);
+  const last = Array.from({length: 27}, (_, i) =>
+    fx('old' + i, '2026-0' + (1 + (i % 5)) + '-1' + (i % 9), {fcfRemoved: true}));
+  const now = ['2026-09-06', '2026-09-13', '2026-09-20', '2026-09-27', '2026-10-04', '2026-10-05', '2026-10-11']
+      .map((d, i) => fx('new' + i, d));
+  const sentData = {new1: {players: ['me'], startingXI: ['me']}, new3: {players: ['me'], startingXI: []},
+    new5: {players: ['me'], startingXI: ['x']}, old2: {players: ['me'], startingXI: ['me']}};
+  const ctx = {matches: last.concat(now), allEvents: {}, sentData};
+
+  it('the owner\'s case: 3, not 34', () => {
+    const s = stats('me', ctx);
+    assert.strictEqual(s.totals.matches, 3, 'counted ' + s.totals.matches);
+  });
+
+  it('nothing from before the season boundary, even a call-up', () => {
+    const s = stats('me', ctx);
+    assert.ok(s.matchRows.every((r) => r.date >= '2026-08-15'),
+        'a last-season row is still listed');
+  });
+
+  it('a fixture the federation withdrew is not a match, this season either', () => {
+    const c = {matches: [fx('w', '2026-09-30', {fcfRemoved: true}), fx('p', '2026-09-28')],
+      allEvents: {}, sentData: {w: {players: ['me'], startingXI: ['me']}}};
+    const s = stats('me', c);
+    assert.deepStrictEqual(s.matchRows.map((r) => r.matchId), ['p']);
+    assert.strictEqual(s.totals.matches, 0);
+    assert.strictEqual(s.totals.titulars, 0, 'the withdrawn start still counts');
+  });
+
+  it('keeps the squad\'s NC rows for the coach, and still counts T / S', () => {
+    const s = stats('me', ctx);
+    assert.strictEqual(s.matchRows.length, 7, 'the coach\'s T / S / NC lost the NC rows');
+    assert.strictEqual(s.matchRows.filter((r) => r.status === 'NC').length, 4);
+    assert.strictEqual(s.totals.titulars, 1);
+  });
+
+  it('a call-up to the OTHER squad counts — a member of two squads comes out right', () => {
+    const c = {matches: [fx('a1', '2026-09-27', {team: 'A'})], allEvents: {},
+      sentData: {a1: {players: ['me'], startingXI: []}}};
+    assert.strictEqual(stats('me', c).totals.matches, 1);
+  });
+
+  it('the season start is the club\'s boundary, read at run time', () => {
+    const src2 = grab('  function computePlayerMatchStats(playerId, ctx) {', '  // ── Match history table builder ──');
+    assert.ok(/var seasonFrom = seasonStartStr\(now\);/.test(src2));
+    assert.ok(/if \(m\.date < seasonFrom\) return;/.test(src2));
   });
 });
 

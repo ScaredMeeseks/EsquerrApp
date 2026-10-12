@@ -357,14 +357,22 @@ describe('Les meves estadístiques — the season figures', () => {
         (h.match(/ms\.summary:\S{0,60}/) || [])[0]);
   });
 
+  /* v284: both this count and the totals beside it are THIS season and skip
+     a fixture the federation withdrew — until then both were unbounded, and
+     a player read last season's 27 matches as his. */
   it('counts the matchdays over the SAME window as the totals beside them', () => {
-    /* A season-bounded denominator next to unbounded totals reads as a bug:
-       `Partits 6` beside `3 jornades disputades`. */
     /* The stub tv() hands back JSON, and sanitize() turns its quotes into
        `&quot;` — which is what a browser is served, so it is what is matched. */
-    const h = render();
-    assert.ok(h.includes('ms.jornades:{&quot;n&quot;:6}'),
-        'the matchday count disagrees with the Partits figure: ' +
+    const m = (id, off, extra) => Object.assign({ id, date: dayOff(off), time: '12:00', team: 'A' }, extra);
+    const h = render({ stubs: { matchStatsContext: () => ({ allEvents: {}, sentData: {}, matches: [
+      m('in1', -3), m('in2', -10), m('in3', -38),
+      m('last-season', -45),                      // before SEASON_START (−40)
+      m('withdrawn', -17, { fcfRemoved: true }),  // the FCF dropped it
+      m('other-squad', -5, { team: 'B' }),
+      m('tomorrow', 1),
+    ] }) } });
+    assert.ok(h.includes('ms.jornades:{&quot;n&quot;:3}'),
+        'the matchday count is not this season\'s played fixtures: ' +
         (h.match(/ms\.jornades:\S{0,30}/) || [])[0]);
   });
 
@@ -524,6 +532,19 @@ describe('Les meves estadístiques — partit a partit', () => {
     assert.ok(!nc.includes('>NC<'), 'the minutes cell still prints NC');
     // The rest of the row is still there — this is not an empty table passing.
     assert.ok(h.includes('class="ms-row"') && h.includes('class="ms-prow"'));
+  });
+
+  /* v284: his list is HIS matches — the call-ups "Partits" counts. An NC
+     row is his squad's fixture and stays on the coach's history only. */
+  it('lists only the matches he was called up for', () => {
+    const rows = [Object.assign({}, ROWS[0], { status: 'Titular' }),
+      Object.assign({}, ROWS[1], { status: 'NC', home: 'NC Rival FC', away: 'CE L\'Esquerra' }),
+      Object.assign({}, ROWS[2], { status: 'Suplent' })];
+    const h = render({ rows });
+    assert.strictEqual((h.match(/class="ms-row"/g) || []).length, 2, 'an NC fixture is in his list');
+    assert.ok(!h.includes('NC Rival FC'));
+    const none = render({ rows: [Object.assign({}, ROWS[1], { status: 'NC' })] });
+    assert.ok(none.includes('ms.no_matches'), 'all-NC should read as "no matches yet"');
   });
 
   it('answers "no matches yet" rather than drawing an empty table', () => {

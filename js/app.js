@@ -3065,7 +3065,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 283;
+  const APP_VERSION = 284;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4010,12 +4010,23 @@
     var totals = { goals: 0, assists: 0, matches: 0, minutes: 0, titulars: 0 };
     var matchRows = [];
     var now = new Date();
+    /* THIS SEASON only (v284), from the club's boundary (default 15 August,
+       clubs/{id}.seasonBoundary). Until now every past match ever imported
+       counted — a player's "Partits 34" was last season's 27 fixtures plus
+       this one's, under a header that says "Temporada 2026-27". Last
+       season lives in the archive (aggregateArchivedStats). */
+    var seasonFrom = seasonStartStr(now);
 
     matches.forEach(function(m) {
       // Only past matches
       if (!m.date || !m.time) return;
       var matchDate = new Date(m.date + 'T' + m.time + ':00');
       if (matchDate > now) return;
+      if (m.date < seasonFrom) return;
+      /* A fixture the federation dropped from its calendar (fcf.js marks it,
+         never deletes it) was not played: the Calendari strikes it through
+         and the reminders skip it. It is not a match to count either. */
+      if (m.fcfRemoved) return;
 
       var sent = sentData[m.id];
       var sentPlayers = (sent && Array.isArray(sent.players)) ? sent.players : [];
@@ -4187,7 +4198,12 @@
       }
 
       // Update totals
-      totals.matches++;
+      /* "Partits" = the matches he was CALLED UP for (v284, the owner's
+         call), not every fixture of his squad. An NC row stays in matchRows
+         — the coach's T / S / NC and the rail's history read it — but it is
+         not a match he played. It also makes a member of two squads come out
+         right: a call-up names the match, whichever letter his row carries. */
+      if (inConvocatoria) totals.matches++;
       totals.goals += goals;
       totals.assists += assists;
       if (typeof minutes === 'number') totals.minutes += minutes;
@@ -17247,21 +17263,20 @@
   /** How many matchdays the player's own squad has played, which is the
    *  denominator their `Partits` figure sits against.
    *
-   *  ⚠ THE SAME WINDOW computePlayerMatchStats() USES — every match with a
-   *  date and a time that has already kicked off — and deliberately NOT
-   *  `>= seasonStartStr()`. The totals beside this figure carry no season
-   *  bound, so a season-scoped denominator would put `Partits 6` next to
-   *  `3 jornades disputades` and make the page look broken when it is only
-   *  measuring two different things. (That the totals are unbounded at all is
-   *  older than this page and is shared with the staff view; scoping them is
-   *  a change to both, not to this line.) */
+   *  ⚠ THE SAME WINDOW computePlayerMatchStats() USES — kicked off, this
+   *  season (from seasonStartStr), not withdrawn by the federation. Both
+   *  were unbounded until v284; a denominator on a different window from
+   *  the figure beside it makes the page look broken when it is only
+   *  measuring two different things. */
   function msTeamMatchdays(user, matches) {
     var now = new Date();
+    var from = seasonStartStr(now);
     var team = (user && user.team) || '';
     var n = 0;
     (matches || []).forEach(function (m) {
       if (!m.date || !m.time) return;
       if (new Date(m.date + 'T' + m.time + ':00') > now) return;
+      if (m.date < from || m.fcfRemoved) return;
       if (team && (m.team || '') !== team) return;
       n++;
     });
@@ -17317,6 +17332,9 @@
     const acwrVal = (rd.hasData && rd.acwr) ? rd.acwr.toFixed(2) : '—';
     const restVal = rd.matchDaysSince == null ? '—' : String(rd.matchDaysSince);
     const cardTotal = computed.matchRows.reduce((s, r) => s + (r.yellows || 0) + (r.reds || 0), 0);
+    /* His own list is HIS matches (v284): the call-ups "Partits" counts. An
+       NC row is the squad's fixture, not his — the coach's history keeps it. */
+    const myRows = computed.matchRows.filter((r) => r.status !== 'NC');
 
     const injuries = getPlayerInjuries(uid);
     const posHtml = posCirclesHtmlGlobal(myUser);
@@ -17387,9 +17405,9 @@
           <div class="ms-main">
             <div class="ms-sec">
               <span class="ms-sec-l">${sanitize(t('ms.per_match'))}</span>
-              <span class="ms-sec-r">${sanitize(computed.matchRows.length ? summary : tv('ms.n_matches', { n: 0 }))}</span>
+              <span class="ms-sec-r">${sanitize(myRows.length ? summary : tv('ms.n_matches', { n: 0 }))}</span>
             </div>
-            ${computed.matchRows.length ? `<div class="ms-head">
+            ${myRows.length ? `<div class="ms-head">
               <span class="ms-c-date">${sanitize(t('ms.th_date'))}</span>
               <span class="ms-c-rival">${sanitize(t('ms.th_rival'))}</span>
               <span class="ms-c-res">${sanitize(t('ms.th_res'))}</span>
@@ -17397,8 +17415,8 @@
               <span class="ms-c-a">${sanitize(t('ms.assists'))}</span>
               <span class="ms-c-cards">${sanitize(t('ms.cards'))}</span>
             </div>` : ''}
-            ${computed.matchRows.length
-              ? msMatchRows(computed.matchRows)
+            ${myRows.length
+              ? msMatchRows(myRows)
               : `<p class="ms-empty">${sanitize(t('ms.no_matches'))}</p>`}
           </div>
           <div class="ms-rail">
