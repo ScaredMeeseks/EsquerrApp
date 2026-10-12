@@ -1,18 +1,40 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-09-22._
+_Rolling document, overwritten each session. Last updated: 2026-10-12 (v282 section only; the
+rest below still describes 2026-09-22 and v278-v281 are in CONTEXT.md)._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
 verbatim when this document is rewritten — do not regenerate it from the session you just did._
 
 ## Where things stand
 
-**Version triple is at 277** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 282** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). `version-check.test.js` fails the suite if two of them disagree.
+
+## 2026-10-12 — v282: five owner asks in one release
+
+Full detail in CONTEXT.md (v282). What a next session needs:
+
+- **Sign-up needs a GRANTED notification permission.** Ticking the box asks; the submit opens only
+  on a grant. On an iPhone in Safari the box gives way to the install-first steps, because there is
+  no Notification API outside the home-screen app. `handleRegister` re-checks the grant.
+  ⚠ Any new code for the register form goes AFTER `handleRegister`. Nine test slices end at its
+  first line.
+- **Home-screen box**: optional and pre-ticked. It replays Chrome's `beforeinstallprompt`, caught
+  by an inline `<head>` script, on the submit tap.
+- **Players see no minutes**: not on Inici, not on Les meves estadístiques, not on the Accions match
+  rows. A match RPE now stores the lineup's minutes, or null, and `computeReadiness` looks them up
+  again when null.
+- **Plantilla "Mitj./conv."**: minutes per call-up (titular + suplent, unused sub = 0′), with tooltips.
+- **✎ on every exercise** edits its description (≤ 500, capped in `stdPlan`).
+- Not done: `build-ms-preview.js` and `build-inici-preview.js` fail at HEAD (`seasonAttendance`
+  missing from their stubs).
+- **Deploy:** frontend only. No functions deploy (`check-deploy.js` is a Cloud Shell script).
+  Committed on `main`; the push waits for the owner's go.
 
 | | |
 |---|---|
-| Unit tests | **3676** — `cd test && npm run test:unit` (~30 s), all passing |
+| Unit tests | **3969** (v282) — `cd test && npm run test:unit` (~35 s), all passing |
 | Functions tests | 93 — **not re-run since v272**; `functions/` changed only `check-deploy.js`'s constant and the synced `private/board3d.js` |
 | Rules tests | 178 — **not re-run**; `firestore.rules` was not touched |
 

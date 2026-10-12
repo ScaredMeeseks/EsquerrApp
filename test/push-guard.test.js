@@ -159,3 +159,76 @@ describe('the rule itself still says what it must', () => {
     assert.ok(/allow read, update, delete: if false;/.test(RULE));
   });
 });
+
+/* v282 — the sign-up form asks for the PERMISSION alone: there is no user
+   yet, so nowhere to put a token. Run for real over both platforms. */
+describe('the permission, without a token (sign-up)', () => {
+  function api(o) {
+    const touched = [];
+    const db = new Proxy({}, {get: (t, k) => { touched.push(k); return () => db; }});
+    // eslint-disable-next-line no-new-func
+    const fns = new Function('Capacitor', 'Notification', 'db', 'messaging',
+        grab(pushSrc, '  function _isNative()', '  // ── Native Android push') +
+        grab(pushSrc, '  /* The permission ALONE', '  async function removeToken()') +
+        '\n return {permissionState, askPermission};')(
+        o.Capacitor, o.Notification, db, {getToken: () => { touched.push('getToken'); }});
+    fns.touched = touched;
+    return fns;
+  }
+  const web = (permission, answer) => {
+    const N = {permission, asked: 0};
+    N.requestPermission = () => { N.asked++; return Promise.resolve(answer); };
+    return N;
+  };
+  const native = (check, request) => ({
+    isNativePlatform: () => true,
+    Plugins: {PushNotifications: {
+      checkPermissions: async () => ({receive: check}),
+      requestPermissions: async () => ({receive: request}),
+    }},
+  });
+
+  it('web: reads the browser\'s answer, and asks only when told to', async () => {
+    const N = web('default', 'granted');
+    const a = api({Notification: N});
+    assert.strictEqual(await a.permissionState(), 'default');
+    assert.strictEqual(N.asked, 0, 'reading the state prompted the user');
+    assert.strictEqual(await a.askPermission(), 'granted');
+    assert.strictEqual(N.asked, 1);
+    assert.strictEqual(await api({Notification: web('denied')}).permissionState(), 'denied');
+    assert.deepStrictEqual(a.touched, [], 'no token, no Firestore: there is no user yet');
+  });
+
+  it('web: no Notification API (iOS Safari, in-app browsers) is "unsupported"', async () => {
+    const a = api({});
+    assert.strictEqual(await a.permissionState(), 'unsupported');
+    assert.strictEqual(await a.askPermission(), 'unsupported');
+  });
+
+  it('web: an old callback-only Safari still answers', async () => {
+    const N = {permission: 'default', requestPermission: (cb) => { cb('granted'); }};
+    assert.strictEqual(await api({Notification: N}).askPermission(), 'granted');
+  });
+
+  it('native: maps the plugin\'s prompt states to "default"', async () => {
+    assert.strictEqual(await api({Capacitor: native('prompt')}).permissionState(), 'default');
+    assert.strictEqual(await api({Capacitor: native('prompt-with-rationale')}).permissionState(), 'default');
+    assert.strictEqual(await api({Capacitor: native('granted')}).permissionState(), 'granted');
+    assert.strictEqual(await api({Capacitor: native('prompt', 'denied')}).askPermission(), 'denied');
+    const a = api({Capacitor: native('prompt', 'granted')});
+    assert.strictEqual(await a.askPermission(), 'granted');
+    assert.deepStrictEqual(a.touched, [], 'asked for a token with no user');
+  });
+
+  it('native without the plugin, or a plugin that throws, is "unsupported"', async () => {
+    assert.strictEqual(await api({Capacitor: {isNativePlatform: () => true, Plugins: {}}})
+        .permissionState(), 'unsupported');
+    const boom = native('granted');
+    boom.Plugins.PushNotifications.checkPermissions = async () => { throw new Error('x'); };
+    assert.strictEqual(await api({Capacitor: boom}).permissionState(), 'unsupported');
+  });
+
+  it('is exported', () => {
+    assert.ok(/return \{[^}]*permissionState, askPermission[^}]*\};/.test(pushSrc));
+  });
+});

@@ -395,6 +395,54 @@ const Push = (() => {
     }
   }
 
+  /* The permission ALONE, for the sign-up form (v282): there is no user yet,
+     so there is nowhere to save a token. The token follows after the account
+     exists — handleRegister calls requestPermission(), which prompts nobody
+     once the answer is already 'granted'.
+     Answers one of 'granted' | 'denied' | 'default' | 'unsupported'.
+     ⚠ 'unsupported' is iOS Safari outside an installed PWA (no Notification
+     API at all), an in-app browser, or a WebView without the plugin. */
+  function _nativeState(receive) {
+    if (receive === 'granted') return 'granted';
+    if (receive === 'denied') return 'denied';
+    return 'default';   // 'prompt' | 'prompt-with-rationale'
+  }
+
+  async function permissionState() {
+    try {
+      if (_isNative()) {
+        const PN = Capacitor.Plugins.PushNotifications;
+        if (!PN) return 'unsupported';
+        return _nativeState((await PN.checkPermissions()).receive);
+      }
+      if (typeof Notification === 'undefined') return 'unsupported';
+      const p = Notification.permission;
+      return (p === 'granted' || p === 'denied') ? p : 'default';
+    } catch (e) {
+      return 'unsupported';
+    }
+  }
+
+  /** Must run inside a user gesture (the checkbox tap) or browsers deny it. */
+  async function askPermission() {
+    try {
+      if (_isNative()) {
+        const PN = Capacitor.Plugins.PushNotifications;
+        if (!PN) return 'unsupported';
+        return _nativeState((await PN.requestPermissions()).receive);
+      }
+      if (typeof Notification === 'undefined') return 'unsupported';
+      // Older Safari answers through a callback and returns no promise.
+      const p = await new Promise((res) => {
+        const r = Notification.requestPermission(res);
+        if (r && typeof r.then === 'function') r.then(res);
+      });
+      return (p === 'granted' || p === 'denied') ? p : 'default';
+    } catch (e) {
+      return 'unsupported';
+    }
+  }
+
   async function removeToken() {
     if (_isNative()) {
       return _removeNativeToken();
@@ -430,5 +478,5 @@ const Push = (() => {
     }
   }
 
-  return { init, requestPermission, removeToken, sendToPlayers };
+  return { init, requestPermission, permissionState, askPermission, removeToken, sendToPlayers };
 })();

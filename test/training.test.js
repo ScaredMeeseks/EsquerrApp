@@ -1169,11 +1169,17 @@ describe('training — the RPE form defaults', () => {
         'null must render an empty box, not the string "null"');
   });
 
-  it('the match row is pre-filled from the recorded minutes', () => {
+  /* v282: players do not see their minutes, so a match row has no box at
+     all. The minutes still reach the record — from the lineup, at save time
+     (accions.test.js runs that handler). */
+  it('the match row asks for no minutes, and the save reads the lineup', () => {
     const body = grab('  function playerActionModel(session, nowArg) {',
         '  function getPendingActionCount() {');
-    assert.ok(body.includes('playerMatchMinutesKnown(session.id, m.id)'),
-        'the club records substitutions; the player should not retype them');
+    assert.ok(!body.includes('playerMatchMinutesKnown'),
+        'the model computes match minutes for a page that must not show them');
+    const save = grab('    $$(\'.ac-save\').forEach(btn => {', '        const ua = minutes == null');
+    assert.ok(save.includes("playerMatchMinutesKnown(getSession().id, key.split('_match_')[1])"),
+        'the club records substitutions; the save must take them from there');
   });
 
   it('a match caps at 100 minutes, a training does not', () => {
@@ -1193,7 +1199,7 @@ describe('training — the RPE form defaults', () => {
   it('the cap is enforced at SUBMIT, not only while typing', () => {
     /* A pre-filled value fires no `input` event, and neither does an
        autofill, so the keystroke clamp cannot be the only check. */
-    const body = grab('    $$(\'.ac-save\').forEach(btn => {', '        const key = card.dataset.actionKey;');
+    const body = grab('    $$(\'.ac-save\').forEach(btn => {', '        const ua = minutes == null');
     assert.ok(body.includes('minutes > minCap'));
     assert.ok(body.includes('Number(minInput.dataset.max) || ACTION_MINUTES_MAX'));
   });

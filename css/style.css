@@ -304,6 +304,28 @@ a:hover { text-decoration: underline; }
 .lg-view .lang-link { color: var(--pp-ink-4); font-weight: 400; letter-spacing: .12em; }
 .lg-view .lang-link:hover { color: var(--pp-ink); }
 .lg-view .lang-link.active { color: var(--pp-ink); background: none; }
+/* The sign-up consents (v282): notifications (required) and home screen
+   (optional). The help line under a box is the reason it cannot be ticked
+   yet — blocked, or an iPhone that has to install first. */
+.lg-checks { margin: 4px 0 18px; }
+.lg-view .lg-check {
+  display: flex; align-items: flex-start; gap: 10px; margin: 0 0 10px;
+  font-size: 14px; line-height: 1.35; color: var(--pp-ink); cursor: pointer;
+}
+.lg-view .lg-check[hidden] { display: none; }
+.lg-view .lg-check input {
+  flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--pp-red);
+}
+.lg-view .lg-check input:disabled + span { color: var(--pp-ink-3); }
+.lg-check-help {
+  margin: -4px 0 12px 28px; font-size: 12.5px; line-height: 1.45; color: var(--pp-ink-2);
+  white-space: pre-line;
+}
+.lg-check-help[hidden] { display: none; }
+/* No box above it (the iPhone's install-first steps): no indent to hang
+   from, and these steps ARE the instruction, so they read in full ink. */
+.lg-check[hidden] + .lg-check-help { margin: 0 0 12px; font-size: 13.5px; color: var(--pp-ink); }
+.lg-view .btn-primary.btn-full:disabled { background: var(--pp-rule-4); opacity: 1; cursor: default; }
 /* Its phone sizes live in the 600px block under "Auth pages". */
 
 /* ===== Role Selection ===== */
@@ -2764,7 +2786,17 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stp-ex-mark { font-size:11px; color:var(--pp-ink-3); }
 .stp-lane-tag { color:var(--pp-ink-3); font-size:12px; letter-spacing:.1em; }
 .stp-ex-note { font-size:12px; color:var(--pp-ink-2); }
-.stp-ex-desc { font-size:12px; color:var(--pp-ink-3); overflow-wrap:anywhere; }
+.stp-ex-desc { font-size:12px; color:var(--pp-ink-3); overflow-wrap:anywhere; white-space:pre-line; }
+/* ✎ the description (v282). ALWAYS visible, unlike the × beside it: a phone
+   has no hover, and an edit you cannot see is an edit nobody makes. It takes
+   the auto margin, so the × after it sits close rather than splitting it. */
+.stp-ex-edit {
+  background:none; border:none; cursor:pointer; padding:0 2px; margin-left:auto;
+  font-size:13px; line-height:1; color:var(--pp-ink-3);
+}
+.stp-ex-edit:hover { color:var(--pp-ink); }
+.stp-ex-edit + .stp-ex-del { margin-left:6px; }
+.stp-desc-for { font-size:13px; color:var(--pp-ink-2); margin-bottom:8px; }
 .stp-ex-del {
   background:none; border:none; cursor:pointer; padding:0 2px;
   font-size:14px; line-height:1; color:var(--pp-bad); opacity:0; margin-left:auto;
@@ -2772,6 +2804,8 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .stp-ex:hover .stp-ex-del { opacity:.7; }
 .stp-ex-del:hover { opacity:1; }
+/* No hover on a touch screen, so the × would never appear at all. */
+@media (hover: none) { .stp-ex-del { opacity:.7; } }
 .stp-board { padding-top:8px; display:flex; flex-direction:column; gap:6px; }
 .stp-board-wrap { max-width:100%; }
 .stp-board-acts { display:flex; gap:14px; }
@@ -7089,6 +7123,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   border-bottom: 1px solid var(--pp-ink); white-space: nowrap;
 }
 .pl-table td { padding: 9px 8px; border-bottom: 1px solid var(--pp-rule-2); }
+/* A header that explains itself on hover (v282 — minutes per call-up). */
+.pl-th-tip { cursor: help; border-bottom: 1px dotted var(--pp-ink-4); }
 .pl-th-name, .pl-td-name { padding-left: 14px !important; }
 .pl-td-name { white-space: nowrap; }
 .pl-table th.pl-c, .pl-table td.pl-c { text-align: center; }
@@ -10183,7 +10219,6 @@ a.ini-ev-name, .ini-ev-name-link {
 .ms-c-date { width: 78px; flex: none; }
 .ms-c-rival { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 10px; }
 .ms-c-res { width: 96px; flex: none; display: flex; align-items: center; gap: 8px; }
-.ms-c-min { width: 64px; flex: none; text-align: right; }
 .ms-c-g { width: 44px; flex: none; text-align: right; }
 .ms-c-a { width: 56px; flex: none; text-align: right; }
 .ms-c-cards {
@@ -10193,7 +10228,8 @@ a.ini-ev-name, .ini-ev-name-link {
 /* The row's own type, in one place. `.ms-head` sets the header's 10px for
    every cell it holds, so there is nothing left to patch round. */
 .ms-row .ms-c-date { font-size: 13px; color: var(--pp-ink-2); }
-.ms-row .ms-c-min, .ms-row .ms-c-g, .ms-row .ms-c-a { font-size: 15px; }
+/* No minutes column since v282: players do not see their minutes. */
+.ms-row .ms-c-g, .ms-row .ms-c-a { font-size: 15px; }
 .ms-rival { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* ⚠ The venue is a GLYPH now, not the word "Casa"/"Fora" (v252), so the
    uppercase micro-type it used to need is gone.
@@ -10300,6 +10336,10 @@ a.ini-ev-name, .ini-ev-name-link {
   .ms-prep-nums { margin-left: 0; }
   .ms-body { flex-direction: column; gap: 34px; }
   .ms-rail { width: 100%; flex: 1 1 auto; }
+  /* Full width too (v282). `align-items: flex-start` on the column sized
+     this to its widest line — the summary — so the match list stopped
+     two-thirds across; shorter once minutes left the summary. */
+  .ms-main { width: 100%; }
   .ms-page .ms-map { max-width: 320px; }
 }
 @media (max-width: 700px) {
@@ -10316,10 +10356,10 @@ a.ini-ev-name, .ini-ev-name-link {
   .ms-name { font-size: 24px; }
   .ms-dorsal { font-size: 16px; }
   .ms-id-season { font-size: 12px; }
-  /* Six figures in a 3-wide grid, which is the handoff's phone frame — and
-     the same metric set as the wide one, nothing dropped. */
+  /* Four figures in a 2-wide grid since v282 (minutes left the set) — the
+     same metric set as the wide one, nothing dropped. */
   .ms-figs {
-    display: grid; grid-template-columns: repeat(3, 1fr);
+    display: grid; grid-template-columns: repeat(2, 1fr);
     gap: 16px 12px; padding-top: 20px;
   }
   .ms-lbl { font-size: 9px; letter-spacing: .14em; }

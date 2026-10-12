@@ -683,3 +683,116 @@ describe('renderStaffRoster — it runs', () => {
         'the letter filter or the player-role filter stopped working');
   });
 });
+
+/* v282 — the average minutes, per CALL-UP (the owner's choice): titular +
+   suplent, an unused sub counting 0′. Both halves RUN: the row builder that
+   does the division, and the table that has to put it under its header. */
+describe('Plantilla — average minutes per call-up', () => {
+  const {JSDOM} = require('jsdom');
+  // The REAL sanitize, over a real document: plHitTip's attribute escaping
+  // is half of what the tooltip test reads back.
+  const utilsSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'utils.js'), 'utf8');
+  // eslint-disable-next-line no-new-func
+  const realSanitize = new Function('document', utilsSrc.slice(
+      utilsSrc.indexOf('function sanitize(str) {'),
+      utilsSrc.indexOf('// ---------- Tactical Formations ----------')) +
+      '\n return sanitize;')(new JSDOM('').window.document);
+  const mr = (status, minutes) => ({status, minutes, isOwnTeam: true, homeScore: 0, awayScore: 0});
+
+  function buildRows(matchRows) {
+    const titulars = matchRows.filter((r) => r.status === 'Titular').length;
+    const minutes = matchRows.reduce((s, r) => s + (typeof r.minutes === 'number' ? r.minutes : 0), 0);
+    // eslint-disable-next-line no-new-func
+    const plBuildRows = new Function('deriveFitnessStatus', 'computeReadiness',
+        'computePlayerMatchStats', 'plAttendance',
+        grab('  function plBuildRows', '  /** The team') + '\n return plBuildRows;')(
+        () => ({fitnessStatus: 'fit'}),
+        () => ({score: 80, acwr: 1, weeks: [], sessions: []}),
+        () => ({totals: {matches: matchRows.length, minutes, goals: 0, assists: 0, titulars},
+          matchRows}),
+        () => ({}));
+    return plBuildRows([{id: 'p1', name: 'Marc'}], {injuries: []});
+  }
+
+  function table(rows, wide) {
+    const api = {
+      sanitize: realSanitize, t: (k) => k, tv: (k, v) => k + ':' + JSON.stringify(v),
+      PL_AMBER: '#000', plAcColor: () => '#000', plReadinessReasons: () => '',
+      plStripTooltip: (h) => h, readinessCellHtml: () => '<i class="rd"></i>',
+      avatarHtmlGlobal: () => '', catBadgeHtmlGlobal: () => '', posCirclesHtmlGlobal: () => '',
+      _plSel: null,
+    };
+    // eslint-disable-next-line no-new-func
+    const fn = new Function(...Object.keys(api),
+        grab('  function plNum(n)', '  /** d/m, from an ISO date. */') +
+        grab('  function plHitTip(title, rows)', '  /** Team chart 1') +
+        grab('  function plSparkHtml(weeks) {', '  /* ── The player rail') +
+        '\n return plRosterTableHtml;')(...Object.values(api));
+    return new JSDOM(fn(rows, wide, false)).window.document;
+  }
+  const tipOf = (el) => JSON.parse(el.getAttribute('data-pl-tip'));
+
+  it('divides by titular + suplent, an unused sub counting 0', () => {
+    const [r] = buildRows([mr('Titular', 90), mr('Suplent', 0), mr('NC', 'NC')]);
+    assert.strictEqual(r.avgMin, 45, 'the NC was counted, or the unused sub was not');
+    assert.strictEqual(r.played, 2);
+  });
+
+  it('leaves out a call-up with no recorded XI, which has no minutes', () => {
+    const [r] = buildRows([mr('Titular', 90), mr('Suplent', 30), mr('—', '—')]);
+    assert.strictEqual(r.avgMin, 60);
+  });
+
+  it('is empty, not 0 or NaN, for a player never called up', () => {
+    const [r] = buildRows([mr('NC', 'NC'), mr('NC', 'NC')]);
+    assert.strictEqual(r.avgMin, null);
+    const d = table([r], true);
+    const i = [...d.querySelectorAll('thead th')].findIndex((th) => th.textContent === 'pl.th_avg_min');
+    assert.strictEqual(d.querySelectorAll('tbody tr td')[i].textContent, '—');
+  });
+
+  [true, false].forEach((wide) => {
+    it('sits under its own header, ' + (wide ? 'wide' : 'with the rail open'), () => {
+      const [r] = buildRows([mr('Titular', 90), mr('Titular', 77), mr('Suplent', 0)]);
+      const d = table([r], wide);
+      const ths = [...d.querySelectorAll('thead th')];
+      const tds = [...d.querySelectorAll('tbody tr td')];
+      assert.strictEqual(tds.length, ths.length, 'a row has a different number of cells from its header');
+      const i = ths.findIndex((th) => th.textContent === 'pl.th_avg_min');
+      assert.ok(i > 0, 'no average header');
+      assert.strictEqual(ths[i - 1].textContent, 'pl.th_minutes', 'not beside Minuts');
+      assert.strictEqual(tds[i].textContent, '56′', '(90 + 77 + 0) / 3 rounded is 56');
+      assert.strictEqual(tds[i - 1].textContent, '167′', 'the total moved');
+    });
+  });
+
+  it('says on hover what it is averaged over — header and cell', () => {
+    // The NC makes "matches" (3) differ from "call-ups" (2), which the tip counts.
+    const [r] = buildRows([mr('Titular', 90), mr('Suplent', 0), mr('NC', 'NC')]);
+    const d = table([r], true);
+    const head = [...d.querySelectorAll('thead th')].find((th) => th.textContent === 'pl.th_avg_min');
+    const ht = tipOf(head.querySelector('[data-pl-tip]'));
+    assert.strictEqual(ht.t, 'pl.th_avg_min');
+    assert.deepStrictEqual(ht.r, [{k: '', v: 'pl.avg_min_tip'}]);
+    const cell = d.querySelector('tbody td [data-pl-tip]:not(.pl-ready):not(.pl-med)');
+    const ct = tipOf(cell);
+    assert.strictEqual(ct.r[0].v, '45′');
+    assert.strictEqual(ct.r[1].v, 'pl.avg_min_of:{"min":"90","n":2}');
+  });
+
+  it('names its strings in all three languages, and says "call-up" in the tip', () => {
+    ['pl.th_avg_min', 'pl.avg_min_tip', 'pl.avg_min_of'].forEach((k) => {
+      // To the end of the line: `{min}` inside a value would stop a [^}]+.
+      const m = new RegExp("'" + k.replace(/\./g, '\\.') + "':\\s*\\{(.*)\\},?\\s*$", 'm').exec(src);
+      assert.ok(m, k);
+      ['ca:', 'es:', 'en:'].forEach((l) => assert.ok(m[1].includes(l), k + ' ' + l));
+    });
+    assert.ok(/convocatòria \(titular o suplent\)/.test(src), 'the tip no longer says what it divides by');
+  });
+
+  it('the empty table still spans every column', () => {
+    const d = table([], true);
+    assert.strictEqual(d.querySelector('.pl-empty').getAttribute('colspan'),
+        String(d.querySelectorAll('thead th').length));
+  });
+});

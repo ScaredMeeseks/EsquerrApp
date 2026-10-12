@@ -421,7 +421,6 @@
     'ini.all_answered':   { ca:'Tot respost', es:'Todo respondido', en:'All answered' },
     'ini.nothing':        { ca:'Res programat aquestes dues setmanes.', es:'Nada programado estas dos semanas.', en:'Nothing scheduled for these two weeks.' },
     'ini.matches':        { ca:'Partits', es:'Partidos', en:'Matches' },
-    'ini.minutes':        { ca:'Minuts', es:'Minutos', en:'Minutes' },
     'ini.goals':          { ca:'Gols', es:'Goles', en:'Goals' },
     'ini.assists':        { ca:'Assist.', es:'Asist.', en:'Assists' },
     'ini.attendance':     { ca:'Assistència', es:'Asistencia', en:'Attendance' },
@@ -534,7 +533,6 @@
     'ac.pending':       { ca:'Pendent de tu', es:'Pendiente de ti', en:'Waiting on you' },
     'ac.n_pending':     { ca:'{n} pendents', es:'{n} pendientes', en:'{n} pending' },
     'ac.min':           { ca:'min', es:'min', en:'min' },
-    'ac.min_played':    { ca:'minuts jugats', es:'minutos jugados', en:'minutes played' },
     'ac.scale_low':     { ca:'Molt suau', es:'Muy suave', en:'Very easy' },
     'ac.scale_mid':     { ca:'Moderat', es:'Moderado', en:'Moderate' },
     'ac.scale_high':    { ca:'Màxim', es:'Máximo', en:'Maximal' },
@@ -850,6 +848,9 @@
     'pl.th_8w':          { ca:'8 setmanes', es:'8 semanas', en:'8 weeks' },
     'pl.th_matches':     { ca:'Partits', es:'Partidos', en:'Matches' },
     'pl.th_minutes':     { ca:'Minuts', es:'Minutos', en:'Minutes' },
+    'pl.th_avg_min':     { ca:'Mitj./conv.', es:'Media/conv.', en:'Avg/call-up' },
+    'pl.avg_min_tip':    { ca:'Mitjana de minuts per convocatòria (titular o suplent). Un suplent que no surt compta 0′.', es:'Media de minutos por convocatoria (titular o suplente). Un suplente que no sale cuenta 0′.', en:'Average minutes per call-up (starter or sub). An unused sub counts as 0′.' },
+    'pl.avg_min_of':     { ca:'{min}′ en {n} convocatòries', es:'{min}′ en {n} convocatorias', en:'{min}′ over {n} call-ups' },
     'pl.th_goals':       { ca:'Gols', es:'Goles', en:'Goals' },
     'pl.th_assists':     { ca:'Assist.', es:'Asist.', en:'Assists' },
     'pl.th_cards':       { ca:'Targetes', es:'Tarjetas', en:'Cards' },
@@ -1180,6 +1181,8 @@
     'plan.n_petos':      { ca:'{n} petos', es:'{n} petos', en:'{n} bibs' },
     'plan.ex_title':     { ca:'Títol', es:'Título', en:'Title' },
     'plan.ex_desc':      { ca:'Descripció', es:'Descripción', en:'Description' },
+    'plan.edit_desc':    { ca:'Edita la descripció', es:'Edita la descripción', en:'Edit the description' },
+    'plan.save':         { ca:'Desa', es:'Guardar', en:'Save' },
     'plan.untitled':     { ca:'Sense títol', es:'Sin título', en:'Untitled' },
     'plan.board_missing':{ ca:'Pissarra no disponible', es:'Pizarra no disponible', en:'Board unavailable' },
     'plan.remove':       { ca:'Treure', es:'Quitar', en:'Remove' },
@@ -1333,7 +1336,6 @@
     // the column heads to fit the widths it specifies ('Assist.', not
     // 'Assistències'), and the staff page still wants the long words.
     'ms.matches':      { ca:'Partits', es:'Partidos', en:'Matches' },
-    'ms.minutes':      { ca:'Minuts', es:'Minutos', en:'Minutes' },
     'ms.goals':        { ca:'Gols', es:'Goles', en:'Goals' },
     'ms.assists':      { ca:'Assist.', es:'Asist.', en:'Assists' },
     'ms.titular':      { ca:'Titular', es:'Titular', en:'Starter' },
@@ -1362,12 +1364,11 @@
     'ms.rest':         { ca:'Dies de descans', es:'Días de descanso', en:'Rest days' },
     'ms.cards':        { ca:'Targetes', es:'Tarjetas', en:'Cards' },
     'ms.per_match':    { ca:'Partit a partit', es:'Partido a partido', en:'Match by match' },
-    'ms.summary':      { ca:'{min} minuts · {g} gols · {a} assistències', es:'{min} minutos · {g} goles · {a} asistencias', en:'{min} minutes · {g} goals · {a} assists' },
+    'ms.summary':      { ca:'{g} gols · {a} assistències', es:'{g} goles · {a} asistencias', en:'{g} goals · {a} assists' },
     'ms.n_matches':    { ca:'{n} partits', es:'{n} partidos', en:'{n} matches' },
     'ms.th_date':      { ca:'Data', es:'Fecha', en:'Date' },
     'ms.th_rival':     { ca:'Rival', es:'Rival', en:'Opponent' },
     'ms.th_res':       { ca:'Resultat', es:'Resultado', en:'Result' },
-    'ms.th_min':       { ca:'Min', es:'Min', en:'Min' },
     'ms.home':         { ca:'Casa', es:'Casa', en:'Home' },
     'ms.away':         { ca:'Fora', es:'Fuera', en:'Away' },
     'ms.no_matches':   { ca:'Encara no has disputat cap partit aquesta temporada.', es:'Todavía no has disputado ningún partido esta temporada.', en:'You have not played a match this season yet.' },
@@ -2133,6 +2134,7 @@
     'error.passwords_mismatch':{ ca:'Les contrasenyes no coincideixen.', es:'Las contraseñas no coinciden.', en:'Passwords do not match.' },
     'error.invalid_team_code': { ca:'Codi d\'equip no vàlid.', es:'Código de equipo no válido.', en:'Invalid team code.' },
     'error.need_team_code':    { ca:'Has d\'introduir el codi d\'equip.', es:'Debes introducir el código de equipo.', en:'You must enter a team code.' },
+    'error.notif_required':    { ca:'Per registrar-te has d\'acceptar les notificacions.', es:'Para registrarte debes aceptar las notificaciones.', en:'You must accept notifications to sign up.' },
     'error.enter_code':        { ca:'Introdueix un codi.', es:'Introduce un código.', en:'Enter a code.' },
     'error.invalid_code':      { ca:'Codi no vàlid.', es:'Código no válido.', en:'Invalid code.' },
     'error.need_category':     { ca:'Has d\'activar almenys una categoria.', es:'Debes activar al menos una categoría.', en:'You must enable at least one category.' },
@@ -2172,6 +2174,13 @@
     'auth.confirm_password': { ca:'Confirma contrasenya', es:'Confirma contraseña', en:'Confirm Password' },
     'auth.team_code':        { ca:'Codi d\'equip', es:'Código de equipo', en:'Team Code' },
     'auth.register_btn':     { ca:'Crea perfil', es:'Crear perfil', en:'Create Account' },
+    'auth.notif_accept':     { ca:'Accepto rebre notificacions de l\'equip', es:'Acepto recibir notificaciones del equipo', en:'I accept team notifications' },
+    'auth.notif_denied':     { ca:'Les notificacions estan bloquejades en aquest navegador. Activa-les a la configuració del lloc (la icona del cadenat, al costat de l\'adreça) i torna aquí.', es:'Las notificaciones están bloqueadas en este navegador. Actívalas en la configuración del sitio (el icono del candado, junto a la dirección) y vuelve aquí.', en:'Notifications are blocked in this browser. Allow them in the site settings (the padlock next to the address) and come back.' },
+    'auth.notif_retry':      { ca:'Cal permetre les notificacions per registrar-te. Torna a marcar la casella i tria «Permet».', es:'Debes permitir las notificaciones para registrarte. Vuelve a marcar la casilla y elige «Permitir».', en:'You need to allow notifications to sign up. Tick the box again and choose “Allow”.' },
+    'auth.notif_ios_steps':  { ca:'A l\'iPhone, les notificacions només funcionen des de l\'app de la pantalla d\'inici:\n1. Toca Compartir (el quadrat amb la fletxa).\n2. Tria «Afegeix a la pantalla d\'inici».\n3. Obre EsquerrApp des de la icona nova i registra\'t allà.', es:'En el iPhone, las notificaciones solo funcionan desde la app de la pantalla de inicio:\n1. Toca Compartir (el cuadrado con la flecha).\n2. Elige «Añadir a pantalla de inicio».\n3. Abre EsquerrApp desde el icono nuevo y regístrate allí.', en:'On iPhone, notifications only work from the home-screen app:\n1. Tap Share (the square with the arrow).\n2. Choose “Add to Home Screen”.\n3. Open EsquerrApp from the new icon and sign up there.' },
+    'auth.notif_unsupported':{ ca:'Aquest navegador no pot rebre notificacions. Obre l\'enllaç amb Chrome o Safari per registrar-te.', es:'Este navegador no puede recibir notificaciones. Abre el enlace con Chrome o Safari para registrarte.', en:'This browser cannot receive notifications. Open the link in Chrome or Safari to sign up.' },
+    'auth.install_label':    { ca:'Afegeix l\'app a la pantalla d\'inici', es:'Añade la app a la pantalla de inicio', en:'Add the app to my home screen' },
+    'auth.install_done':     { ca:'Ja és a la pantalla d\'inici.', es:'Ya está en la pantalla de inicio.', en:'It is on your home screen.' },
     'auth.has_account':      { ca:'Ja tens un perfil?', es:'¿Ya tienes perfil?', en:'Already have an account?' },
     'auth.login_link':       { ca:'Entra', es:'Entrar', en:'Sign in' },
     'auth.join_title':       { ca:'Uneix-te a un equip', es:'Únete a un equipo', en:'Join a Team' },
@@ -3041,7 +3050,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 281;
+  const APP_VERSION = 282;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4708,6 +4717,27 @@
     const teamCode = codeInput ? codeInput.value.trim().toUpperCase() : '';
     const errEl = $('#register-error');
 
+    /* The consent, checked again here and not only by the disabled button:
+       Enter in a field, autofill or a stale paint must not get round it. */
+    const notifBox = $('#reg-notif');
+    if (_regNotif !== 'granted' || !notifBox || !notifBox.checked) {
+      errEl.textContent = t('error.notif_required');
+      errEl.hidden = false;
+      return;
+    }
+    /* The install dialog BEFORE the first await: the submit tap is the user
+       activation Chrome demands, and it does not survive an await. A
+       beforeinstallprompt can be shown once, so it is spent here. */
+    const installBox = $('#reg-install');
+    const installRow = $('#reg-install-row');
+    if (window._bip && installBox && installBox.checked && installRow && !installRow.hidden) {
+      const bip = window._bip;
+      window._bip = null;
+      try {
+        Promise.resolve(bip.prompt()).catch((err) => console.warn('install prompt:', err));
+      } catch (err) { console.warn('install prompt:', err); }
+    }
+
     if (pw !== pw2) {
       errEl.textContent = t('error.passwords_mismatch');
       errEl.hidden = false;
@@ -4812,6 +4842,12 @@
          ⚠ AFTER DB.init, not before — addStaffNotification writes into the
          club-wide blob, and until the sync layer is pointed at this club the
          write has nowhere to go. */
+      /* The token for the permission granted on the form. Nothing prompts —
+         the answer is already 'granted' — so this only saves it under the
+         new uid. Not awaited: native registration can take seconds. */
+      try {
+        Promise.resolve(Push.requestPermission()).catch((err) => console.warn('push token:', err));
+      } catch (err) { console.warn('push token:', err); }
       if (club) {
         addStaffNotification({
           type: 'registration',
@@ -4839,6 +4875,113 @@
       showView('#view-register');
       _hideSplash();
     }
+  }
+
+  /* ── Sign-up consents (v282) ─────────────────────────────────────
+     The owner's rule: nobody registers without notifications. The submit
+     opens on a GRANTED permission, not on a ticked box — a tick over a
+     refused prompt is a promise the phone will not keep, and the reminders
+     (training T-4h, RPE, availability) are the reason the app exists.
+
+     The tick is the user gesture the prompt needs: browsers auto-deny a
+     permission prompt that no tap asked for, and iOS ignores it. On an
+     iPhone outside the home-screen app there is no Notification API at all,
+     so the box gives way to the steps for installing first — that is the
+     only road to notifications Apple offers.
+
+     The second box is optional: Chrome's install dialog, replayed from the
+     beforeinstallprompt the inline head script caught. iOS has no such
+     dialog, which is why the steps above are text. */
+  let _regNotif = 'default';
+
+  function regIsIos() {
+    const ua = navigator.userAgent || '';
+    // iPadOS 13+ reports a Mac; the touch points give it away.
+    return /iphone|ipad|ipod/i.test(ua) ||
+      (/macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1);
+  }
+  function regIsStandalone() {
+    try {
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+    } catch (e) { /* no matchMedia */ }
+    return window.navigator.standalone === true;
+  }
+  function regIsNative() {
+    return typeof Capacitor !== 'undefined' && !!Capacitor.isNativePlatform && Capacitor.isNativePlatform();
+  }
+
+  /** One help line: its key goes on data-i18n so a language switch
+      (applyI18nHtml) retranslates it like every other label here. */
+  function regHelp(el, key) {
+    if (!el) return;
+    if (key) {
+      el.setAttribute('data-i18n', key);
+      el.textContent = t(key);
+      el.hidden = false;
+    } else {
+      el.removeAttribute('data-i18n');
+      el.textContent = '';
+      el.hidden = true;
+    }
+  }
+
+  /** Paint both boxes from a permission state (Push.permissionState()). */
+  function regPaintConsent(state) {
+    _regNotif = state;
+    const box = $('#reg-notif'), row = $('#reg-notif-row'), btn = $('#reg-submit');
+    if (!box || !btn) return;
+    const iosFirst = state === 'unsupported' && regIsIos() && !regIsStandalone();
+    row.hidden = iosFirst;
+    box.disabled = state === 'denied' || state === 'unsupported';
+    // A grant ticks the box unless the person took the tick off themselves.
+    box.checked = state === 'granted' && box.dataset.off !== '1';
+    btn.disabled = !box.checked;
+    regHelp($('#reg-notif-help'),
+      state === 'denied' ? 'auth.notif_denied'
+        : iosFirst ? 'auth.notif_ios_steps'
+        : state === 'unsupported' ? 'auth.notif_unsupported' : '');
+
+    const iRow = $('#reg-install-row');
+    if (iRow) {
+      const installed = !!window._appInstalled;
+      iRow.hidden = regIsNative() || regIsStandalone() || regIsIos() ||
+        installed || !window._bip;
+      regHelp($('#reg-install-help'), installed ? 'auth.install_done' : '');
+    }
+  }
+
+  async function regConsentSync() {
+    let state = 'unsupported';
+    try { state = await Push.permissionState(); } catch (e) { /* stays unsupported */ }
+    regPaintConsent(state);
+  }
+
+  function bindRegConsent() {
+    const box = $('#reg-notif');
+    if (!box) return;
+    box.addEventListener('change', async () => {
+      if (!box.checked) {
+        box.dataset.off = '1';
+        regPaintConsent(_regNotif);
+        return;
+      }
+      delete box.dataset.off;
+      if (_regNotif === 'granted') { regPaintConsent('granted'); return; }
+      // Inside the tap: this is the gesture the prompt needs.
+      let state = 'unsupported';
+      try { state = await Push.askPermission(); } catch (e) { /* stays unsupported */ }
+      /* A dismissed prompt answers 'default': the box cannot stay ticked,
+         and the line says why and that another tap asks again. */
+      regPaintConsent(state);
+      if (state === 'default') regHelp($('#reg-notif-help'), 'auth.notif_retry');
+    });
+    // Coming back from the settings app, or from installing: look again.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') regConsentSync();
+    });
+    window.addEventListener('focus', regConsentSync);
+    document.addEventListener('bip-ready', regConsentSync);
+    regConsentSync();
   }
 
   async function handleLogin(e) {
@@ -7885,7 +8028,10 @@
           kind: 'match', id: String(m.id), key,
           date: m.date, time: m.time || '',
           title: acRival(m), place: '',
-          minutes: rec ? rec.minutes : playerMatchMinutesKnown(session.id, m.id),
+          /* ⚠ NO MINUTES on a match row (v282): players do not see their
+             minutes played. The save takes them from the lineup and the subs
+             instead, so nothing is asked here and nothing shown. */
+          minutes: null,
           minutesMax: MATCH_MINUTES_MAX,
           rpe: rec ? rec.rpe : null
         });
@@ -7955,11 +8101,13 @@
   function acRowHtml(row, editing) {
     const answered = row.rpe != null && !editing;
     const band = acRpeBand(row.rpe);
+    // A match row asks for no minutes — see playerActionModel.
     const meta = '<span class="ac-time">' + sanitize(row.time) + '</span>' +
-      '<input type="text" inputmode="numeric" class="reg-input ac-min action-minutes" maxlength="3"' +
-        ' data-max="' + row.minutesMax + '" value="' + (row.minutes == null ? '' : row.minutes) + '"' +
-        ' aria-label="' + sanitize(t('actions.minutes')) + '">' +
-      '<span class="ac-meta-t">' + sanitize(row.kind === 'match' ? t('ac.min_played') : t('ac.min')) + '</span>' +
+      (row.kind === 'match' ? '' :
+        '<input type="text" inputmode="numeric" class="reg-input ac-min action-minutes" maxlength="3"' +
+          ' data-max="' + row.minutesMax + '" value="' + (row.minutes == null ? '' : row.minutes) + '"' +
+          ' aria-label="' + sanitize(t('actions.minutes')) + '">' +
+        '<span class="ac-meta-t">' + sanitize(t('ac.min')) + '</span>') +
       (row.place ? '<span class="ac-meta-t">· ' + sanitize(row.place) + '</span>' : '');
 
     return '<div class="ac-row' + (answered ? ' ac-row-done' : '') + '"' +
@@ -9890,7 +10038,6 @@
           <div class="ini-hero-rule"></div>
           <div class="ini-stats">
             <div class="ini-stat"><span class="ini-eyebrow">${t('ini.matches')}</span><span class="ini-stat-v">${tot.matches}</span></div>
-            <div class="ini-stat"><span class="ini-eyebrow">${t('ini.minutes')}</span><span class="ini-stat-v">${tot.minutes}</span></div>
             <div class="ini-stat"><span class="ini-eyebrow">${t('ini.goals')}</span><span class="ini-stat-v">${tot.goals}</span></div>
             <div class="ini-stat"><span class="ini-eyebrow">${t('ini.assists')}</span><span class="ini-stat-v">${tot.assists}</span></div>
           </div>
@@ -15917,7 +16064,11 @@
       const rpeKey = uid + '_match_' + m.id;
       const entry = rpeData[rpeKey];
       if (entry) {
-        sessions.push({ date: m.date, type: 'match', rpe: entry.rpe, minutes: entry.minutes, matchId: m.id, real: true });
+        /* Since v282 a player's match RPE carries the LINEUP's minutes, and
+           null when the lineup was not recorded yet. Look them up again here
+           so the load counts once the coach records it. */
+        const em = entry.minutes != null ? entry.minutes : playerMatchMinutesKnown(uid, m.id);
+        sessions.push({ date: m.date, type: 'match', rpe: entry.rpe, minutes: em, matchId: m.id, real: true });
       } else {
         // Minutes come from the events, not the RPE, so a match can be
         // estimated even when the player submitted nothing at all.
@@ -16881,7 +17032,6 @@
         ? '<img class="ms-crest" src="' + sanitize(safeHttpUrl(r.opponentBadge)) +
           '" alt="" onerror="this.style.display=\'none\'">'
         : '<span class="ms-crest ms-crest-mono">' + sanitize(clubMonogram(rival)) + '</span>';
-      var min = (typeof r.minutes === 'number') ? r.minutes + "'" : String(r.minutes);
       var score = r.homeScore + '-' + r.awayScore;
       var tag = '<span class="ms-res ' + (MS_RES_CLS[r.resultLetter] || 'ms-res-e') + '">' +
         sanitize(r.resultLetter) + '</span>';
@@ -16893,7 +17043,6 @@
           '<span class="ms-rival">' + sanitize(rival) + '</span>' + venue + '</span>' +
         '<span class="ms-c-res">' + tag +
           '<span class="ms-score ms-num">' + sanitize(score) + '</span></span>' +
-        '<span class="ms-c-min ms-num">' + sanitize(min) + '</span>' +
         '<span class="ms-c-g ms-num">' + msNil(r.goals) + '</span>' +
         '<span class="ms-c-a ms-num">' + msNil(r.assists) + '</span>' +
         '<span class="ms-c-cards">' + msCardsHtml(r) + '</span>' +
@@ -16905,7 +17054,6 @@
          where a player goes to compare rows. */
       var meta = '<span class="ms-pm-date">' + sanitize(date) + '</span>' +
         venue +
-        '<span>' + sanitize(min) + '</span>' +
         (r.goals ? '<span>' + sanitize(String(r.goals)) + ' G</span>' : '') +
         (r.assists ? '<span>' + sanitize(String(r.assists)) + ' A</span>' : '') +
         ((r.yellows || r.reds) ? '<span class="ms-pm-cards">' + msCardsHtml(r) + '</span>' : '');
@@ -17006,14 +17154,16 @@
     const injuries = getPlayerInjuries(uid);
     const posHtml = posCirclesHtmlGlobal(myUser);
 
+    /* ⚠ NO MINUTES on any player surface (v282, the owner's call): not the
+       season total here, not the per-match column below, not the hero on
+       Inici, not the RPE form. The staff pages keep them. */
     const figures =
       msFig(t('ms.matches'), ct.matches) +
-      msFig(t('ms.minutes'), ct.minutes) +
       msFig(t('ms.goals'), ct.goals) +
       msFig(t('ms.assists'), ct.assists) +
       msFig(t('ms.titular'), ct.titulars);
 
-    const summary = tv('ms.summary', { min: ct.minutes, g: ct.goals, a: ct.assists });
+    const summary = tv('ms.summary', { g: ct.goals, a: ct.assists });
 
     return `
       <div class="ms-page" id="ms-page">
@@ -17076,7 +17226,6 @@
               <span class="ms-c-date">${sanitize(t('ms.th_date'))}</span>
               <span class="ms-c-rival">${sanitize(t('ms.th_rival'))}</span>
               <span class="ms-c-res">${sanitize(t('ms.th_res'))}</span>
-              <span class="ms-c-min">${sanitize(t('ms.th_min'))}</span>
               <span class="ms-c-g">${sanitize(t('ms.goals'))}</span>
               <span class="ms-c-a">${sanitize(t('ms.assists'))}</span>
               <span class="ms-c-cards">${sanitize(t('ms.cards'))}</span>
@@ -23315,6 +23464,10 @@
    * none of them may reach the renderer.
    */
   const STP_DEFAULT_MINS = 15;
+  /* An exercise's description (v282). Capped HERE, in the one read path,
+     not only on the textarea: every session of a category shares one
+     Firestore document with a 1 MiB ceiling. */
+  const STP_DESC_MAX = 500;
 
   function _stpMins(v) {
     const n = parseInt(v, 10);
@@ -23352,7 +23505,7 @@
             id: e.id || _planId('ex'),
             boardId: String(e.boardId || ''),
             title: String(e.title || ''),
-            desc: String(e.desc || ''),
+            desc: String(e.desc || '').slice(0, STP_DESC_MAX),
             tag: String(e.tag || ''),
             /* A SNAPSHOT of the teams assigned here, not a pointer at
                plan.teams. Pointing was a real bug: re-drafting the generator
@@ -24179,6 +24332,13 @@
     const del = ro ? '' :
       '<button class="stp-ex-del" data-stp-del="' + path + '" title="' +
         sanitize(t('plan.remove')) + '">&times;</button>';
+    /* The description, written or rewritten (v282). It existed in the data
+       and on the print sheet from v188, but only a free exercise could get
+       one, and only while it was being added. */
+    const edit = ro ? '' :
+      '<button class="stp-ex-edit" data-stp-edit="' + sanitize(ex.id) + '" title="' +
+        sanitize(t('plan.edit_desc')) + '" aria-label="' + sanitize(t('plan.edit_desc')) +
+        '">✎</button>';
 
     const head = board
       ? '<button class="stp-ex-title stp-ex-open" data-stp-toggle="' +
@@ -24209,7 +24369,7 @@
        × there was no way to take them off again either. An assignment is a
        fact about the exercise, not about its drawing. */
     return '<div class="stp-ex" data-stp-ex="' + path + '">' +
-      '<div class="stp-ex-head">' + head + del + '</div>' +
+      '<div class="stp-ex-head">' + head + edit + del + '</div>' +
       '<div class="stp-ex-note">' + sanitize(_stpExNote(ex, resolve)) + '</div>' +
       (ex.desc ? '<div class="stp-ex-desc">' + sanitize(ex.desc) + '</div>' : '') +
       _stpTeamLines(ex, ctx.squad, ro) +
@@ -25016,7 +25176,7 @@
             sanitize(t('plan.free')) + '</div>' +
           '<input class="stp-field" id="stp-free-title" maxlength="60" placeholder="' +
             sanitize(t('plan.ex_title')) + '">' +
-          '<textarea class="stp-field stp-free-desc" id="stp-free-desc" maxlength="200" ' +
+          '<textarea class="stp-field stp-free-desc" id="stp-free-desc" maxlength="' + STP_DESC_MAX + '" ' +
             'rows="2" placeholder="' + sanitize(t('plan.ex_desc')) + '"></textarea>' +
         '</div>' +
         '<div class="stp-dialog-foot">' +
@@ -25078,6 +25238,53 @@
       }, mins);
     });
     titleEl.focus();
+  }
+
+  /** An exercise's description — any exercise, board or free (v282).
+      An empty save clears it. The text goes in through `.value`, never
+      through the markup, so a coach's quotes and angle brackets are text. */
+  function stdOpenDescDialog(ex, title, onSave) {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="stp-dialog">' +
+        '<div class="stp-dialog-head">' +
+          '<span class="std-eyebrow">' + sanitize(t('plan.ex_desc')) + '</span>' +
+          '<button class="stp-a stp-a-mute" id="stp-desc-x">✕</button>' +
+        '</div>' +
+        '<div class="stp-dialog-body">' +
+          '<div class="stp-desc-for">' + sanitize(title || '') + '</div>' +
+          '<textarea class="stp-field stp-free-desc" id="stp-desc-text" rows="5" maxlength="' +
+            STP_DESC_MAX + '" placeholder="' + sanitize(t('plan.ex_desc')) + '"></textarea>' +
+        '</div>' +
+        '<div class="stp-dialog-foot">' +
+          '<span></span>' +
+          '<div class="stp-dialog-acts">' +
+            '<button class="stp-a stp-a-mute" id="stp-desc-cancel">' +
+              sanitize(t('common.cancel')) + '</button>' +
+            '<button class="std-btn" id="stp-desc-ok">' + sanitize(t('plan.save')) + '</button>' +
+          '</div>' +
+        '</div></div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+    const close = () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 200);
+    };
+    const textEl = overlay.querySelector('#stp-desc-text');
+    textEl.value = String((ex && ex.desc) || '');
+    overlay.querySelector('#stp-desc-x').addEventListener('click', close);
+    overlay.querySelector('#stp-desc-cancel').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('#stp-desc-ok').addEventListener('click', function () {
+      const text = textEl.value.trim().slice(0, STP_DESC_MAX);
+      close();
+      onSave(text);
+    });
+    textEl.focus();
   }
 
   /** "+ Altre material" — a label and a quantity. */
@@ -25376,6 +25583,30 @@
           const items = _stpAt(p, path);
           if (!items) return false;
           items.splice(path[1], 1);
+        });
+      });
+    });
+
+    // An exercise's description. Found by ID, not by path: the dialog is
+    // open while a sync may re-render the plan underneath it.
+    document.querySelectorAll('[data-stp-edit]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = btn.dataset.stpEdit;
+        let ex = null;
+        plan.blocks.forEach(function (b) {
+          b.items.forEach(function (it) { if (it.id === id) ex = it; });
+        });
+        if (!ex) return;
+        const board = ex.boardId ? resolve(ex.boardId) : null;
+        stdOpenDescDialog(ex, (board && board.name) || ex.title, function (text) {
+          _stpWrite(function (p) {
+            let hit = false;
+            p.blocks.forEach(function (b) {
+              b.items.forEach(function (it) { if (it.id === id) { it.desc = text; hit = true; } });
+            });
+            if (!hit) return false;
+          });
         });
       });
     });
@@ -27513,6 +27744,12 @@
         rd: rd, ready: rd.score, acwr: rd.acwr,
         weeks: rd.weeks || [], sessions: rd.sessions || [],
         matches: ps.totals.matches, minutes: ps.totals.minutes,
+        /* Minutes per CALL-UP (v282, the owner's choice): titular + suplent,
+           so an unused sub counts 0′ and the figure is his share of the
+           playing time. `totals.minutes` only ever sums those rows — an NC
+           or a call-up with no recorded XI carries a string, not a number. */
+        avgMin: played > 0 ? Math.round(ps.totals.minutes / played) : null,
+        played: played,
         goals: ps.totals.goals, assists: ps.totals.assists,
         titulars: ps.totals.titulars, suplents: sup, nc: nc,
         yellows: yel, reds: red,
@@ -27586,6 +27823,11 @@
       (wide ? th(t('pl.th_8w')) + th(t('pl.th_matches'), 'pl-r') + th('GC / P', 'pl-r') +
         th('T / S / NC', 'pl-c') : '') +
       th(t('pl.th_minutes'), 'pl-r') +
+      /* The header says what the average is over, on hover: "per call-up"
+         is a choice, and the same number per match PLAYED would be larger. */
+      '<th class="pl-r"><span class="pl-th-tip"' +
+        plHitTip(t('pl.th_avg_min'), [{k: '', v: t('pl.avg_min_tip')}]) + '>' +
+        t('pl.th_avg_min') + '</span></th>' +
       (wide ? th(t('pl.th_goals'), 'pl-r') + th(t('pl.th_assists'), 'pl-r') +
         th(t('pl.th_cards'), 'pl-r') : '') +
       '</tr>';
@@ -27643,6 +27885,12 @@
             '</span><span class="pl-sep"> / </span><span class="pl-s">' + r.suplents +
             '</span><span class="pl-sep"> / ' + r.nc + '</span></td>' : '') +
         '<td class="pl-r pl-nums pl-muted">' + plNum(r.minutes) + '′</td>' +
+        (r.avgMin == null
+          ? '<td class="pl-r pl-nums pl-muted">—</td>'
+          : '<td class="pl-r pl-nums"><span' + plHitTip(r.name, [
+              {k: t('pl.th_avg_min'), v: plNum(r.avgMin) + '′'},
+              {k: '', v: tv('pl.avg_min_of', {min: plNum(r.minutes), n: r.played})}]) + '>' +
+              plNum(r.avgMin) + '′</span></td>') +
         (wide ? '<td class="pl-r pl-nums">' + r.goals + '</td>' +
           '<td class="pl-r pl-nums pl-muted">' + r.assists + '</td>' +
           '<td class="pl-r pl-cards"><span class="pl-card-pair">' +
@@ -39871,20 +40119,29 @@
         const chosen = card.querySelector('.ac-cell-on');
         const minInput = card.querySelector('.action-minutes');
         const rpe = chosen ? parseInt(chosen.dataset.acRpe, 10) : NaN;
-        const minutes = parseInt(minInput.value, 10);
+        const key = card.dataset.actionKey;
+        const tag = card.dataset.actionType;
         if (isNaN(rpe) || rpe < 1 || rpe > 10) {
           card.querySelector('.ac-strip').classList.add('ac-strip-err'); return;
         }
-        /* The ceiling again at submit, not only on `input`. A value the
-           form PRE-FILLED never fires an input event, and neither does an
-           autofill — so the clamp above cannot be the only check. */
-        const minCap = Number(minInput.dataset.max) || ACTION_MINUTES_MAX;
-        if (isNaN(minutes) || minutes < 0 || minutes > minCap) {
-          minInput.classList.add('input-error'); return;
+        /* A MATCH row has no minutes box (v282 — players do not see their
+           minutes): they come from the lineup and the substitutions. Null
+           while the lineup is unrecorded; the load engine looks them up
+           again then (computeReadiness), so a lineup entered later counts. */
+        let minutes;
+        if (tag === 'match') {
+          minutes = playerMatchMinutesKnown(getSession().id, key.split('_match_')[1]);
+        } else {
+          minutes = parseInt(minInput.value, 10);
+          /* The ceiling again at submit, not only on `input`. A value the
+             form PRE-FILLED never fires an input event, and neither does an
+             autofill — so the clamp above cannot be the only check. */
+          const minCap = Number(minInput.dataset.max) || ACTION_MINUTES_MAX;
+          if (isNaN(minutes) || minutes < 0 || minutes > minCap) {
+            minInput.classList.add('input-error'); return;
+          }
         }
-        const key = card.dataset.actionKey;
-        const tag = card.dataset.actionType;
-        const ua = rpe * minutes;
+        const ua = minutes == null ? null : rpe * minutes;
         // Extract the actual activity date from the key or card
         let activityDate;
         let sessionId = '';
@@ -39924,7 +40181,7 @@
           type: tag === 'match' ? 'match_rpe' : 'training_rpe',
           playerName: session ? session.name : '?',
           detail: (wasAnswered ? t('nf.rpe_changed') + ' ' : '') +
-            'RPE ' + rpe + ' · ' + minutes + ' min',
+            'RPE ' + rpe + (minutes == null ? '' : ' · ' + minutes + ' min'),
           activity: actText,
           page: tag === 'match' ? 'match-detail' : 'staff-training-detail',
           pageId: tag === 'match' ? (key.split('_match_')[1] || '') : sessionId
@@ -41112,6 +41369,7 @@
 
     $('#form-login').addEventListener('submit', handleLogin);
     $('#form-register').addEventListener('submit', handleRegister);
+    bindRegConsent();
     $('#form-profile-setup').addEventListener('submit', handleProfileSetup);
     $('#form-join-club').addEventListener('submit', handleJoinClub);
     $('#btn-join-logout').addEventListener('click', () => auth.signOut());
@@ -41165,7 +41423,7 @@
       }
     });
 
-    $('#go-register').addEventListener('click', (e) => { e.preventDefault(); showView('#view-register'); });
+    $('#go-register').addEventListener('click', (e) => { e.preventDefault(); showView('#view-register'); regConsentSync(); });
     $('#go-login').addEventListener('click', (e) => { e.preventDefault(); showView('#view-login'); });
 
     // Auth screen language switchers (+ nav switcher handled below)

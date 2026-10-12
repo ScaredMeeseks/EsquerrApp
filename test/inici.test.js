@@ -1099,6 +1099,17 @@ describe('Inici — the heroes are rendered, not just read', () => {
     assert.ok(h.includes('<weeks>'), 'the two-week strip is missing');
   });
 
+  /* v282: players do not see their minutes. The fixture's 300 must not
+     reach the hero, and the three figures that stay must. */
+  it('shows no minutes in the hero', () => {
+    const h = renderPlayer();
+    assert.ok(!h.includes('ini.minutes'), 'the minutes label is back');
+    assert.ok(!/ini-stat-v">300</.test(h), 'the season minutes reach the hero');
+    ['ini.matches', 'ini.goals', 'ini.assists'].forEach((k) =>
+      assert.ok(h.includes(k), k + ' went with it'));
+    assert.strictEqual((h.match(/class="ini-stat"/g) || []).length, 3);
+  });
+
   /* ⚠ The centre of the ring, the ring's own arcs, and the legend beneath it
      are THREE renderings of one figure — and every bug this donut has had was
      two of them disagreeing. Asserted from ONE render, together. */

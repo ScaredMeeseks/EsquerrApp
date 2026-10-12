@@ -457,6 +457,14 @@ describe('material — what it cannot price', () => {
 });
 
 describe('stdPlan — normalising whatever is on the row', () => {
+  it('caps a description at 500 characters, in the read path (v282)', () => {
+    const d = (desc) => H.stdPlan({ plan: { blocks: [{ items: [{ boardId: 'a', desc }] }] } })
+        .blocks[0].items[0].desc;
+    assert.strictEqual(d('x'.repeat(900)).length, 500, 'a pasted essay reaches the shard');
+    assert.strictEqual(d('y'.repeat(500)), 'y'.repeat(500), 'the cap cut a legal one');
+    assert.strictEqual(d(undefined), '');
+  });
+
   it('a session with no plan reads as an empty one', () => {
     assert.deepStrictEqual(H.stdPlan({}), {
       blocks: [], extra: [], duty: { n: 0, ids: [] },
@@ -1056,8 +1064,8 @@ function renderers(opts) {
       (ref) => (ref && (o.boards || {})[ref.boardId]) || null,
       { peek: (id) => (o.boards || {})[id] || null },
       { getItem: () => JSON.stringify(o.bucket || {}) },
-      { getElementById: () => null, querySelectorAll: () => [] },
-      () => null,
+      o.document || { getElementById: () => null, querySelectorAll: () => [] },
+      o.persist || (() => null),
       'now',
       (ref) => '<div class="tb-ro-skeleton">' + esc(ref && ref.name) + '</div>',
       () => {}, () => {}, () => {}, () => {},
@@ -1169,7 +1177,7 @@ describe('the session plan renders', () => {
         { blocks: [{ id: 'b0', mins: 25, items: [ex('a'), ex('b')] }] }), true, []);
     assert.ok(html.includes('Rondo'), 'the exercises are still shown');
     ['data-stp-add', 'data-stp-del', 'data-stp-in', 'data-stp-lane-add',
-      'data-stp-mins'].forEach((c) => {
+      'data-stp-mins', 'data-stp-edit'].forEach((c) => {
       assert.ok(!html.includes(c), c + ' must not survive read-only');
     });
   });
@@ -1200,6 +1208,93 @@ describe('the session plan renders', () => {
     ] }), true, []);
     assert.ok(html.includes('plan.blk_n'), 'two blocks is plural');
     assert.ok(html.includes('plan.ex_n'), 'four exercises is plural');
+  });
+});
+
+/* v282 — a description on ANY exercise, board or free, after it exists.
+   RUN over a real document: the ✎ is bound by bindStdPlan, the dialog is
+   real DOM, and the write goes through _stpWrite to the session row. */
+describe('the session plan — editing an exercise\'s description', () => {
+  const { JSDOM } = require('jsdom');
+  const TR0 = { id: 'now', date: '2026-09-01', time: '20:00', endTime: '21:30', plan: {
+    blocks: [{ id: 'b0', mins: 20, items: [
+      { id: 'e1', boardId: 'a', title: 'Rondo', desc: '' },
+      { id: 'e2', boardId: '', title: 'Finalització', desc: 'Dos tocs' },
+    ] }] } };
+
+  function page(opts) {
+    const o = opts || {};
+    const dom = new JSDOM('<body></body>', { url: 'http://localhost/' });
+    const d = dom.window.document;
+    const errors = [];
+    dom.window.addEventListener('error', (e) => errors.push(e.error || e.message));
+    const tr = JSON.parse(JSON.stringify(TR0));
+    const writes = [];
+    const R = renderers({
+      document: d, trainings: [tr], canEdit: o.canEdit,
+      boards: { a: { name: 'Rondo 4v2', cones: [] } },
+      persist: (id, fn) => { writes.push(id); fn(tr); },
+    });
+    d.body.innerHTML = R.renderStdPlanPanel(tr, o.canEdit === false, []);
+    R.bindStdPlan();
+    return { d, tr, writes, errors };
+  }
+  const pencil = (d, id) => d.querySelector('[data-stp-edit="' + id + '"]');
+  const click = (el) => el.dispatchEvent(new el.ownerDocument.defaultView.MouseEvent('click', { bubbles: true }));
+
+  it('offers ✎ on every exercise — a board one too, not only a free one', () => {
+    const { d } = page();
+    assert.ok(pencil(d, 'e1'), 'a board exercise cannot be described');
+    assert.ok(pencil(d, 'e2'), 'a free exercise cannot be edited');
+  });
+
+  it('writes a new description to the session, and the plan shows it', () => {
+    const { d, tr, writes, errors } = page();
+    click(pencil(d, 'e1'));
+    const box = d.getElementById('stp-desc-text');
+    assert.ok(box, 'no dialog opened');
+    assert.strictEqual(box.value, '');
+    assert.ok(d.querySelector('.stp-desc-for').textContent.includes('Rondo 4v2'),
+        'the dialog does not say which exercise');
+    box.value = '  Dos equips, <b>3 tocs</b> & "pressió"  ';
+    click(d.getElementById('stp-desc-ok'));
+    assert.deepStrictEqual(errors, [], 'the handler threw: ' + errors.join(' | '));
+    assert.deepStrictEqual(writes, ['now'], 'nothing reached _ntPersistSession');
+    const items = tr.plan.blocks[0].items;
+    assert.strictEqual(items[0].desc, 'Dos equips, <b>3 tocs</b> & "pressió"', 'not trimmed, or not saved');
+    assert.strictEqual(items[1].desc, 'Dos tocs', 'the OTHER exercise was touched');
+    const shown = d.querySelector('[data-stp-ex="0.0"] .stp-ex-desc');
+    assert.ok(shown, 'the refreshed plan does not show it');
+    assert.strictEqual(shown.textContent, 'Dos equips, <b>3 tocs</b> & "pressió"', 'shown as markup, not text');
+  });
+
+  it('pre-fills the current text, and an empty save clears it', () => {
+    const { d, tr } = page();
+    click(pencil(d, 'e2'));
+    assert.strictEqual(d.getElementById('stp-desc-text').value, 'Dos tocs');
+    d.getElementById('stp-desc-text').value = '   ';
+    click(d.getElementById('stp-desc-ok'));
+    assert.strictEqual(tr.plan.blocks[0].items[1].desc, '');
+    assert.strictEqual(d.querySelector('[data-stp-ex="0.1"] .stp-ex-desc'), null);
+  });
+
+  it('cancel writes nothing', () => {
+    const { d, writes } = page();
+    click(pencil(d, 'e2'));
+    d.getElementById('stp-desc-text').value = 'canviat';
+    click(d.getElementById('stp-desc-cancel'));
+    assert.deepStrictEqual(writes, []);
+  });
+
+  it('a view-only sub-role gets no pencil and no handler', () => {
+    const { d } = page({ canEdit: false });
+    assert.strictEqual(d.querySelector('[data-stp-edit]'), null);
+  });
+
+  it('the textarea allows what the read path keeps', () => {
+    const { d } = page();
+    click(pencil(d, 'e1'));
+    assert.strictEqual(d.getElementById('stp-desc-text').getAttribute('maxlength'), '500');
   });
 });
 

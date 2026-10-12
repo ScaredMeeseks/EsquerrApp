@@ -369,6 +369,41 @@ describe('readiness — an activity is not training load', () => {
   });
 });
 
+/* v282: the player's form asks no minutes on a match row, so the record
+   carries the lineup's — or null, when the coach had not recorded it yet.
+   The engine looks them up again, so a lineup entered later still counts. */
+describe('readiness — a match RPE saved without minutes', () => {
+  function run(recMinutes, lineup) {
+    const b = baseTrainings('p1');
+    const d = day(-1);
+    b.matches = [{id: 1, date: d, category: 'amateur', team: 'A'}];
+    b.rpe['p1_match_1'] = {rpe: 8, minutes: recMinutes, date: d};
+    if (lineup != null) b.minutes = {1: {p1: lineup}};
+    return engine(b)('p1');
+  }
+
+  it('takes the lineup\'s minutes, exactly as if they had been saved', () => {
+    const saved = run(90, 90);
+    const late = run(null, 90);
+    assert.ok(saved.matchFatigueScore < 100, 'the fixture match registers no load at all');
+    assert.strictEqual(late.matchFatigueScore, saved.matchFatigueScore);
+    assert.strictEqual(late.acwr, saved.acwr);
+  });
+
+  it('still counts nothing while there is no lineup either', () => {
+    const none = run(null, null);
+    const s = (none.sessions || []).find((x) => x.type === 'match');
+    assert.ok(!s || s.minutes == null, 'minutes were invented: ' + (s && s.minutes));
+    assert.ok(none.matchFatigueScore > run(null, 90).matchFatigueScore,
+        'no minutes weighed as much as 90');
+  });
+
+  it('keeps minutes a player saved before v282', () => {
+    // A recorded 60 is the record's word, even if the lineup says 90.
+    assert.notStrictEqual(run(60, 90).matchFatigueScore, run(90, 90).matchFatigueScore);
+  });
+});
+
 describe('readiness — match RPE is banded by minutes', () => {
   /* A squad-wide mean would be meaningless: 20 minutes off the bench and a
      full 90 are different sessions. */

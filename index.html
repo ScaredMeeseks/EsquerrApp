@@ -25,6 +25,15 @@
   <script>
   (function(){try{var b=localStorage.getItem('_splash_badge');if(b)document.getElementById('app-favicon').href=b;}catch(e){}})();
   </script>
+  <!-- Install-to-home-screen (v282). Caught HERE, in the head: Chrome fires
+       beforeinstallprompt once, early, and an app script loaded at the foot of
+       the body can miss it. The sign-up form replays it (regConsentSync). -->
+  <script>
+  (function(){
+    window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window._bip=e;document.dispatchEvent(new Event('bip-ready'));});
+    window.addEventListener('appinstalled',function(){window._bip=null;window._appInstalled=true;document.dispatchEvent(new Event('bip-ready'));});
+  })();
+  </script>
 
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -135,8 +144,23 @@
             <label for="reg-team-code" data-i18n="auth.team_code">Codi d'equip</label>
             <input type="text" id="reg-team-code" placeholder="Ex: ESQ2026" maxlength="6" style="text-transform:uppercase;letter-spacing:.15em;font-weight:600;">
           </div>
+          <!-- Consent (v282): no account without notifications. regConsentSync()
+               owns these — the submit stays disabled until the phone has
+               actually GRANTED permission, not merely until the box is ticked. -->
+          <div class="lg-checks">
+            <label class="lg-check" id="reg-notif-row">
+              <input type="checkbox" id="reg-notif">
+              <span data-i18n="auth.notif_accept">Accepto rebre notificacions de l'equip</span>
+            </label>
+            <p class="lg-check-help" id="reg-notif-help" hidden></p>
+            <label class="lg-check" id="reg-install-row" hidden>
+              <input type="checkbox" id="reg-install" checked>
+              <span data-i18n="auth.install_label">Afegeix l'app a la pantalla d'inici</span>
+            </label>
+            <p class="lg-check-help" id="reg-install-help" hidden></p>
+          </div>
           <div id="register-error" class="error-msg" hidden></div>
-          <button type="submit" class="btn btn-primary btn-full" data-i18n="auth.register_btn">Crea perfil</button>
+          <button type="submit" id="reg-submit" class="btn btn-primary btn-full" data-i18n="auth.register_btn" disabled>Crea perfil</button>
         </form>
         <p class="auth-switch"><span data-i18n="auth.has_account">Ja tens un perfil?</span> <a href="#" id="go-login" data-i18n="auth.login_link">Entra</a></p>
       </div>

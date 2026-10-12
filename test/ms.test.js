@@ -341,12 +341,20 @@ describe('Les meves estadístiques — no MVP, because there is no voting', () =
 
 // ═══════════════════════════════════════════════════════════════════════════
 describe('Les meves estadístiques — the season figures', () => {
-  it('shows the five figures the handoff asks for', () => {
+  /* v282: the owner took MINUTES off every player surface. The handoff's
+     five figures are four now, and the season total must not survive
+     anywhere on the page — not as a figure, not in the summary line. */
+  it('shows four figures and no minutes', () => {
     const h = render();
-    ['ms.matches', 'ms.minutes', 'ms.goals', 'ms.assists', 'ms.titular']
+    ['ms.matches', 'ms.goals', 'ms.assists', 'ms.titular']
         .forEach((k) => assert.ok(h.includes(k), k + ' is missing'));
-    assert.strictEqual((h.match(/class="ms-fig"/g) || []).length, 5 + 1,
-        'the five season figures plus Preparació are not what is drawn');
+    assert.strictEqual((h.match(/class="ms-fig"/g) || []).length, 4 + 1,
+        'the four season figures plus Preparació are not what is drawn');
+    assert.ok(!h.includes('ms.minutes'), 'the minutes figure is back');
+    assert.ok(!h.includes('412'), 'the season minutes (412) reach the page');
+    assert.ok(/ms\.summary:\{&quot;g&quot;:3,&quot;a&quot;:2\}/.test(h),
+        'the summary line still carries something besides goals and assists: ' +
+        (h.match(/ms\.summary:\S{0,60}/) || [])[0]);
   });
 
   it('counts the matchdays over the SAME window as the totals beside them', () => {
@@ -506,12 +514,16 @@ describe('Les meves estadístiques — partit a partit', () => {
         'one red across two frames');
   });
 
-  it('shows a prime on the minutes and survives an NC', () => {
+  it('draws no minutes in either frame, not even an NC (v282)', () => {
     const h = render();
-    // sanitize() escapes the apostrophe, so the prime ships as `&#39;`.
-    assert.ok(h.includes('>78&#39;<'), 'the prime is missing');
+    // sanitize() escapes the apostrophe, so a prime would ship as `&#39;`.
+    assert.ok(!h.includes('78&#39;'), 'a match row still shows its minutes');
+    assert.ok(!/ms-c-min/.test(h), 'the minutes column is still drawn');
+    assert.ok(!h.includes('ms.th_min'), 'the minutes header is still drawn');
     const nc = render({ rows: [Object.assign({}, ROWS[0], { minutes: 'NC' })] });
-    assert.ok(nc.includes('>NC<'), 'a not-called row lost its minutes');
+    assert.ok(!nc.includes('>NC<'), 'the minutes cell still prints NC');
+    // The rest of the row is still there — this is not an empty table passing.
+    assert.ok(h.includes('class="ms-row"') && h.includes('class="ms-prow"'));
   });
 
   it('answers "no matches yet" rather than drawing an empty table', () => {
@@ -744,7 +756,7 @@ describe('Les meves estadístiques — the match table', () => {
        scan of the raw stylesheet reads that prose as the rule still being
        there. Third time this trap has fired today; it is why this file
        strips comments at the top. */
-    const cols = ['.ms-c-date', '.ms-c-min', '.ms-c-g', '.ms-c-a'];
+    const cols = ['.ms-c-date', '.ms-c-g', '.ms-c-a'];
     cols.forEach((sel) => {
       const m = new RegExp('^\\s*' + sel.replace('.', '\\.') +
           '\\s*\\{([^}]*)\\}', 'm').exec(MSCSS);
@@ -761,7 +773,7 @@ describe('Les meves estadístiques — the match table', () => {
   it('keeps the row\'s own sizes, on the row', () => {
     assert.ok(/\.ms-row\s+\.ms-c-date\s*\{[^}]*font-size:\s*13px/.test(MSCSS),
         'the date lost its larger size in the ROW, where it belonged');
-    assert.ok(/\.ms-row\s+\.ms-c-min[^{]*\{[^}]*font-size:\s*15px/.test(MSCSS),
+    assert.ok(/\.ms-row\s+\.ms-c-g[^{]*\{[^}]*font-size:\s*15px/.test(MSCSS),
         'the figure columns lost their size in the row');
     assert.ok(!/\.ms-head\s+\.ms-c-/.test(MSCSS),
         'the header exception list is back — patching round a column that ' +

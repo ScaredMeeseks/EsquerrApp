@@ -12669,3 +12669,81 @@ functions change (the check-deploy constant) stashed. Not investigated. Also: a 
 8080 — run the suite from PowerShell.
 
 Version triple → **v280**.
+
+### 2026-10-12 — v282: sign-up needs notifications, home-screen install, minutes hidden from players, average minutes, exercise descriptions
+
+**The owner's five asks**, and the decisions taken with them:
+
+- **Sign-up requires notifications** (`#form-register`, `regPaintConsent` / `regConsentSync` /
+  `bindRegConsent` in app.js, right AFTER `handleRegister`).
+  - The submit (`#reg-submit`) starts disabled and opens only on a **granted** permission, not just a
+    tick. The tick is the user gesture that runs `Push.askPermission()`.
+  - Each state gets its own line, set through `data-i18n` so a language switch retranslates it:
+    dismissed → `auth.notif_retry`; blocked → `auth.notif_denied` (box disabled); no API → `auth.notif_unsupported`.
+  - An iPhone/iPad in Safari outside the home-screen app has no Notification API. The box is hidden
+    and `auth.notif_ios_steps` explains installing first. iPadOS is caught by a Mac UA plus touch points.
+  - `handleRegister` re-checks the grant before touching Auth (Enter, autofill and a stale paint
+    can't get round it). After `DB.init` it fires `Push.requestPermission()` without awaiting:
+    nothing prompts, it only saves the token under the new uid.
+  - ⚠ The consent block sits AFTER handleRegister on purpose. Nine test slices end at
+    `'  async function handleRegister'`, so code placed before it would land inside them.
+- **Push** (`js/push.js`): new `permissionState()` / `askPermission()`. They return the permission
+  only, with no token and no Firestore. On native they map the plugin's `prompt*` to `default`. The
+  web path copes with callback-only Safari.
+- **Home-screen box** (optional, pre-ticked).
+  - An inline `<head>` script catches `beforeinstallprompt` (`preventDefault`, then `window._bip`,
+    then a `bip-ready` event) and `appinstalled`.
+  - The row shows only once `_bip` exists. It is hidden on iOS (the steps above cover it), in the
+    APK, and when standalone.
+  - The prompt is spent in `handleRegister` BEFORE the first await, because the submit tap is the
+    user activation and an await loses it.
+- **Players no longer see their minutes.** They are gone from:
+  - the Inici hero (3 figures now);
+  - Les meves estadístiques: the figure, the summary (`ms.summary` has no `{min}`), and the
+    per-match column in both frames. Phone figures sit in a 2×2 grid. Keys `ini.minutes`,
+    `ms.minutes`, `ms.th_min` and `ac.min_played` are removed.
+  - Accions match rows, which have no minutes box. The save takes `playerMatchMinutesKnown(...)`;
+    when no lineup is recorded it stores `minutes: null, ua: null`.
+  - `computeReadiness` falls back to the lineup for a match record with null minutes, so a lineup
+    entered later still counts. Minutes a player saved before v282 are kept. Staff pages are unchanged.
+- **Plantilla: "Mitj./conv."** (`avgMin` in `plBuildRows`) is minutes / (titular + suplent).
+  - An unused sub counts as 0′. An NC, and a call-up with no recorded XI, are left out of both sides.
+  - The column comes right after Minuts, in both tables.
+  - Tooltips use `plHitTip`: the header says what it divides by, the cell says "N′ en K convocatòries".
+  - The empty-row colspan was 14 over 13 columns; it is 14 over 14 now.
+- **Exercise descriptions.**
+  - Every exercise in the plan (board or free) gets ✎ (`data-stp-edit`), always visible, which opens
+    `stdOpenDescDialog`. The edit is found by exercise id and written through `_stpWrite`. An empty
+    save clears the description.
+  - The cap is `STP_DESC_MAX = 500`, applied in `stdPlan` (the shard has a 1 MiB ceiling) and on both
+    textareas. `.stp-ex-desc` keeps line breaks.
+  - Also: `.stp-ex-del` gets `@media (hover: none) { opacity:.7 }`. On a phone it was never visible at all.
+- **Found while checking:** at ≤ the phone breakpoint, `.ms-main` shrank to its widest line
+  (`align-items:flex-start` on a column), so the match list stopped two-thirds of the way across.
+  It is `width:100%` now.
+
+**Checked in the real app** (localhost, headless Chrome over CDP, 390 and 1400 px):
+- The register form granted, default, blocked and on an iPhone UA. Headless Chrome auto-denies a
+  real prompt, which correctly lands on the blocked state. Nothing was submitted, since that would
+  create a live account.
+- As the demo coach: 25 Plantilla rows, none misaligned. 1 273′ / 24 call-ups = 53′ ✓.
+  A description written, reloaded, still there, then restored to the seeded text.
+- As a demo player: no minutes on Inici, Les meves estadístiques or Accions. A HEAD build served
+  side by side still showed 24.
+
+⚠ **`build-ms-preview.js` and `build-inici-preview.js` already fail at HEAD**
+(`seasonAttendance is not defined`): their stubs predate it. They were not fixed this time.
+
+Tests:
+- New coverage: `login.test.js` +21 (the consent gate and install box run over the real form,
+  handleRegister's guard, the inline head script); `push-guard` +6; `accions` +3 (the real save
+  handler over the real markup); `readiness-engine` +3; `plantilla` +8 (the real `plBuildRows` and
+  table, the real sanitize); `material` +7 (✎ → dialog → write → refreshed plan, over jsdom); `inici` +1.
+- Rewritten for the new rules: `ms`, `training`.
+- Mutations: 44 tried. All red except one equivalent mutant (the `typeof Notification` guard, whose
+  try/catch already answers `unsupported`).
+- Unit 3920 → **3969**.
+- Functions and rules suites were not run: there was no logic change in either. `check-deploy.js`
+  is a Cloud Shell script, so no functions deploy is needed.
+
+Version triple → **v282**.

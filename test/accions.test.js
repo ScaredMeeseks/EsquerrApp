@@ -22,6 +22,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { readCss } = require('./read-css');
+const { JSDOM } = require('jsdom');
 const utils = require('../js/utils.js');
 
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
@@ -338,15 +339,29 @@ describe('Accions — the answer strip', () => {
       assert.ok(h.includes(k), k + ' is missing'));
   });
 
-  it('pre-fills the minutes and carries the right ceiling per kind', () => {
+  /* v282: players do not see their minutes played, so a MATCH row draws no
+     minutes box — the stub's 78 must not reach the page. A training keeps
+     its pre-filled length and its ceiling. */
+  it('pre-fills a training\'s minutes, and asks a match for none', () => {
     const r = load();
     const tr = r.model.rows.find((x) => x.kind === 'training');
     const m = r.model.rows.find((x) => x.kind === 'match');
     assert.strictEqual(tr.minutes, 90);
     assert.strictEqual(tr.minutesMax, 300);
-    assert.strictEqual(m.minutes, 78);
-    assert.strictEqual(m.minutesMax, 100);
-    assert.ok(r.html.includes('data-max="100"') && r.html.includes('data-max="300"'));
+    assert.strictEqual(m.minutes, null, 'the model carries match minutes to the page');
+    const d = new JSDOM(r.html).window.document;
+    const mRow = d.querySelector('.ac-row[data-action-type="match"]');
+    const tRow = d.querySelector('.ac-row[data-action-type="training"]');
+    assert.ok(mRow && tRow, 'the fixture lost a row kind');
+    assert.strictEqual(mRow.querySelector('.action-minutes'), null, 'a match row has a minutes box');
+    // The 1-10 strip spells "...78..." on its own; read the row without it.
+    const meta = mRow.querySelector('.ac-meta');
+    assert.ok(meta && !/78/.test(meta.innerHTML), 'the lineup minutes reach the match row');
+    assert.ok(!mRow.innerHTML.includes('ac.min'), 'a minutes caption is left on the match row');
+    const box = tRow.querySelector('.action-minutes');
+    assert.ok(box, 'the training lost its box');
+    assert.strictEqual(box.getAttribute('value'), '90');
+    assert.strictEqual(box.getAttribute('data-max'), '300');
   });
 
   /* ⚠ The wheel has to eat its own scroll or the page moves under the finger
@@ -357,6 +372,71 @@ describe('Accions — the answer strip', () => {
     assert.ok(b.includes('ev.preventDefault()'), 'the wheel scrolls the page');
     assert.ok(b.includes('ev.stopPropagation()'), 'an ancestor scroller still moves');
     assert.ok(b.includes('passive: false'), 'preventDefault will be ignored');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+/* v282 — the SAVE, run for real over the real markup. A match row has no
+   minutes box, so the handler takes them from the lineup; until the lineup
+   is recorded it saves null, and computeReadiness looks them up again. */
+describe('Accions — saving a match takes the lineup\'s minutes', () => {
+  const HANDLER = grab('    // Player actions: RPE submit', '    /* Player actions: log an extra training.');
+
+  function saveRun(kind, lineupMins, minutesTyped) {
+    const dom = new JSDOM('<body>' + load().html + '</body>', { url: 'http://localhost/' });
+    const w = dom.window, d = w.document;
+    const errors = [];
+    w.addEventListener('error', (e) => errors.push(e.error || e.message));
+    const store = { fa_player_rpe: '{}', fa_matches: JSON.stringify(MATCHES) };
+    const asked = [], saved = [], notes = [];
+    const api = {
+      $$: (sel) => Array.from(d.querySelectorAll(sel)),
+      getSession: () => SESSION,
+      getTrainings: () => TRAININGS,
+      localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } },
+      playerMatchMinutesKnown: (uid, mid) => { asked.push([uid, mid]); return lineupMins; },
+      addStaffNotification: (n) => notes.push(n),
+      ackSaveRecord: (coll, id, data) => { saved.push({ coll, id, data }); return Promise.resolve(); },
+      renderPage: () => {}, updateActionsBadge: () => {},
+      t: (k) => k, ACTION_MINUTES_MAX: 300,
+    };
+    // eslint-disable-next-line no-new-func
+    new Function(...Object.keys(api), HANDLER)(...Object.values(api));
+    const row = d.querySelector('.ac-row[data-action-type="' + kind + '"]:not(.ac-row-done)');
+    assert.ok(row, 'no open ' + kind + ' row in the fixture');
+    row.querySelector('.ac-cell[data-ac-rpe="7"]').classList.add('ac-cell-on');
+    if (minutesTyped !== undefined) row.querySelector('.action-minutes').value = minutesTyped;
+    row.querySelector('.ac-save').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    assert.deepStrictEqual(errors, [], 'the handler threw: ' + errors.join(' | '));
+    return { asked, saved, notes, row };
+  }
+
+  it('records the lineup\'s minutes, and the load they make', () => {
+    const r = saveRun('match', 78);
+    assert.deepStrictEqual(r.asked, [['p1', 'm1']], 'it did not ask the lineup about THIS match');
+    assert.strictEqual(r.saved.length, 1);
+    const data = r.saved[0].data;
+    assert.strictEqual(data.minutes, 78);
+    assert.strictEqual(data.ua, 7 * 78);
+    assert.strictEqual(data.tag, 'match');
+    assert.strictEqual(r.notes[0].detail, 'RPE 7 · 78 min');
+  });
+
+  it('saves null, not a refusal, while the lineup is unrecorded', () => {
+    const r = saveRun('match', null);
+    assert.strictEqual(r.saved.length, 1, 'an RPE with no lineup yet was refused');
+    assert.strictEqual(r.saved[0].data.minutes, null);
+    assert.strictEqual(r.saved[0].data.ua, null, 'a load was made up from no minutes');
+    assert.strictEqual(r.notes[0].detail, 'RPE 7', 'the coach\'s feed says "null min"');
+  });
+
+  it('still reads, and still caps, a training\'s typed minutes', () => {
+    const ok = saveRun('training', 999, '75');
+    assert.deepStrictEqual(ok.asked, [], 'a training asked the lineup');
+    assert.strictEqual(ok.saved[0].data.minutes, 75);
+    const over = saveRun('training', null, '400');
+    assert.strictEqual(over.saved.length, 0, 'a training over its ceiling was saved');
+    assert.ok(over.row.querySelector('.action-minutes').classList.contains('input-error'));
   });
 });
 

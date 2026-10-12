@@ -101,10 +101,12 @@ const PLAN = {
   blocks: [
     { id: 'b1', mins: 15, label: 'Escalfament', items: [ex('tb_warm')] },
     // Two items in one block IS the parallel — there is no other way to say it.
-    { id: 'b2', mins: 25, label: '', items: [ex('tb_press'), ex('tb_sortida')] },
+    // v282: a description on a board exercise (two lines) and on a free one.
+    { id: 'b2', mins: 25, label: '', items: [Object.assign(ex('tb_press'), {
+      desc: 'Pressió tras pèrdua: 6 segons per recuperar.\nDos tocs màxim.' }), ex('tb_sortida')] },
     { id: 'b3', mins: 20, label: 'Transició', items: [
       { id: 'ex_free', boardId: '', title: 'Transicions 8v8 camp reduït',
-        desc: '', tag: '' }] },
+        desc: 'Porteries petites. El gol en transició val doble.', tag: '' }] },
     /* Teams pinned onto this exercise — a COPY of a split, with its colours
        resolved at the moment it was assigned. Re-drafting does not reach
        back into it. */

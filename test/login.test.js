@@ -297,3 +297,264 @@ describe('v280 — "Partits" counts the player\'s own category', () => {
     assert.deepStrictEqual(s.matchRows.map((r) => r.matchId).sort(), [2, 3, 4]);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+/* v282 — the sign-up consents. The owner's rule: no account without
+   notifications, and the submit opens on a GRANTED permission, not on a tick.
+   Everything here runs the real code over the real index.html form:
+   regPaintConsent / bindRegConsent, and handleRegister's own guard. */
+describe('v282 — sign-up needs notifications', () => {
+  const CONSENT = grab('  /* ── Sign-up consents (v282)', '  async function handleLogin(e) {');
+  const REGISTER = grab('  async function handleRegister(e) {', '  /* ── Sign-up consents (v282)');
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
+  const IPAD13 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15';
+  const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+
+  /**
+   * The form, with the consent code bound over it.
+   * @param {Object} o state / ask (what Push answers), ua, touch, standalone,
+   *   bip (a stub beforeinstallprompt), installed, native.
+   */
+  function form(o) {
+    o = o || {};
+    const dom = new JSDOM(html, {url: 'http://localhost/'});
+    const w = dom.window, d = w.document;
+    const errors = [];
+    w.addEventListener('error', (e) => errors.push(e.error || e.message));
+    const calls = {ask: 0, state: 0, created: [], order: []};
+    const Push = {
+      permissionState: async () => { calls.state++; return o.state || 'default'; },
+      askPermission: async () => { calls.ask++; return o.ask || 'default'; },
+      requestPermission: async () => null,
+    };
+    const nav = {userAgent: o.ua || ANDROID, maxTouchPoints: o.touch || 0, standalone: !!o.iosStandalone};
+    const win = {
+      navigator: nav, _bip: o.bip || null, _appInstalled: !!o.installed,
+      matchMedia: (q) => ({matches: !!o.standalone && /standalone/.test(q)}),
+      addEventListener: () => {},
+    };
+    const Capacitor = o.native ? {isNativePlatform: () => true} : undefined;
+    const auth = {createUserWithEmailAndPassword: (email) => {
+      calls.created.push(email); calls.order.push('create');
+      return Promise.reject(Object.assign(new Error('stop here'), {code: 'auth/email-already-in-use'}));
+    }};
+    const api = {
+      $: (s) => d.querySelector(s), t: (k) => 'T:' + k, Push, navigator: nav, window: win,
+      document: d, Capacitor, auth, showView: () => {}, _hideSplash: () => {},
+      ADMIN_EMAIL: 'admin@x', console: {warn() {}, log() {}, error() {}},
+    };
+    // eslint-disable-next-line no-new-func
+    const fns = new Function(...Object.keys(api),
+        'let _authFlowBusy = false;\n' + REGISTER + CONSENT +
+        '\nreturn {regPaintConsent, regConsentSync, bindRegConsent, handleRegister};')(
+        ...Object.values(api));
+    if (o.bip) {
+      const p = o.bip.prompt;
+      o.bip.prompt = () => { calls.order.push('prompt'); return p(); };
+    }
+    return {w, d, fns, calls, errors, win, el: (id) => d.getElementById(id)};
+  }
+  async function bound(o) {
+    const f = form(o);
+    f.fns.bindRegConsent();
+    await tick();
+    return f;
+  }
+  const helpKey = (f, id) => f.el(id).hidden ? '' : f.el(id).getAttribute('data-i18n');
+  async function submit(f) {
+    f.el('reg-name').value = 'Marc';
+    f.el('reg-email').value = 'marc@x.cat';
+    f.el('reg-password').value = 'secret1';
+    f.el('reg-password2').value = 'secret1';
+    f.el('reg-team-code').value = 'ESQ001';
+    const ev = new f.w.Event('submit', {cancelable: true});
+    Object.defineProperty(ev, 'target', {value: f.el('form-register')});
+    await f.fns.handleRegister(ev);
+  }
+
+  it('the form ships the two boxes, and the submit starts DISABLED', () => {
+    const d = new JSDOM(html).window.document;
+    assert.ok(d.querySelector('#form-register #reg-notif[type="checkbox"]'), 'no notifications box');
+    assert.ok(!d.getElementById('reg-notif').checked, 'pre-ticked consent is not consent');
+    assert.ok(d.querySelector('#form-register #reg-install[type="checkbox"]').checked,
+        'the install box is the pre-ticked suggestion');
+    assert.ok(d.getElementById('reg-install-row').hidden, 'the install row shows before Chrome offered it');
+    assert.ok(d.getElementById('reg-submit').disabled, 'a fresh form can be submitted');
+  });
+
+  it('already granted: ticked, and the submit opens', async () => {
+    const f = await bound({state: 'granted'});
+    assert.ok(f.el('reg-notif').checked);
+    assert.ok(!f.el('reg-submit').disabled);
+    assert.strictEqual(helpKey(f, 'reg-notif-help'), '', 'a help line is showing over a grant');
+  });
+
+  it('a tick asks — and a GRANT opens the submit', async () => {
+    const f = await bound({state: 'default', ask: 'granted'});
+    assert.ok(f.el('reg-submit').disabled);
+    f.el('reg-notif').checked = true;
+    f.el('reg-notif').dispatchEvent(new f.w.Event('change'));
+    await tick();
+    assert.strictEqual(f.calls.ask, 1, 'the tap did not open the prompt');
+    assert.ok(f.el('reg-notif').checked && !f.el('reg-submit').disabled);
+    assert.deepStrictEqual(f.errors, []);
+  });
+
+  it('a tick over a dismissed prompt does not stay ticked, and says why', async () => {
+    const f = await bound({state: 'default', ask: 'default'});
+    f.el('reg-notif').checked = true;
+    f.el('reg-notif').dispatchEvent(new f.w.Event('change'));
+    await tick();
+    assert.ok(!f.el('reg-notif').checked, 'the tick survived a refusal');
+    assert.ok(f.el('reg-submit').disabled, 'a refusal opened the submit');
+    assert.strictEqual(helpKey(f, 'reg-notif-help'), 'auth.notif_retry');
+    assert.ok(!f.el('reg-notif').disabled, 'another tap must be able to ask again');
+  });
+
+  it('a tick that ends in a block: disabled box and the unblock help', async () => {
+    const f = await bound({state: 'default', ask: 'denied'});
+    f.el('reg-notif').checked = true;
+    f.el('reg-notif').dispatchEvent(new f.w.Event('change'));
+    await tick();
+    assert.ok(f.el('reg-notif').disabled && f.el('reg-submit').disabled);
+    assert.strictEqual(helpKey(f, 'reg-notif-help'), 'auth.notif_denied');
+  });
+
+  it('untick after a grant closes the submit again', async () => {
+    const f = await bound({state: 'granted'});
+    f.el('reg-notif').checked = false;
+    f.el('reg-notif').dispatchEvent(new f.w.Event('change'));
+    await tick();
+    assert.ok(f.el('reg-submit').disabled);
+    assert.strictEqual(f.calls.ask, 0);
+  });
+
+  it('an iPhone in Safari: install-first steps instead of the box', async () => {
+    const f = await bound({state: 'unsupported', ua: IPHONE, touch: 5});
+    assert.ok(f.el('reg-notif-row').hidden, 'a box that can never be ticked is shown');
+    assert.strictEqual(helpKey(f, 'reg-notif-help'), 'auth.notif_ios_steps');
+    assert.ok(f.el('reg-submit').disabled);
+    assert.ok(f.el('reg-install-row').hidden, 'iOS has no install dialog to offer');
+  });
+
+  it('an iPad that says it is a Mac is still an iPad', async () => {
+    const f = await bound({state: 'unsupported', ua: IPAD13, touch: 5});
+    assert.strictEqual(helpKey(f, 'reg-notif-help'), 'auth.notif_ios_steps');
+    const mac = await bound({state: 'unsupported', ua: IPAD13, touch: 0});
+    assert.strictEqual(helpKey(mac, 'reg-notif-help'), 'auth.notif_unsupported', 'a real Mac is not an iPad');
+  });
+
+  it('elsewhere, no API at all: open the link in a real browser', async () => {
+    const f = await bound({state: 'unsupported'});
+    assert.ok(!f.el('reg-notif-row').hidden && f.el('reg-notif').disabled);
+    assert.strictEqual(helpKey(f, 'reg-notif-help'), 'auth.notif_unsupported');
+  });
+
+  it('the help line carries its key, so a language switch retranslates it', async () => {
+    const f = await bound({state: 'denied'});
+    assert.strictEqual(f.el('reg-notif-help').textContent, 'T:auth.notif_denied');
+    assert.strictEqual(f.el('reg-notif-help').getAttribute('data-i18n'), 'auth.notif_denied');
+  });
+
+  it('handleRegister refuses without a grant, before touching Auth', async () => {
+    const f = await bound({state: 'default'});
+    // A box ticked by hand (devtools, a stale paint) is not a grant.
+    f.el('reg-notif').checked = true;
+    await submit(f);
+    assert.deepStrictEqual(f.calls.created, [], 'an account was created without notifications');
+    assert.strictEqual(f.el('register-error').textContent, 'T:error.notif_required');
+    assert.ok(!f.el('register-error').hidden);
+  });
+
+  it('handleRegister goes ahead once granted', async () => {
+    const f = await bound({state: 'granted'});
+    await submit(f);
+    assert.deepStrictEqual(f.calls.created, ['marc@x.cat']);
+  });
+
+  describe('the home-screen box', () => {
+    const bipStub = () => {
+      const b = {n: 0};
+      b.prompt = () => { b.n++; return Promise.resolve(); };
+      return b;
+    };
+
+    it('shows, pre-ticked, once Chrome offered an install', async () => {
+      const f = await bound({state: 'granted', bip: bipStub()});
+      assert.ok(!f.el('reg-install-row').hidden);
+      assert.ok(f.el('reg-install').checked);
+    });
+
+    it('hides in the APK, when already installed, and with nothing to offer', async () => {
+      assert.ok((await bound({state: 'granted', bip: bipStub(), native: true})).el('reg-install-row').hidden, 'APK');
+      assert.ok((await bound({state: 'granted', bip: bipStub(), standalone: true})).el('reg-install-row').hidden, 'standalone');
+      assert.ok((await bound({state: 'granted'})).el('reg-install-row').hidden, 'no prompt');
+    });
+
+    it('says so once the app was installed from here', async () => {
+      const f = await bound({state: 'granted', installed: true});
+      assert.ok(f.el('reg-install-row').hidden);
+      assert.strictEqual(helpKey(f, 'reg-install-help'), 'auth.install_done');
+    });
+
+    it('the submit tap opens the install dialog, BEFORE the first await', async () => {
+      const bip = bipStub();
+      const f = await bound({state: 'granted', bip});
+      await submit(f);
+      assert.strictEqual(bip.n, 1, 'no install dialog');
+      assert.deepStrictEqual(f.calls.order, ['prompt', 'create'],
+          'the prompt came after an await — the user activation is gone by then');
+      assert.strictEqual(f.win._bip, null, 'a spent prompt can be shown only once');
+    });
+
+    it('an unticked box opens nothing', async () => {
+      const bip = bipStub();
+      const f = await bound({state: 'granted', bip});
+      f.el('reg-install').checked = false;
+      await submit(f);
+      assert.strictEqual(bip.n, 0);
+      assert.deepStrictEqual(f.calls.created, ['marc@x.cat'], 'and registration still goes ahead');
+    });
+
+    it('a refused registration does not spend the install prompt either', async () => {
+      const bip = bipStub();
+      const f = await bound({state: 'default', bip});
+      await submit(f);
+      assert.strictEqual(bip.n, 0, 'the dialog opened for a form that was then refused');
+    });
+  });
+
+  it('the inline head script catches beforeinstallprompt and holds it', () => {
+    const w = boot();
+    let readies = 0;
+    w.document.addEventListener('bip-ready', () => readies++);
+    const ev = new w.Event('beforeinstallprompt', {cancelable: true});
+    w.dispatchEvent(ev);
+    assert.ok(ev.defaultPrevented, 'Chrome would show its own mini-bar and spend the event');
+    assert.strictEqual(w._bip, ev);
+    assert.strictEqual(readies, 1);
+    w.dispatchEvent(new w.Event('appinstalled'));
+    assert.strictEqual(w._bip, null);
+    assert.strictEqual(w._appInstalled, true);
+    const head = html.slice(0, html.indexOf('</head>'));
+    assert.ok(head.includes("'beforeinstallprompt'"), 'it must be in <head>, ahead of the app script');
+  });
+
+  it('every new string exists in ca, es and en', () => {
+    ['auth.notif_accept', 'auth.notif_denied', 'auth.notif_retry', 'auth.notif_ios_steps',
+      'auth.notif_unsupported', 'auth.install_label', 'auth.install_done', 'error.notif_required']
+        .forEach((k) => {
+          const m = new RegExp("'" + k.replace('.', '\\.') + "':\\s*\\{(.*)\\},?\\s*$", 'm').exec(src);
+          assert.ok(m, k);
+          ['ca:', 'es:', 'en:'].forEach((l) => assert.ok(m[1].includes(l), k + ' ' + l));
+        });
+  });
+
+  it('the new token is saved after sign-up, without awaiting it', () => {
+    assert.ok(/Promise\.resolve\(Push\.requestPermission\(\)\)\.catch/.test(REGISTER),
+        'the granted permission never becomes a token for the new uid');
+    assert.ok(REGISTER.indexOf('Push.requestPermission()') > REGISTER.indexOf('await DB.init('),
+        'asked before the account and its club exist');
+  });
+});
