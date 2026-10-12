@@ -379,12 +379,27 @@ const Push = (() => {
   }
 
   // ── Public API (delegates to native or web) ──
+  /* The LISTENERS are attached once per page; the TOKEN is per account (v285).
+     `_initialized` used to guard both, so after a sign-out and a sign-in as
+     somebody else in the same tab, init() did nothing and the new account
+     got no token at all. A second call now only makes sure THIS account has
+     one — neither path prompts anybody. */
   function init() {
     if (_isNative()) {
+      if (_initialized) { _ensureNativeToken(); return; }
       _initNative();
     } else {
+      if (_initialized) { _ensureWebToken(); return; }
       _initWeb();
     }
+  }
+
+  function _ensureNativeToken() {
+    const PN = Capacitor.Plugins.PushNotifications;
+    if (!PN) return;
+    PN.checkPermissions()
+      .then((res) => { if (res && res.receive === 'granted') return PN.register(); })
+      .catch((e) => console.warn('Push: permission check failed:', e && e.message));
   }
 
   async function requestPermission() {

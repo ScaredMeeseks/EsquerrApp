@@ -425,6 +425,7 @@ describe('v282 — sign-up needs notifications', () => {
   const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
   const IPAD13 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15';
   const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
+  const DESKTOP = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0';
   const tick = () => new Promise((r) => setTimeout(r, 0));
   const utilsSrc = fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8');
   // eslint-disable-next-line no-new-func
@@ -452,6 +453,7 @@ describe('v282 — sign-up needs notifications', () => {
     };
     const nav = {userAgent: o.ua || ANDROID, maxTouchPoints: o.touch || 0, standalone: !!o.iosStandalone};
     calls.navigated = 0; calls.tokens = 0; calls.profile = null; calls.signedOut = 0;
+    calls.pushInit = 0; calls.fetches = []; calls.toasts = []; calls.dbInit = 0; calls.watch = 0;
     const win = {
       navigator: nav, _bip: o.bip || null, _appInstalled: !!o.installed,
       matchMedia: (q) => ({matches: !!o.standalone && /standalone/.test(q)}),
@@ -459,32 +461,67 @@ describe('v282 — sign-up needs notifications', () => {
     };
     const Capacitor = o.native ? {isNativePlatform: () => true} : undefined;
     Push.requestPermission = async () => { calls.tokens++; return 'tok'; };
+    Push.init = () => { calls.pushInit++; };
+    const user = {uid: 'u1', delete: async () => { calls.deleted = (calls.deleted || 0) + 1; },
+      getIdToken: async () => 'id-token'};
     const auth = {
+      currentUser: null,
       createUserWithEmailAndPassword: (email) => {
         calls.created.push(email); calls.order.push('create');
-        if (o.succeed) {
-          return Promise.resolve({user: {uid: 'u1', delete: async () => {}, getIdToken: async () => ''}});
-        }
-        return Promise.reject(Object.assign(new Error('stop here'), {code: 'auth/email-already-in-use'}));
+        if (o.succeed) { auth.currentUser = user; return Promise.resolve({user}); }
+        return Promise.reject(Object.assign(new Error('stop here'), {code: o.failCode || 'auth/email-already-in-use'}));
       },
       signOut: () => { calls.signedOut++; },
     };
+    /* The callable, by HTTPS (v285): joinClub answers {result} or {error}. A
+       held promise (o.holdJoin) lets a test look at the form mid-flight. */
+    const fetch = (url, init) => {
+      calls.fetches.push({url, init});
+      if (/sendTestPush$/.test(url)) {
+        const tp = o.testPush || {result: {tokens: 1, sent: 1}};
+        return Promise.resolve(tp.error
+          ? {ok: false, status: 429, json: async () => ({error: tp.error})}
+          : {ok: true, status: 200, json: async () => ({result: tp.result})});
+      }
+      const answer = () => (o.joinError
+        ? {ok: false, status: 403, json: async () => ({error: o.joinError})}
+        : {ok: true, status: 200, json: async () => ({result: {clubId: 'c1', roles: ['player']}})});
+      if (o.holdJoin) return new Promise((r) => { calls.releaseJoin = () => r(answer()); });
+      return Promise.resolve(answer());
+    };
     const firebase = {app: () => ({functions: () => ({httpsCallable: () => async () =>
       ({data: {clubId: 'c1', roles: ['player']}})})})};
-    const db = {collection: () => ({doc: () => ({set: async (data) => { calls.profile = data; }})})};
+    const db = {collection: () => ({doc: () => ({
+      set: async (data) => { calls.profile = data; },
+      onSnapshot: () => { calls.watch++; return () => {}; },
+    })})};
     const api = {
       $: (s) => d.querySelector(s), t: (k) => 'T:' + k, Push, navigator: nav, window: win,
-      document: d, Capacitor, auth, showView: (id) => { calls.view = id; }, _hideSplash: () => {},
+      document: d, Capacitor, auth, _hideSplash: () => {},
+      // Like the real one: one view visible. Listeners test `.hidden`.
+      showView: (id) => {
+        calls.view = id;
+        d.querySelectorAll('.view').forEach((v) => { v.hidden = true; });
+        const el = d.querySelector(id);
+        if (el) el.hidden = false;
+      },
       ADMIN_EMAIL: 'admin@x', console: {warn() {}, log() {}, error() {}},
       firebase, db, loadClubConfig: async () => {}, getUsers: () => [], saveUsers: () => {},
-      DB: {init: async () => {}}, getVisibleCategories: () => [], addStaffNotification: () => {},
+      DB: {init: async () => {
+        calls.dbInit++;
+        if (calls.dbInit <= (o.dbFails || 0)) throw Object.assign(new Error('refused'), {code: 'permission-denied'});
+      }}, getVisibleCategories: () => [], addStaffNotification: () => { calls.staffNote = (calls.staffNote || 0) + 1; },
+      fetch, _showPushToast: (a, b) => calls.toasts.push(b), setTimeout: (fn) => fn(),
+      tv: (k, v) => 'T:' + k + JSON.stringify(v),
       navigate: () => { calls.navigated++; }, Notification: o.Notification,
       sanitize: realSanitize, cachedCrest: () => ({badge: o.crest || '', name: o.club || ''}),
     };
     // eslint-disable-next-line no-new-func
     const fns = new Function(...Object.keys(api),
-        'let _authFlowBusy = false; let _currentSession = null;\n' + REGISTER + CONSENT +
-        '\nreturn {regPaintConsent, regConsentSync, bindRegConsent, handleRegister,' +
+        'let _authFlowBusy = false; let _currentSession = null; let _claimsUnsub = null; let _lastClaimsMs = 0;\n' +
+        REGISTER + CONSENT +
+        '\nreturn {regPaintConsent, regConsentSync, bindRegConsent, handleRegister, btnBusy, authErrorText, callFunction,' +
+        ' testPushNow,' +
         ' appStepMode, showAppStep, step: () => _appStepInstall,' +
         ' setStep: (v) => { _appStepInstall = v; }};')(
         ...Object.values(api));
@@ -644,7 +681,49 @@ describe('v282 — sign-up needs notifications', () => {
     it('hides in the APK, when already installed, and with nothing to offer', async () => {
       assert.ok((await bound({state: 'granted', bip: bipStub(), native: true})).el('reg-install-row').hidden, 'APK');
       assert.ok((await bound({state: 'granted', bip: bipStub(), standalone: true})).el('reg-install-row').hidden, 'standalone');
-      assert.ok((await bound({state: 'granted'})).el('reg-install-row').hidden, 'no prompt');
+      // A desktop browser that never offers an install has nothing to show.
+      assert.ok((await bound({state: 'granted', ua: DESKTOP})).el('reg-install-row').hidden, 'no prompt, desktop');
+    });
+
+    /* v285: on Android the box and the step appear whether or not Chrome has
+       offered its dialog yet — it waits for its own engagement checks, which
+       a first-time visitor filling a form has often not passed. */
+    it('shows on Android even before Chrome offered its dialog', async () => {
+      const f = await bound({state: 'granted'});
+      assert.ok(!f.el('reg-install-row').hidden, 'Android lost the install box');
+    });
+
+    it('without Chrome\'s dialog: the ⋮ menu steps, and "Fet" goes on', () => {
+      const f = form({});
+      f.fns.setStep(true);
+      assert.strictEqual(f.fns.appStepMode({id: 'u1'}), 'install');
+      f.fns.showAppStep('install');
+      const li = [...f.el('app-step-card').querySelectorAll('ol.lg-steps li')].map((x) => x.textContent);
+      assert.deepStrictEqual(li, ['T:app.android_1', 'T:app.android_2', 'T:app.android_3']);
+      assert.strictEqual(f.el('app-step-install'), null, 'a button that can open nothing');
+      f.el('app-step-done').click();
+      assert.strictEqual(f.fns.step(), false);
+      assert.strictEqual(f.calls.navigated, 1);
+    });
+
+    it('Chrome offering it late swaps the steps for the button; an install moves on', async () => {
+      const f = await bound({state: 'granted'});
+      f.fns.setStep(true);
+      f.fns.showAppStep('install');
+      assert.ok(f.el('app-step-done'));
+      f.win._bip = bipStub();
+      f.d.dispatchEvent(new f.w.Event('bip-ready'));
+      assert.ok(f.el('app-step-install'), 'the button did not appear');
+      f.win._appInstalled = true;
+      f.d.dispatchEvent(new f.w.Event('bip-ready'));
+      assert.strictEqual(f.calls.navigated, 1, 'an install did not move on');
+      assert.strictEqual(f.fns.step(), false);
+    });
+
+    it('a desktop browser with nothing to offer gets no install step', () => {
+      const f = form({ua: DESKTOP});
+      f.fns.setStep(true);
+      assert.strictEqual(f.fns.appStepMode({id: 'u1'}), '');
     });
 
     it('says so once the app was installed from here', async () => {
@@ -823,10 +902,154 @@ describe('v282 — sign-up needs notifications', () => {
     });
   });
 
-  it('the new token is saved after sign-up, without awaiting it', () => {
-    assert.ok(/Promise\.resolve\(Push\.requestPermission\(\)\)\.catch/.test(REGISTER),
-        'the granted permission never becomes a token for the new uid');
-    assert.ok(REGISTER.indexOf('Push.requestPermission()') > REGISTER.indexOf('await DB.init('),
-        'asked before the account and its club exist');
+  /* v285: the token AND the claims watcher, through afterSignIn() — the
+     auth handler skips both for a brand-new account. Run, not read. */
+  it('after sign-up: the push token and the claims watcher, once the club is loaded', async () => {
+    const f = await bound({state: 'granted', succeed: true});
+    await submit(f);
+    assert.strictEqual(f.calls.pushInit, 1, 'no Push.init for the new account');
+    assert.strictEqual(f.calls.watch, 1, 'no claims watcher for the new account');
+    assert.ok(REGISTER.indexOf('afterSignIn(cred.user)') > REGISTER.indexOf('await DB.init('),
+        'set up before the account and its club exist');
+  });
+
+  describe('v285 — a sign-up that already succeeded never ends on a raw error', () => {
+    it('joins over plain HTTPS with the ID token, never the Functions SDK', async () => {
+      const f = await bound({state: 'granted', succeed: true});
+      await submit(f);
+      assert.strictEqual(f.calls.fetches.length, 1);
+      const c = f.calls.fetches[0];
+      assert.strictEqual(c.url, 'https://us-central1-esquerrapp.cloudfunctions.net/joinClub');
+      assert.strictEqual(c.init.headers.Authorization, 'Bearer id-token');
+      assert.deepStrictEqual(JSON.parse(c.init.body), {data: {code: 'ESQ001'}});
+      assert.ok(!/httpsCallable\('joinClub'\)/.test(REGISTER), 'the SDK call is back');
+    });
+
+    it('a club refusal keeps its own Catalan words; anything else is ours, never raw', async () => {
+      const f = await bound({state: 'granted', succeed: true,
+        joinError: {status: 'PERMISSION_DENIED', message: 'El teu correu no està registrat en cap equip.'}});
+      await submit(f);
+      assert.strictEqual(f.el('register-error').textContent, 'El teu correu no està registrat en cap equip.');
+      assert.strictEqual(f.calls.deleted, 1, 'the unjoined account was left behind');
+      const g = await bound({state: 'granted', succeed: true,
+        joinError: {status: 'INTERNAL', message: 'Installations: Create Installation request failed (403)'}});
+      await submit(g);
+      assert.strictEqual(g.el('register-error').textContent, 'T:error.generic');
+    });
+
+    it('a club load that fails once is retried, and the member goes on', async () => {
+      const f = await bound({state: 'granted', succeed: true, dbFails: 1});
+      await submit(f);
+      assert.strictEqual(f.calls.dbInit, 2);
+      assert.strictEqual(f.calls.navigated, 1);
+      assert.ok(f.el('register-error').hidden, 'an error is showing over a sign-up that worked');
+      assert.deepStrictEqual(f.calls.toasts, []);
+    });
+
+    it('one that keeps failing still goes on, with OUR line — not the form, not "permissions"', async () => {
+      const f = await bound({state: 'granted', succeed: true, dbFails: 5});
+      await submit(f);
+      assert.strictEqual(f.calls.navigated, 1, 'stuck on the form, signed in, "email already in use" next');
+      assert.ok(f.el('register-error').hidden);
+      assert.deepStrictEqual(f.calls.toasts, ['T:error.load_after_join']);
+      assert.strictEqual(f.calls.deleted, undefined, 'a joined account was deleted');
+      assert.strictEqual(f.calls.staffNote, undefined, 'a staff note written into a club that did not load');
+    });
+
+    it('Firebase\'s own English never reaches the form', async () => {
+      const f = await bound({state: 'granted', failCode: 'auth/network-request-failed'});
+      await submit(f);
+      assert.strictEqual(f.el('register-error').textContent, 'T:error.network');
+      const g = await bound({state: 'granted', failCode: 'auth/email-already-in-use'});
+      await submit(g);
+      assert.strictEqual(g.el('register-error').textContent, 'T:error.email_in_use');
+      const h = await bound({state: 'granted', failCode: 'something/else'});
+      await submit(h);
+      assert.strictEqual(h.el('register-error').textContent, 'T:error.generic');
+    });
+  });
+
+  /* v285 — "Prova les notificacions", the client half. */
+  describe('v285 — the test-notification button', () => {
+    it('asks, sends, and reports — over the real handler', async () => {
+      const f = await bound({state: 'granted', succeed: true, testPush: {result: {tokens: 2, sent: 2}}});
+      await submit(f);                     // signs the fake account in
+      f.calls.fetches.length = 0; f.calls.toasts.length = 0; f.calls.tokens = 0;
+      const el = f.d.createElement('div');
+      await f.fns.testPushNow(el);
+      assert.strictEqual(f.calls.tokens, 1, 'this device\'s token was not made sure of first');
+      assert.strictEqual(f.calls.fetches.length, 1);
+      assert.ok(/\/sendTestPush$/.test(f.calls.fetches[0].url));
+      assert.deepStrictEqual(f.calls.toasts, ['T:push.test_sent{"n":2}']);
+      assert.ok(!el.dataset.busy, 'left spinning');
+    });
+
+    it('not asked yet: the tap asks; refused: says how, sends nothing', async () => {
+      const f = await bound({state: 'default', ask: 'denied', succeed: true});
+      f.fns.regPaintConsent('granted');
+      const el = f.d.createElement('div');
+      await f.fns.testPushNow(el);
+      assert.strictEqual(f.calls.ask, 1, 'the tap did not ask');
+      assert.strictEqual(f.calls.fetches.length, 0);
+      assert.deepStrictEqual(f.calls.toasts, ['T:push.test_blocked']);
+    });
+
+    it('no device on the account, and the one-a-minute refusal, both say so', async () => {
+      const f = await bound({state: 'granted', succeed: true, testPush: {result: {tokens: 0, sent: 0}}});
+      await submit(f);
+      f.calls.toasts.length = 0;
+      await f.fns.testPushNow(f.d.createElement('div'));
+      assert.deepStrictEqual(f.calls.toasts, ['T:push.test_none']);
+      const g = await bound({state: 'granted', succeed: true,
+        testPush: {error: {status: 'RESOURCE_EXHAUSTED', message: 'Espera un minut abans de tornar-ho a provar.'}}});
+      await submit(g);
+      g.calls.toasts.length = 0;
+      await g.fns.testPushNow(g.d.createElement('div'));
+      assert.deepStrictEqual(g.calls.toasts, ['Espera un minut abans de tornar-ho a provar.']);
+    });
+
+    it('lives in the side menu for every role, not as a page', () => {
+      const side = src.slice(src.indexOf('  function renderSidebar(session) {'), src.indexOf('  // ---------- Page renderers ----------'));
+      assert.ok(side.includes('id="sidebar-test-push"') && side.includes('testPushNow(testItem)'));
+      assert.ok(side.includes("$$('.sidebar-item[data-page]')"), 'the page click would swallow the action');
+      assert.ok(/typeof Notification !== 'undefined' \|\| regIsNative\(\)/.test(side),
+          'offered where it can only fail (Safari on iPhone)');
+    });
+  });
+
+  describe('v285 — busy buttons', () => {
+    it('btnBusy: a spinner, disabled, and restore() puts it all back once', () => {
+      const f = form();
+      const b = f.el('reg-submit');
+      b.disabled = false;
+      const restore = f.fns.btnBusy(b, 'auth.creating');
+      assert.ok(b.querySelector('.btn-spinner') && b.disabled && b.dataset.busy === '1');
+      assert.ok(b.textContent.includes('T:auth.creating'));
+      restore(); restore();
+      assert.ok(!b.querySelector('.btn-spinner') && !b.disabled && b.dataset.busy === undefined);
+      assert.strictEqual(b.textContent, 'Crea perfil');
+    });
+
+    it('the sign-up spins while it runs, ignores a second tap, and a focus cannot re-enable it', async () => {
+      const f = await bound({state: 'granted', succeed: true, holdJoin: true});
+      const first = submit(f);
+      await tick();
+      const b = f.el('reg-submit');
+      assert.ok(b.querySelector('.btn-spinner') && b.disabled, 'no spinner during the sign-up');
+      f.fns.regPaintConsent('granted');   // what focus / visibilitychange run
+      assert.ok(b.disabled, 'a repaint re-enabled the button mid-flight');
+      await submit(f);                     // the second tap
+      assert.deepStrictEqual(f.calls.created, ['marc@x.cat'], 'a second sign-up started');
+      f.calls.releaseJoin();
+      await first;
+      assert.ok(!b.querySelector('.btn-spinner'), 'still spinning after it finished');
+    });
+
+    it('a failure gives the button back', async () => {
+      const f = await bound({state: 'granted'});
+      await submit(f);
+      const b = f.el('reg-submit');
+      assert.ok(!b.querySelector('.btn-spinner') && !b.disabled && b.dataset.busy === undefined);
+    });
   });
 });

@@ -138,6 +138,13 @@
     'push.denied':       { ca:'No s\'han pogut activar. Pots canviar-ho als permisos del navegador.',
                            es:'No se han podido activar. Puedes cambiarlo en los permisos del navegador.',
                            en:'Could not enable. You can change this in your browser permissions.' },
+    'push.test_btn':     { ca:'Prova les notificacions', es:'Prueba las notificaciones', en:'Test notifications' },
+    'push.test_sending': { ca:'Enviant…', es:'Enviando…', en:'Sending…' },
+    'push.test_title':   { ca:'Notificacions', es:'Notificaciones', en:'Notifications' },
+    'push.test_sent':    { ca:'Enviada a {n} dispositiu(s). Hauria d\'arribar en uns segons.', es:'Enviada a {n} dispositivo(s). Debería llegar en unos segundos.', en:'Sent to {n} device(s). It should arrive in a few seconds.' },
+    'push.test_none':    { ca:'Aquest compte encara no té cap dispositiu registrat. Permet les notificacions i torna-ho a provar.', es:'Esta cuenta aún no tiene ningún dispositivo registrado. Permite las notificaciones y vuelve a intentarlo.', en:'This account has no registered device yet. Allow notifications and try again.' },
+    'push.test_blocked': { ca:'Les notificacions estan bloquejades en aquest dispositiu. Activa-les a la configuració.', es:'Las notificaciones están bloqueadas en este dispositivo. Actívalas en la configuración.', en:'Notifications are blocked on this device. Turn them on in the settings.' },
+    'push.test_unsupported': { ca:'Aquest navegador no pot rebre notificacions.', es:'Este navegador no puede recibir notificaciones.', en:'This browser cannot receive notifications.' },
     'push.ios_install':  { ca:'Per rebre avisos a l\'iPhone: Compartir → «Afegir a la pantalla d\'inici».',
                            es:'Para recibir avisos en el iPhone: Compartir → «Añadir a pantalla de inicio».',
                            en:'To get alerts on iPhone: Share → "Add to Home Screen".' },
@@ -2134,6 +2141,15 @@
     'error.passwords_mismatch':{ ca:'Les contrasenyes no coincideixen.', es:'Las contraseñas no coinciden.', en:'Passwords do not match.' },
     'error.invalid_team_code': { ca:'Codi d\'equip no vàlid.', es:'Código de equipo no válido.', en:'Invalid team code.' },
     'error.need_team_code':    { ca:'Has d\'introduir el codi d\'equip.', es:'Debes introducir el código de equipo.', en:'You must enter a team code.' },
+    'error.email_in_use':      { ca:'Ja hi ha un perfil amb aquest correu. Entra amb la teva contrasenya.', es:'Ya hay un perfil con este correo. Entra con tu contraseña.', en:'There is already an account with this email. Sign in with your password.' },
+    'error.weak_password':     { ca:'La contrasenya ha de tenir almenys 6 caràcters.', es:'La contraseña debe tener al menos 6 caracteres.', en:'The password must be at least 6 characters.' },
+    'error.invalid_email':     { ca:'Aquest correu no sembla vàlid.', es:'Este correo no parece válido.', en:'That email does not look valid.' },
+    'error.bad_login':         { ca:'Correu o contrasenya incorrectes.', es:'Correo o contraseña incorrectos.', en:'Wrong email or password.' },
+    'error.too_many':          { ca:'Massa intents. Espera uns minuts i torna-ho a provar.', es:'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.', en:'Too many attempts. Wait a few minutes and try again.' },
+    'error.network':           { ca:'Sense connexió. Revisa-la i torna-ho a provar.', es:'Sin conexión. Revísala y vuelve a intentarlo.', en:'No connection. Check it and try again.' },
+    'error.generic':           { ca:'No s\'ha pogut completar. Torna-ho a provar d\'aquí a una estona.', es:'No se ha podido completar. Vuelve a intentarlo en un rato.', en:'That did not work. Please try again in a while.' },
+    'error.load_failed':       { ca:'Has entrat, però no s\'han pogut carregar les dades del club. Torna-ho a provar.', es:'Has entrado, pero no se han podido cargar los datos del club. Vuelve a intentarlo.', en:'You are signed in, but the club data would not load. Please try again.' },
+    'error.load_after_join':   { ca:'Ja ets dins del club. Algunes dades encara no s\'han carregat: tanca i torna a obrir l\'app si falta alguna cosa.', es:'Ya estás dentro del club. Algunos datos aún no se han cargado: cierra y vuelve a abrir la app si falta algo.', en:'You are in the club. Some data has not loaded yet: close and reopen the app if anything is missing.' },
     'error.notif_required':    { ca:'Per registrar-te has d\'acceptar les notificacions.', es:'Para registrarte debes aceptar las notificaciones.', en:'You must accept notifications to sign up.' },
     'error.enter_code':        { ca:'Introdueix un codi.', es:'Introduce un código.', en:'Enter a code.' },
     'error.invalid_code':      { ca:'Codi no vàlid.', es:'Código no válido.', en:'Invalid code.' },
@@ -2167,6 +2183,9 @@
     'auth.password_ph':      { ca:'Mínim 6 caràcters', es:'Mínimo 6 caracteres', en:'Min. 6 characters' },
     'auth.login_btn':        { ca:'A jugar!', es:'¡A jugar!', en:'Let\'s play!' },
     'auth.logging_in':       { ca:'Entrant…', es:'Entrando…', en:'Signing in…' },
+    'auth.logging_out':      { ca:'Sortint…', es:'Saliendo…', en:'Signing out…' },
+    'auth.creating':         { ca:'Creant el perfil…', es:'Creando el perfil…', en:'Creating your account…' },
+    'auth.joining':          { ca:'Entrant al club…', es:'Entrando en el club…', en:'Joining the club…' },
     'auth.no_account':       { ca:'No tens un perfil?', es:'¿No tienes perfil?', en:'Don\'t have an account?' },
     'auth.register_link':    { ca:'Fes-te\'l!', es:'¡Créalo!', en:'Sign up!' },
     'auth.register_subtitle':{ ca:'Ets a punt de fer història', es:'Estás a punto de hacer historia', en:'You\'re about to make history' },
@@ -2182,6 +2201,10 @@
     'app.install_sub':       { ca:'La tindràs com una app més, amb l\'escut del teu club.', es:'La tendrás como una app más, con el escudo de tu club.', en:'It will sit with your other apps, with your club\'s crest.' },
     'app.install_btn':       { ca:'Instal·la l\'app', es:'Instalar la app', en:'Install the app' },
     'app.later':             { ca:'Ara no', es:'Ahora no', en:'Not now' },
+    'app.android_1':         { ca:'Toca el menú ⋮ de Chrome, a dalt a la dreta.', es:'Toca el menú ⋮ de Chrome, arriba a la derecha.', en:'Tap Chrome\'s ⋮ menu, top right.' },
+    'app.android_2':         { ca:'Tria «Instal·la l\'aplicació» o «Afegeix a la pantalla d\'inici».', es:'Elige «Instalar aplicación» o «Añadir a pantalla de inicio».', en:'Choose “Install app” or “Add to Home screen”.' },
+    'app.android_3':         { ca:'Obre EsquerrApp des de la icona nova.', es:'Abre EsquerrApp desde el icono nuevo.', en:'Open EsquerrApp from the new icon.' },
+    'app.done':              { ca:'Fet, continua', es:'Hecho, continuar', en:'Done, continue' },
     'app.ios_title':         { ca:'Últim pas: l\'app a la pantalla d\'inici', es:'Último paso: la app en la pantalla de inicio', en:'Last step: the app on your home screen' },
     'app.ios_sub':           { ca:'A l\'iPhone, els avisos de l\'equip només arriben a l\'app de la pantalla d\'inici.', es:'En el iPhone, los avisos del equipo solo llegan a la app de la pantalla de inicio.', en:'On iPhone, team notifications only reach the home-screen app.' },
     'app.ios_1':             { ca:'Toca Compartir (el quadrat amb la fletxa) a la barra de Safari.', es:'Toca Compartir (el cuadrado con la flecha) en la barra de Safari.', en:'Tap Share (the square with the arrow) in Safari\'s bar.' },
@@ -2881,9 +2904,13 @@
       // email lists and applied by joinClub / onRosterWritten / setRole;
       // writing them from here would silently undo a server decision (and
       // used to be a way round the registration gate entirely).
+      /* claimsUpdatedAt / prevCategory / prevTeam too (v285): stamped by the
+         server, refused by the self-update rule — and a refused merge takes
+         the name, dob and phone in it down with it, silently. */
       const {
         password, isAdmin, isTeamLead, teamId,
         roles, category, team, staffCategories, staffRole,
+        claimsUpdatedAt, prevCategory, prevTeam,
         ...profile
       } = user;
       /* The same guard saveUsers() applies to the shared blob, applied to
@@ -3065,7 +3092,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 284;
+  const APP_VERSION = 285;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4786,6 +4813,9 @@
     const codeInput = $('#reg-team-code');
     const teamCode = codeInput ? codeInput.value.trim().toUpperCase() : '';
     const errEl = $('#register-error');
+    // A second tap while the first sign-up runs would start another (v285).
+    const submitBtn = $('#reg-submit');
+    if (submitBtn && submitBtn.dataset.busy === '1') return;
 
     /* The consent, checked again here and not only by the disabled button:
        Enter in a field, autofill or a stale paint must not get round it. */
@@ -4814,12 +4844,15 @@
     // account fires onAuthStateChanged, whose navigate() would otherwise
     // flash the login screen mid-signup and wipe any error we show.
     _authFlowBusy = true;
+    const restoreBtn = btnBusy(submitBtn, 'auth.creating');
+    errEl.hidden = true;
     // Keep the applicant on the register form with the reason visible.
     const failRegister = async (cred, message) => {
       if (cred) { try { await cred.user.delete(); } catch (e) { /* already gone */ } }
       errEl.textContent = message;
       errEl.hidden = false;
       _authFlowBusy = false;
+      restoreBtn();
       showView('#view-register');
       _hideSplash();
     };
@@ -4841,16 +4874,15 @@
           return;
         }
         try {
-          const joinFn = firebase.app().functions('us-central1').httpsCallable('joinClub');
-          const res = await joinFn({ code: teamCode.trim().toUpperCase() });
+          const res = await callFunction('joinClub', { code: teamCode.trim().toUpperCase() });
           club = res.data;
         } catch (joinErr) {
+          console.error('register: joinClub failed', joinErr && joinErr.code, joinErr && joinErr.message);
           // No profile doc exists yet, so deleting the auth user leaves
           // nothing behind. This is also the "your address is on no roster
           // list" rejection — the function's message says to ask their coach,
           // and it must survive on screen.
-          await failRegister(cred,
-            (joinErr && joinErr.message) ? joinErr.message : t('error.invalid_team_code'));
+          await failRegister(cred, authErrorText(joinErr));
           return;
         }
       }
@@ -4893,19 +4925,32 @@
         teamId: club ? club.clubId : 'none'
       });
       _currentSession = newUser;
-      // joinClub set custom claims — force-refresh the ID token so the
-      // new security rules authorize this session immediately.
-      if (club) {
-        try { await cred.user.getIdToken(true); } catch (tokenErr) { console.warn('Token refresh failed:', tokenErr); }
+      /* From here the account EXISTS and belongs to the club (v285). A
+         failure loading the club's data is a slow network or a token one
+         beat behind — not a failed sign-up — so it gets one retry with a
+         fresh token, and then the member goes on into the app (which loads
+         again on its next start) instead of sitting on this form with a raw
+         error, signed in, unable to try again: "email already in use". */
+      let loaded = !club;
+      for (let attempt = 0; club && attempt < 2 && !loaded; attempt++) {
+        try {
+          // joinClub set custom claims — force-refresh the ID token so the
+          // new security rules authorize this session immediately.
+          await cred.user.getIdToken(true);
+          await loadClubConfig(club.clubId);
+          // Push to localStorage for compat with roster/availability code.
+          // A FRESH list: whatever another account left on this device is
+          // not this club's roster (DB.init flushes it a moment later).
+          saveUsers([newUser]);
+          // Sync team data between localStorage and Firestore
+          await DB.init(club.clubId, getVisibleCategories());
+          loaded = true;
+        } catch (loadErr) {
+          console.warn('register: club load failed (attempt ' + (attempt + 1) + ')', loadErr && loadErr.code, loadErr && loadErr.message);
+          if (attempt === 0) await new Promise((r) => setTimeout(r, 1200));
+        }
       }
-      // Load club config
-      if (club) await loadClubConfig(club.clubId);
-      // Push to localStorage for compat with roster/availability code
-      const users = getUsers();
-      users.push(newUser);
-      saveUsers(users);
-      // Sync team data between localStorage and Firestore
-      if (club) await DB.init(club.clubId, getVisibleCategories());
+      if (!loaded) _showPushToast(t('save.sync_title'), t('error.load_after_join'));
       /* Tell the coaching staff somebody joined (v245). Until now this was
          the one thing a member could do that raised no notification at all:
          a new name simply appeared on the roster, and the person who has to
@@ -4913,13 +4958,11 @@
          ⚠ AFTER DB.init, not before — addStaffNotification writes into the
          club-wide blob, and until the sync layer is pointed at this club the
          write has nowhere to go. */
-      /* The token for the permission granted on the form. Nothing prompts —
-         the answer is already 'granted' — so this only saves it under the
-         new uid. Not awaited: native registration can take seconds. */
-      try {
-        Promise.resolve(Push.requestPermission()).catch((err) => console.warn('push token:', err));
-      } catch (err) { console.warn('push token:', err); }
-      if (club) {
+      /* The push token for the permission granted on the form (nothing
+         prompts: the answer is already 'granted'), and the claims watcher —
+         the auth handler skips both for a brand-new account. */
+      afterSignIn(cred.user);
+      if (club && loaded) {
         addStaffNotification({
           type: 'registration',
           uid: uid,
@@ -4933,19 +4976,253 @@
       errEl.hidden = true;
       _authFlowBusy = false;
       _appStepInstall = wantInstall;
+      restoreBtn();
       navigate();
     } catch (err) {
-      const msg = err.code === 'auth/email-already-in-use' ? 'An account with this email already exists.'
-        : err.code === 'auth/weak-password' ? 'Password should be at least 6 characters.'
-        : err.message;
-      errEl.textContent = msg;
+      console.error('register failed:', err && err.code, err && err.message);
+      errEl.textContent = authErrorText(err);
       errEl.hidden = false;
+      restoreBtn();
       // Stay on the register form with the reason visible. The rolled-back
       // Auth account has already signed us out; without this the listener
       // would have swapped in the login view and hidden the message.
       _authFlowBusy = false;
       showView('#view-register');
       _hideSplash();
+    }
+  }
+
+  /* ── Busy buttons (v285) ──────────────────────────────────────────
+     The login button's spinner, for every button that waits on the network:
+     disabled, a spinner and a short label, and a restore() that puts the
+     original back. `data-busy` is what regPaintConsent() and a second tap
+     check — a focus event must not re-enable a button mid-sign-up. */
+  function btnBusy(btn, labelKey) {
+    if (!btn) return function () {};
+    const html = btn.innerHTML;
+    const wasDisabled = btn.disabled;
+    btn.disabled = true;
+    btn.dataset.busy = '1';
+    btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>' +
+      (labelKey ? sanitize(t(labelKey)) : html);
+    let done = false;
+    return function restore() {
+      if (done) return;
+      done = true;
+      delete btn.dataset.busy;
+      btn.innerHTML = html;
+      btn.disabled = wasDisabled;
+    };
+  }
+
+  /* ── A callable, over plain HTTPS (v285) ────────────────────────────
+     The Functions SDK on this page asks the push service for a token before
+     every call once notifications are GRANTED, and on this SDK a failure
+     there fails the CALL. Since v282 every sign-up grants first, so a phone
+     where push could not set up — a browser with push switched off, a ROM
+     without Google services, the emulator — lost its registration to a raw
+     "Installations: … 403" that had nothing to do with joining a club. The
+     callable protocol is JSON over POST with the ID token. */
+  async function callFunction(name, data) {
+    const u = auth.currentUser;
+    if (!u) throw Object.assign(new Error('not signed in'), { code: 'functions/unauthenticated' });
+    const token = await u.getIdToken();
+    const base = (typeof _emu !== 'undefined' && _emu)
+      ? 'http://127.0.0.1:5001/demo-esquerrapp/us-central1/'
+      : 'https://us-central1-esquerrapp.cloudfunctions.net/';
+    const r = await fetch(base + name, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ data: data || {} })
+    });
+    let body = null;
+    try { body = await r.json(); } catch (e) { /* not JSON */ }
+    if (r.ok && body && Object.prototype.hasOwnProperty.call(body, 'result')) return { data: body.result };
+    const err = (body && body.error) || {};
+    throw Object.assign(new Error(err.message || ('HTTP ' + r.status)),
+      { code: 'functions/' + String(err.status || 'internal').toLowerCase().replace(/_/g, '-') });
+  }
+
+  /** What a sign-in / sign-up error says to a person — never Firebase's raw
+      English. A club's own refusals (joinClub: not on a roster, wrong code,
+      too many tries) are already written in Catalan and are kept. */
+  function authErrorText(err) {
+    const c = (err && err.code) || '';
+    if (c === 'auth/email-already-in-use') return t('error.email_in_use');
+    if (c === 'auth/weak-password') return t('error.weak_password');
+    if (c === 'auth/invalid-email') return t('error.invalid_email');
+    if (c === 'auth/user-not-found' || c === 'auth/wrong-password' || c === 'auth/invalid-credential' ||
+        c === 'auth/invalid-login-credentials') return t('error.bad_login');
+    if (c === 'auth/too-many-requests' || c === 'functions/resource-exhausted') {
+      return c.indexOf('functions/') === 0 && err.message ? err.message : t('error.too_many');
+    }
+    if (c === 'auth/network-request-failed' || c === 'unavailable') return t('error.network');
+    if ((c === 'functions/permission-denied' || c === 'functions/not-found' ||
+         c === 'functions/invalid-argument') && err && err.message) return err.message;
+    return t('error.generic');
+  }
+
+  /* ── After a sign-in, whichever path made it (v285) ──────────────────
+     The push token and the claims watcher. They used to live only in the
+     auth-state handler, which skips them for a brand-new account (its
+     profile does not exist yet when that handler fires) — so a member who
+     had just registered got no claims watcher and no Push.init for the rest
+     of that page. handleLogin, handleRegister and the handler's own load
+     (a reload with a stored session) now all end here. */
+  function afterSignIn(firebaseUser) {
+    if (!firebaseUser) return;
+    /* Push: initialise the listeners, but do NOT ask for permission
+       here. This runs from the auth-state handler, so the prompt had
+       no user gesture behind it — browsers increasingly auto-deny that
+       outright, and iOS Safari ignores it entirely, which is also why
+       iPhone users could never get notifications. The ask now lives
+       behind a tap in the soft-ask banner (renderPushBanner). */
+    Push.init();
+
+    // Watch own profile for claims changes (joinClub/setRole stamp
+    // claimsUpdatedAt) and force-refresh the ID token so security
+    // rules see the new teamId/role without re-login.
+    if (_claimsUnsub) { _claimsUnsub(); _claimsUnsub = null; }
+    _claimsUnsub = db.collection('users').doc(firebaseUser.uid).onSnapshot(async (doc) => {
+      if (!doc.exists) return;
+      const cu = doc.data().claimsUpdatedAt;
+      if (!cu || typeof cu.toMillis !== 'function') return;
+      const ms = cu.toMillis();
+      if (_lastClaimsMs && ms <= _lastClaimsMs) return;
+      const first = !_lastClaimsMs;
+      _lastClaimsMs = ms;
+      if (first) return; // initial snapshot — token already current
+      try {
+        await firebaseUser.getIdToken(true);
+        const res = await firebaseUser.getIdTokenResult();
+        const claimTeam = res.claims.teamId;
+        const s = getSession();
+        if (!s) return;
+        /* Visiting another club (v281): the change is to the HOME
+           membership. Keep it for the way back and leave the visit
+           alone — re-pointing here would yank the superadmin out of
+           the club on screen, and the same-club branch below would
+           hand the visit their home roles. */
+        if (_visitHome) {
+          const h = doc.data();
+          const homeTeam = hasClub(h.teamId) ? h.teamId : 'none';
+          // A different home club: its name is not loaded, so the way
+          // back says just "Tornar" rather than the old club's name.
+          if (homeTeam !== _visitHome.teamId) _visitHome.clubName = '';
+          _visitHome.teamId = homeTeam;
+          _visitHome.isTeamLead = h.isTeamLead === true;
+          _visitHome.roles = Array.isArray(h.roles) ? h.roles : [];
+          _visitHome.staffCategories = Array.isArray(h.staffCategories) ? h.staffCategories : [];
+          _visitHome.staffRole = typeof h.staffRole === 'string' ? h.staffRole : '';
+          _visitHome.category = h.category || '';
+          _visitHome.team = h.team || '';
+          return;
+        }
+        if (claimTeam && s.teamId !== claimTeam) {
+          s.teamId = claimTeam;
+          _currentSession = s;
+          await loadClubConfig(claimTeam);
+          await DB.init(claimTeam, getVisibleCategories());
+          navigate();
+          return;
+        }
+        // Same club, but membership may have changed: the lead adding
+        // or removing an address on a roster list re-derives roles and
+        // staffCategories server-side (onRosterWritten). Pull them off
+        // this very snapshot so an open app gains or loses staff pages
+        // without a reload.
+        const d = doc.data();
+        const nextRoles = Array.isArray(d.roles) ? d.roles : [];
+        const nextCats = Array.isArray(d.staffCategories) ? d.staffCategories : [];
+        const changed =
+          nextRoles.join(',') !== (s.roles || []).join(',') ||
+          nextCats.join(',') !== (s.staffCategories || []).join(',') ||
+          (d.category || '') !== (s.category || '') ||
+          (d.team || '') !== (s.team || '');
+        if (!changed) return;
+        s.roles = nextRoles;
+        s.staffCategories = nextCats;
+        s.category = d.category || '';
+        s.team = d.team || '';
+        _currentSession = s;
+        /* The category filter may now point somewhere out of bounds.
+           Back to null, not '': this is "forget the choice and use
+           the default again", whereas '' would silently pin them to
+           Totes — a filter they never asked for. */
+        if (_viewCategory && getVisibleCategories().indexOf(_viewCategory) === -1) {
+          _viewCategory = null;
+        }
+        // Roster visibility follows the new categories.
+        if (_clubConfig) _clubConfig.rosters = await loadRosters(s.teamId, _clubConfig);
+        // So does the sharded data subscription: from Stage C the
+        // data/ listener is filtered by category, and a promoted coach
+        // who keeps the old subscription never sees his new squad.
+        // A no-op while the scope is unchanged — init() early-returns.
+        syncDbScope();
+        await DB.init(s.teamId, getVisibleCategories());
+        currentPage = '';
+        navigate();
+      } catch (e) { console.warn('Claims refresh failed:', e); }
+    }, (err) => console.warn('claims watcher:', err && err.code));
+  }
+
+  /* ── Signing out leaves NOTHING of that account behind (v285) ─────────
+     DB.cleanup() only stopped the listeners; the previous account's club
+     data stayed in localStorage until the next DB.init, the board library's
+     listener kept running (refused by the rules the moment the user went —
+     "[TB] library listener failed"), a superadmin's club VISIT survived into
+     the next account in the tab, and so did the last-step flag. */
+  function resetSignedOut() {
+    clearSession();
+    _clubConfig = null;
+    if (_claimsUnsub) { _claimsUnsub(); _claimsUnsub = null; }
+    _lastClaimsMs = 0;
+    _appStepInstall = false;
+    DB.flush();
+    try { if (typeof TB !== 'undefined' && TB.cleanup) TB.cleanup(); }
+    catch (e) { console.warn('[TB] cleanup failed:', e && e.message); }
+    /* The board editor's scratch keys are local-only and survived logout,
+       so the next person to sign in on this device opened the editor on
+       the previous one's drawing. Harmless while that was always a board
+       of your own club; not harmless once the superadmin can hold a
+       PLATFORM TEMPLATE there, which is nobody's club. */
+    tbClearEditor();
+  }
+
+  /** Sign out from a button: the device's push token first (while still
+      signed in — the rules check the uid), then Auth. The handler resets. */
+  async function signOutFully(btn) {
+    const restore = btnBusy(btn, 'auth.logging_out');
+    currentPage = '';
+    try { await Push.removeToken(); } catch (e) { console.warn(e); }
+    try { await auth.signOut(); }
+    catch (e) { console.warn('sign-out failed:', e); restore(); }
+  }
+
+  /** One test notification to this account's own devices (v285). Asks for
+      the permission first if nobody has yet — this is a tap, so it may —
+      and makes sure THIS device's token is saved before the server looks. */
+  async function testPushNow(el) {
+    if (el && el.dataset.busy === '1') return;
+    const restore = btnBusy(el, 'push.test_sending');
+    const say = (k, vars) => _showPushToast(t('push.test_title'), vars ? tv(k, vars) : t(k));
+    try {
+      let st = await Push.permissionState();
+      if (st === 'default') st = await Push.askPermission();
+      if (st !== 'granted') {
+        say(st === 'denied' ? 'push.test_blocked' : 'push.test_unsupported');
+        return;
+      }
+      try { await Push.requestPermission(); } catch (e) { /* the server will say */ }
+      const r = await callFunction('sendTestPush', {});
+      const sent = (r.data && r.data.sent) || 0;
+      if (sent) say('push.test_sent', { n: sent });
+      else say('push.test_none');
+    } catch (err) {
+      console.warn('test push failed:', err && err.code, err && err.message);
+      _showPushToast(t('push.test_title'), authErrorText(err));
+    } finally {
+      restore();
     }
   }
 
@@ -4981,6 +5258,11 @@
   function regIsNative() {
     return typeof Capacitor !== 'undefined' && !!Capacitor.isNativePlatform && Capacitor.isNativePlatform();
   }
+  /** Android in a browser (not the APK). Chrome there can always install
+      from its own ⋮ menu, even when it has not offered the dialog yet. */
+  function regIsAndroid() {
+    return /android/i.test(navigator.userAgent || '') && !regIsNative();
+  }
   /** An iPhone/iPad in the browser, where no Notification API exists. */
   function regIosLater(state) {
     return state === 'unsupported' && regIsIos() && !regIsStandalone() && !regIsNative();
@@ -5015,7 +5297,8 @@
     box.disabled = state === 'denied' || state === 'unsupported';
     // A grant ticks the box unless the person took the tick off themselves.
     box.checked = state === 'granted' && box.dataset.off !== '1';
-    btn.disabled = !(box.checked || iosLater);
+    // A sign-up in flight keeps its button: a focus event must not re-enable it.
+    if (btn.dataset.busy !== '1') btn.disabled = !(box.checked || iosLater);
     regHelp($('#reg-notif-help'),
       state === 'denied' ? 'auth.notif_denied'
         : iosLater ? 'auth.notif_ios_later'
@@ -5024,8 +5307,12 @@
     const iRow = $('#reg-install-row');
     if (iRow) {
       const installed = !!window._appInstalled;
+      /* On Android whether or not Chrome has offered its dialog yet (v285):
+         it only does after its own engagement checks, which a person filling
+         in this form for the first time has often not passed — and then the
+         box, and the whole install step, never appeared. */
       iRow.hidden = regIsNative() || regIsStandalone() || regIsIos() ||
-        installed || !window._bip;
+        installed || !(window._bip || regIsAndroid());
       regHelp($('#reg-install-help'), installed ? 'auth.install_done' : '');
     }
   }
@@ -5051,7 +5338,7 @@
       if (!regIsStandalone() && !hasApi) return 'ios';
       if (regIsStandalone() && hasApi && Notification.permission !== 'granted') return 'notif';
     }
-    if (_appStepInstall && window._bip && !regIsStandalone()) return 'install';
+    if (_appStepInstall && !regIsStandalone() && (window._bip || regIsAndroid())) return 'install';
     return '';
   }
 
@@ -5065,8 +5352,18 @@
       sanitize(t(k)) + '</button>';
     const link = (id, k) => '<p class="auth-switch"><a href="#" id="' + id + '">' + sanitize(t(k)) + '</a></p>';
     if (mode === 'install') {
+      /* Chrome's own dialog when it has offered one; otherwise the same thing
+         by hand from its menu (v285). No browser installs without the person
+         confirming, so "automatic" is at best this one tap. */
+      if (window._bip) {
+        return head + title('app.install_title') + sub('app.install_sub') +
+          btn('app-step-install', 'app.install_btn') + link('app-step-later', 'app.later');
+      }
       return head + title('app.install_title') + sub('app.install_sub') +
-        btn('app-step-install', 'app.install_btn') + link('app-step-later', 'app.later');
+        '<ol class="lg-steps">' + [1, 2, 3].map(function (i) {
+          return '<li>' + sanitize(t('app.android_' + i)) + '</li>';
+        }).join('') + '</ol>' +
+        btn('app-step-done', 'app.done') + link('app-step-later', 'app.later');
     }
     if (mode === 'ios') {
       return head + title('app.ios_title') + sub('app.ios_sub') +
@@ -5106,7 +5403,8 @@
         .then(function () { navigate(); });
     });
     on('app-step-later', function () { _appStepInstall = false; navigate(); });
-    on('app-step-logout', function () { auth.signOut(); });
+    on('app-step-done', function () { _appStepInstall = false; navigate(); });
+    on('app-step-logout', function () { signOutFully(document.getElementById('app-step-logout')); });
     on('app-step-notif', async function () {
       // Inside the tap, the raw ask first; the token once there is a yes.
       let st = 'unsupported';
@@ -5157,6 +5455,16 @@
       const v = document.getElementById('view-app-step');
       if (document.visibilityState === 'visible' && v && !v.hidden) navigate();
     });
+    /* While the install step is up (v285): Chrome offering its dialog late
+       swaps the menu steps for the button, and an install from either moves
+       on by itself. */
+    document.addEventListener('bip-ready', () => {
+      const v = document.getElementById('view-app-step');
+      const card = document.getElementById('app-step-card');
+      if (!v || v.hidden || !card || card.dataset.mode !== 'install') return;
+      if (window._appInstalled) { _appStepInstall = false; navigate(); return; }
+      showAppStep('install');
+    });
     regConsentSync();
   }
 
@@ -5170,23 +5478,16 @@
        feedback at all until now. The button is disabled as well as spinning:
        a second submit mid-flight starts the entire flow again. */
     const btn = $('#btn-login');
-    const btnLabel = btn ? btn.innerHTML : '';
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>' +
-        sanitize(t('auth.logging_in'));
-    }
-    const restoreBtn = () => {
-      if (!btn) return;
-      btn.disabled = false;
-      btn.innerHTML = btnLabel;
-    };
+    if (btn && btn.dataset.busy === '1') return;
+    const restoreBtn = btnBusy(btn, 'auth.logging_in');
+    let signedIn = null;
     // Same reason as handleRegister: signing in fires onAuthStateChanged
     // before this handler has loaded the profile, and its navigate() would
     // flash a screen we are about to replace.
     _authFlowBusy = true;
     try {
       const cred = await auth.signInWithEmailAndPassword(email, pw);
+      signedIn = cred.user;
       const uid = cred.user.uid;
       // Load profile from Firestore
       const doc = await db.collection('users').doc(uid).get();
@@ -5236,6 +5537,8 @@
         // No team — flush stale localStorage so old data doesn't leak
         DB.flush();
       }
+      // Push token + claims watcher: the auth handler leaves both to us.
+      afterSignIn(cred.user);
       e.target.reset();
       errEl.hidden = true;
       _authFlowBusy = false;
@@ -5244,10 +5547,15 @@
       restoreBtn();
       navigate();
     } catch (err) {
-      const msg = (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')
-        ? 'Invalid email or password.'
-        : err.message;
-      errEl.textContent = msg;
+      console.error('login failed:', err && err.code, err && err.message);
+      /* Signed in, but the profile or the club would not load: sign back
+         out rather than leave a half-loaded session behind this form —
+         the auth handler stood aside for us and will not load it either. */
+      if (signedIn) {
+        try { await auth.signOut(); } catch (e2) { /* already out */ }
+        _currentSession = null;
+      }
+      errEl.textContent = signedIn ? t('error.load_failed') : authErrorText(err);
       errEl.hidden = false;
       _authFlowBusy = false;
       restoreBtn();
@@ -5440,14 +5748,17 @@
     }
     // Membership is assigned server-side: the joinClub Cloud Function
     // validates the code and writes teamId/isTeamLead (clients can't).
+    const joinBtn = e.submitter || (e.target && e.target.querySelector('[type="submit"]'));
+    if (joinBtn && joinBtn.dataset.busy === '1') return;
+    const restoreBtn = btnBusy(joinBtn, 'auth.joining');
     let club;
     try {
-      const joinFn = firebase.app().functions('us-central1').httpsCallable('joinClub');
-      const res = await joinFn({ code: code });
+      const res = await callFunction('joinClub', { code: code });
       club = res.data;
     } catch (err) {
-      errEl.textContent = (err && err.message) ? err.message : t('error.invalid_code');
+      errEl.textContent = authErrorText(err);
       errEl.hidden = false;
+      restoreBtn();
       return;
     }
     const session = getSession();
@@ -5463,17 +5774,24 @@
     setSession(session);
     // joinClub set custom claims — force-refresh the ID token so the
     // new security rules authorize this session immediately.
-    try { await auth.currentUser.getIdToken(true); } catch (e) { console.warn('Token refresh failed:', e); }
-    await loadClubConfig(club.clubId);
-    await DB.init(club.clubId, getVisibleCategories());
-    // Add this user to the club's fa_users
-    let users = getUsers();
-    if (!users.find(u => String(u.id) === String(session.id))) {
-      users.push(session);
-      saveUsers(users);
+    try {
+      await auth.currentUser.getIdToken(true);
+      await loadClubConfig(club.clubId);
+      await DB.init(club.clubId, getVisibleCategories());
+      // Add this user to the club's fa_users
+      let users = getUsers();
+      if (!users.find(u => String(u.id) === String(session.id))) {
+        users.push(session);
+        saveUsers(users);
+      }
+    } catch (loadErr) {
+      // Joined — the club will load on the next start. Say so, go on.
+      console.warn('join: club load failed', loadErr && loadErr.code, loadErr && loadErr.message);
+      _showPushToast(t('save.sync_title'), t('error.load_after_join'));
     }
     errEl.hidden = true;
     e.target.reset();
+    restoreBtn();
     navigate();
   }
 
@@ -7165,6 +7483,9 @@
     if (!name) return;
     const preview = $('#profile-pic-preview');
     let picSrc = session.profilePic || '';
+    const setupBtn = e.submitter || (e.target && e.target.querySelector('[type="submit"]'));
+    if (setupBtn && setupBtn.dataset.busy === '1') return;
+    const restoreBtn = btnBusy(setupBtn, 'auth.saving');
 
     /* Upload the photo to Storage, downscaled first.
        ⚠ NO DATA-URI FALLBACK (v232). It used to keep the raw base64 when the
@@ -7206,6 +7527,7 @@
     session.profileSetupDone = true;
     // Persist to Firestore + localStorage (handled by setSession)
     setSession(session);
+    restoreBtn();
     navigate();
   }
 
@@ -7429,9 +7751,19 @@
         </div>`;
       }
     });
+    /* "Prova les notificacions" (v285), for every role, wherever this device
+       can receive them at all — an iPhone in Safari cannot, and is not
+       offered a button that can only fail. Not a page: no data-page. */
+    if (typeof Notification !== 'undefined' || regIsNative()) {
+      html += `<div class="sidebar-item sidebar-test-push" id="sidebar-test-push" role="button">
+          <span class="sidebar-icon">🔔</span><span>${sanitize(t('push.test_btn'))}</span>
+        </div>`;
+    }
     $('#sidebar').innerHTML = html;
+    const testItem = document.getElementById('sidebar-test-push');
+    if (testItem) testItem.addEventListener('click', () => testPushNow(testItem));
 
-    $$('.sidebar-item').forEach(el => {
+    $$('.sidebar-item[data-page]').forEach(el => {
       el.addEventListener('click', () => {
         currentPage = el.dataset.page;
         // Close sidebar on mobile
@@ -37710,8 +38042,13 @@
       container.id = 'push-toast-container';
       document.body.appendChild(container);
     }
+    /* One of each at a time (v285): a burst of identical refusals used to
+       stack the same message three or four times down the screen. */
+    const key = String(title) + '|' + String(body);
+    if (Array.prototype.some.call(container.children, (n) => n.dataset && n.dataset.key === key)) return;
     const toast = document.createElement('div');
     toast.className = 'push-toast';
+    toast.dataset.key = key;
     toast.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
     container.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add('show'));
@@ -41628,11 +41965,8 @@
     $('#btn-confirm-admin-roles').addEventListener('click', confirmAdminRoles);
 
     // Nav actions
-    $('#btn-logout').addEventListener('click', async () => {
-      currentPage = '';
-      try { await Push.removeToken(); } catch (e) { console.warn(e); }
-      auth.signOut(); // onAuthStateChanged handles cleanup + navigate
-    });
+    // onAuthStateChanged resets (resetSignedOut) and navigates.
+    $('#btn-logout').addEventListener('click', () => signOutFully($('#btn-logout')));
 
     // Language switcher
     $$('.lang-link').forEach(el => {
@@ -41760,6 +42094,13 @@
     // Listen for Firebase Auth state changes (fires on page load + login/logout)
     auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
+        /* A form handler is signing in (v285): it loads the profile, the
+           club and the data itself, and ends in afterSignIn(). Loading here
+           TOO ran the whole thing twice in parallel — two DB.init()s
+           tearing each other's listeners down, leaked board and coach-note
+           listeners, and for a brand-new account a club read with a token
+           that did not carry the club yet. */
+        if (_authFlowBusy) return;
         // Only load profile if not already set by handleLogin/handleRegister
         if (!_currentSession || _currentSession.id !== firebaseUser.uid) {
           try {
@@ -41807,112 +42148,10 @@
               }
             } catch (e) { console.error(e); }
           }
-          /* Push: initialise the listeners, but do NOT ask for permission
-             here. This runs from the auth-state handler, so the prompt had
-             no user gesture behind it — browsers increasingly auto-deny that
-             outright, and iOS Safari ignores it entirely, which is also why
-             iPhone users could never get notifications. The ask now lives
-             behind a tap in the soft-ask banner (renderPushBanner). */
-          Push.init();
-
-          // Watch own profile for claims changes (joinClub/setRole stamp
-          // claimsUpdatedAt) and force-refresh the ID token so security
-          // rules see the new teamId/role without re-login.
-          if (_claimsUnsub) { _claimsUnsub(); _claimsUnsub = null; }
-          _claimsUnsub = db.collection('users').doc(firebaseUser.uid).onSnapshot(async (doc) => {
-            if (!doc.exists) return;
-            const cu = doc.data().claimsUpdatedAt;
-            if (!cu || typeof cu.toMillis !== 'function') return;
-            const ms = cu.toMillis();
-            if (_lastClaimsMs && ms <= _lastClaimsMs) return;
-            const first = !_lastClaimsMs;
-            _lastClaimsMs = ms;
-            if (first) return; // initial snapshot — token already current
-            try {
-              await firebaseUser.getIdToken(true);
-              const res = await firebaseUser.getIdTokenResult();
-              const claimTeam = res.claims.teamId;
-              const s = getSession();
-              if (!s) return;
-              /* Visiting another club (v281): the change is to the HOME
-                 membership. Keep it for the way back and leave the visit
-                 alone — re-pointing here would yank the superadmin out of
-                 the club on screen, and the same-club branch below would
-                 hand the visit their home roles. */
-              if (_visitHome) {
-                const h = doc.data();
-                const homeTeam = hasClub(h.teamId) ? h.teamId : 'none';
-                // A different home club: its name is not loaded, so the way
-                // back says just "Tornar" rather than the old club's name.
-                if (homeTeam !== _visitHome.teamId) _visitHome.clubName = '';
-                _visitHome.teamId = homeTeam;
-                _visitHome.isTeamLead = h.isTeamLead === true;
-                _visitHome.roles = Array.isArray(h.roles) ? h.roles : [];
-                _visitHome.staffCategories = Array.isArray(h.staffCategories) ? h.staffCategories : [];
-                _visitHome.staffRole = typeof h.staffRole === 'string' ? h.staffRole : '';
-                _visitHome.category = h.category || '';
-                _visitHome.team = h.team || '';
-                return;
-              }
-              if (claimTeam && s.teamId !== claimTeam) {
-                s.teamId = claimTeam;
-                _currentSession = s;
-                await loadClubConfig(claimTeam);
-                await DB.init(claimTeam, getVisibleCategories());
-                navigate();
-                return;
-              }
-              // Same club, but membership may have changed: the lead adding
-              // or removing an address on a roster list re-derives roles and
-              // staffCategories server-side (onRosterWritten). Pull them off
-              // this very snapshot so an open app gains or loses staff pages
-              // without a reload.
-              const d = doc.data();
-              const nextRoles = Array.isArray(d.roles) ? d.roles : [];
-              const nextCats = Array.isArray(d.staffCategories) ? d.staffCategories : [];
-              const changed =
-                nextRoles.join(',') !== (s.roles || []).join(',') ||
-                nextCats.join(',') !== (s.staffCategories || []).join(',') ||
-                (d.category || '') !== (s.category || '') ||
-                (d.team || '') !== (s.team || '');
-              if (!changed) return;
-              s.roles = nextRoles;
-              s.staffCategories = nextCats;
-              s.category = d.category || '';
-              s.team = d.team || '';
-              _currentSession = s;
-              /* The category filter may now point somewhere out of bounds.
-                 Back to null, not '': this is "forget the choice and use
-                 the default again", whereas '' would silently pin them to
-                 Totes — a filter they never asked for. */
-              if (_viewCategory && getVisibleCategories().indexOf(_viewCategory) === -1) {
-                _viewCategory = null;
-              }
-              // Roster visibility follows the new categories.
-              if (_clubConfig) _clubConfig.rosters = await loadRosters(s.teamId, _clubConfig);
-              // So does the sharded data subscription: from Stage C the
-              // data/ listener is filtered by category, and a promoted coach
-              // who keeps the old subscription never sees his new squad.
-              // A no-op while the scope is unchanged — init() early-returns.
-              syncDbScope();
-              await DB.init(s.teamId, getVisibleCategories());
-              currentPage = '';
-              navigate();
-            } catch (e) { console.warn('Claims refresh failed:', e); }
-          });
+          afterSignIn(firebaseUser);
         }
       } else {
-        _currentSession = null;
-        _clubConfig = null;
-        if (_claimsUnsub) { _claimsUnsub(); _claimsUnsub = null; }
-        _lastClaimsMs = 0;
-        DB.cleanup();
-        /* The board editor's scratch keys are local-only and survived logout,
-           so the next person to sign in on this device opened the editor on
-           the previous one's drawing. Harmless while that was always a board
-           of your own club; not harmless once the superadmin can hold a
-           PLATFORM TEMPLATE there, which is nobody's club. */
-        tbClearEditor();
+        resetSignedOut();
       }
       // A form handler is driving: it will navigate when it is done, and it
       // may be showing an error we must not wipe. See _authFlowBusy.

@@ -35,7 +35,8 @@ function grab(from, to) {
 const VISIT = grab('  let _visitHome = null;', '  // ---------- View switching ----------');
 const CLEAR = grab('  function clearSession() {', '  /* ── Superadmin club visit (v281)');
 const SET_SESSION = grab('  function setSession(user) {', '  function clearSession() {');
-const CLAIMS = grab('onSnapshot(async (doc) => {', '\n          });\n        }\n      } else {')
+// v285: the watcher lives in afterSignIn() and closes with its error callback.
+const CLAIMS = grab('onSnapshot(async (doc) => {', "}, (err) => console.warn('claims watcher:'")
     .slice('onSnapshot('.length);
 const CREATE = grab("      createClubBtn.addEventListener('click', async () => {",
     '\n    }\n\n    // SuperUser / Team Lead / Player: delegated handlers');

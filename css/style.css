@@ -326,6 +326,8 @@ a:hover { text-decoration: underline; }
    from, and these steps ARE the instruction, so they read in full ink. */
 .lg-check[hidden] + .lg-check-help { margin: 0 0 12px; font-size: 13.5px; color: var(--pp-ink); }
 .lg-view .btn-primary.btn-full:disabled { background: var(--pp-rule-4); opacity: 1; cursor: default; }
+/* Busy (v285) is not "not yet allowed": the button stays red while it spins. */
+.lg-view .btn-primary.btn-full[data-busy="1"] { background: var(--pp-red); opacity: .9; cursor: progress; }
 /* The last step after sign-up (v283): numbered instructions, the one that
    matters most ("tap Allow") in full ink and bold. */
 .lg-steps {
@@ -465,6 +467,9 @@ a:hover { text-decoration: underline; }
 .sidebar-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.3em; flex-shrink: 0; }
 .sidebar-img-icon { width: 1.15em; height: 1.15em; display: block; object-fit: contain; }
 .sidebar-item:hover { background: rgba(255,255,255,.08); color: #fff !important; }
+/* An action, not a page (v285): set apart from the pages above it. */
+.sidebar-test-push { margin-top: .6rem; border-top: 1px solid rgba(255,255,255,.12); opacity: .85; font-size: .85rem; }
+.sidebar-test-push[data-busy="1"] { cursor: progress; opacity: .6; }
 .sidebar-item.active {
   background: rgba(255,214,98,.12); color: #FFD662 !important;
   border-left-color: #FFD662; font-weight: 600;

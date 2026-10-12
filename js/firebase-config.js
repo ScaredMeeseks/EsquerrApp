@@ -16,6 +16,20 @@ const firebaseConfig = {
   measurementId: "G-463JSLGK66"
 };
 
+/* Local emulators (v285) — ONLY on localhost, and ONLY when asked with
+   `?emu=1` (remembered for the tab in sessionStorage). Lets a sign-up be
+   driven end to end — Auth, joinClub, the rules — without creating accounts
+   in the live project. Anywhere else, and on localhost by default, this is
+   the live project exactly as before. */
+let _emu = false;
+try {
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    if (/[?&]emu=1(&|$)/.test(location.search)) sessionStorage.setItem('_emu', '1');
+    _emu = sessionStorage.getItem('_emu') === '1';
+  }
+} catch (e) { /* no sessionStorage: live */ }
+if (_emu) firebaseConfig.projectId = 'demo-esquerrapp';
+
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
@@ -23,6 +37,13 @@ firebase.initializeApp(firebaseConfig);
 const auth    = firebase.auth();
 const db      = firebase.firestore();
 const storage = firebase.storage();
+if (_emu) {
+  auth.useEmulator('http://127.0.0.1:9099');
+  db.useEmulator('127.0.0.1', 8080);
+  storage.useEmulator('127.0.0.1', 9199);
+  firebase.app().functions('us-central1').useEmulator('127.0.0.1', 5001);
+  console.warn('[EMU] talking to the local Firebase emulators (demo-esquerrapp)');
+}
 
 // Firebase Cloud Messaging (push notifications)
 let messaging = null;

@@ -716,7 +716,7 @@ function buildMessage(tokens, payload, native) {
 // ── Helper: send FCM to tokens, clean up stale ones ──
 async function sendToTokens(tokenEntries, payload) {
   logger.info("sendToTokens", {tokenCount: tokenEntries.length, payload});
-  if (!tokenEntries.length) return;
+  if (!tokenEntries.length) return {successCount: 0, failureCount: 0};
 
   /* sendEachForMulticast caps at 500 tokens and throws over it — a club
      past 500 devices would have lost the whole send, not part of it. */
@@ -768,6 +768,7 @@ async function sendToTokens(tokenEntries, payload) {
     await batch.commit();
   }
   if (stale.length) logger.info("Cleaned up stale tokens", {staleCount: stale.length});
+  return {successCount, failureCount};
 }
 
 // ════════════════════════════════════════════════════════════
@@ -5849,3 +5850,40 @@ exports.appIcon = onRequest(
       }
     },
 );
+
+// ── sendTestPush — "Prova les notificacions" (v285) ──
+//
+// One test notification to the CALLER's own devices, so a member can see
+// for themselves that notifications reach their phone. Nobody else's: the
+// target is the authenticated uid, never a parameter. One per minute per
+// account, stamped server-side, so the button cannot be used as a buzzer.
+const TEST_PUSH_GAP_MS = 60e3;
+
+exports.sendTestPush = onCall({region: "us-central1"}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  }
+  const uid = request.auth.uid;
+  const ref = db.collection("users").doc(uid);
+  const snap = await ref.get();
+  const last = snap.exists ? snap.data().lastTestPushAt : null;
+  const lastMs = last && typeof last.toMillis === "function" ? last.toMillis() : 0;
+  if (Date.now() - lastMs < TEST_PUSH_GAP_MS) {
+    throw new HttpsError("resource-exhausted",
+        "Espera un minut abans de tornar-ho a provar.");
+  }
+  await ref.set({lastTestPushAt: FieldValue.serverTimestamp()}, {merge: true});
+  const tokSnap = await ref.collection("tokens").get();
+  const entries = tokSnap.docs
+      .map((d) => Object.assign({uid}, d.data()))
+      .filter((e) => e.token);
+  if (!entries.length) return {tokens: 0, sent: 0};
+  const res = await sendToTokens(entries, {
+    title: "EsquerrApp · prova",
+    body: "Si veus això, les notificacions funcionen en aquest dispositiu.",
+    type: "general",
+    tag: "esq-test",
+  });
+  logger.info("sendTestPush", {uid, tokens: entries.length, sent: res.successCount});
+  return {tokens: entries.length, sent: res.successCount};
+});

@@ -8,7 +8,15 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 283** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 285**
+
+## 2026-10-13 — v284-v285: "Partits" this season; sign-up/sign-in cleaned up
+
+Full detail in CONTEXT.md (v284, v285).
+- **Local emulator runs:** `?emu=1` on localhost points the app at the Firebase emulators (`demo-esquerrapp`). Start them with `firebase emulators:start --only auth,firestore,functions,storage --project demo-esquerrapp` from PowerShell. Drive the page in headless Chrome. Never register against the live project.
+- **`joinClub` and `sendTestPush` are called over plain HTTPS** (`callFunction`), not the Functions SDK. The SDK's push-token step fails the call on phones where push can't set up.
+- **Sign-out resets everything** (`resetSignedOut`). Sign-in loads once (the auth handler stands aside for form handlers). Every path ends in `afterSignIn()`.
+- **Data note:** the owner's own row is in the demo club's `fa_users__amateur` (from a 9 Oct visit). Untouched; remove it by hand if wanted. — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). `version-check.test.js` fails the suite if two of them disagree.
 
 ## 2026-10-12 — v283: iPhone registers in Safari; the installed app wears the club's crest
@@ -46,7 +54,7 @@ Full detail in CONTEXT.md (v282). What a next session needs:
 
 | | |
 |---|---|
-| Unit tests | **4002** (v283) — `cd test && npm run test:unit` (~35 s), all passing |
+| Unit tests | **4044** (v285) — `cd test && npm run test:unit` (~35 s), all passing |
 | Functions tests | 93 — **not re-run since v272**; `functions/` changed only `check-deploy.js`'s constant and the synced `private/board3d.js` |
 | Rules tests | 178 — **not re-run**; `firestore.rules` was not touched |
 

@@ -312,6 +312,23 @@
     });
   }
 
+  /* Sign-out (v285). The club library's listener outlived the session: the
+     rules refused it the moment the user went ("[TB] library listener
+     failed"), and an init() for the same club and user afterwards returned
+     early on `_ready`, so the dead listener was never replaced. */
+  function cleanup() {
+    if (_unsub) { try { _unsub(); } catch (e) { /* already gone */ } _unsub = null; }
+    _clubId = null;
+    _uid = null;
+    _meta = {};
+    _authors = {};
+    _payloads = {};
+    _payloadBytes = 0;
+    _pending = {};
+    _favs = {};
+    _ready = false;
+  }
+
   function ready() { return _ready; }
 
   /** Boards belonging to the current club, newest first. */
@@ -686,6 +703,7 @@
     newBoardId: newBoardId,
     // runtime
     init: init,
+    cleanup: cleanup,
     ready: ready,
     library: library,
     mine: mine,

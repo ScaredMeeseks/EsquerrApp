@@ -12816,3 +12816,53 @@ Version triple → **v283**.
 - Unit 4002 → **4009**.
 
 Version triple → **v284**.
+
+### 2026-10-13 — v285: sign-up and sign-in without stray errors, busy spinners, Android install fallback, a notification test
+
+**The owner's report** (Android, v283):
+- Permission-type messages appeared after "Crea perfil" and went away on refresh.
+- No feedback while things load.
+- The app was not added to the home screen.
+- They couldn't tell whether notifications worked.
+
+Production showed the test sign-up had worked: `notifRequired` set, club joined, an Android web-push token saved 24 s in. One test notification sent from the server reached FCM (1 sent, 0 failed).
+
+**Reproduced locally first.** A new localhost-only switch, `?emu=1`, makes `js/firebase-config.js` use the Auth, Firestore, Functions and Storage emulators, with project id `demo-esquerrapp`; `firebase.json` gained an `emulators` block for the Auth port. Headless Chrome then drove a lead signing in, signing out, and a new player registering in the same tab, recording every toast and form error.
+- **Found:** with notifications granted, the Functions SDK on this page (10.12.0 compat) fetches a push token before each callable and fails the CALL if that fails. `joinClub` died with a raw `Installations: … 403` and the account was deleted. In the emulator that is an artifact, but the same path breaks sign-up on any phone where push cannot set up (push turned off, no Google services).
+- **Found:** sign-out only ran `DB.cleanup()`. The previous account's club data stayed on the device. So did a superadmin's club visit (`_visitHome`) and the install-step flag. The board-library listener also survived: the rules refused it (`[TB] library listener failed`), and an init for the same pair later returned early on the dead listener.
+- **Found:** sign-in loaded twice in parallel (the form handler and the auth handler, two `DB.init()`s).
+- **Found:** a new account never got `Push.init` or the claims watcher.
+- **Found:** `setSession` sent back `claimsUpdatedAt`, `prevCategory` and `prevTeam`, which the self-update rule refuses for the whole merge.
+- **Found:** `Push._initialized` blocked a token for a second account in the same tab.
+
+**Fixes:**
+- `callFunction(name, data)` posts to the callable over plain HTTPS with the ID token, bypassing the SDK's push step. Used for `joinClub` (sign-up and join-club) and `sendTestPush`. Production's preflight from Pages was checked.
+- `resetSignedOut()` replaces the half reset: `clearSession` (ends a visit), `DB.flush`, `TB.cleanup` (new in boards.js), the claims watcher, `_appStepInstall`.
+- `signOutFully(btn)` deletes the device token first, then signs out. Both sign-out buttons use it.
+- The auth handler stands aside (`if (_authFlowBusy) return;`) while a form handler signs in.
+- `afterSignIn()` (Push.init and ONE claims watcher) is the ending for login, sign-up and a stored session.
+- After `joinClub` succeeds, a sign-up never ends on the form. The club load is retried once with a fresh token; if it still fails, the member goes on with `error.load_after_join`.
+- `authErrorText()`: no raw Firebase English on the forms. The club's own Catalan refusals are kept.
+- Identical toasts coalesce.
+- **Busy buttons:** `btnBusy(btn, key)` (the login spinner, lifted) on sign-up, login, join-club, profile setup, sign-out and the test button. `regPaintConsent` leaves a busy `#reg-submit` alone, and a second tap is ignored. On the paper screens a busy button stays red.
+- **Android install:** the box and the last step now appear on Android whether or not Chrome has fired `beforeinstallprompt`. Without it, the step shows the ⋮ menu steps and "Fet, continua". `bip-ready` swaps in the button, and `appinstalled` moves on.
+- **"Prova les notificacions"** is in the side menu for every role, wherever this device can receive notifications.
+  - It asks first if no one has yet, saves this device's token, then calls the new `sendTestPush` callable.
+  - `sendTestPush` sends only to the caller's tokens, at most once a minute (server-stamped `lastTestPushAt`).
+  - `sendToTokens` now returns `{successCount, failureCount}`.
+
+**Checked:**
+- **Emulator runs:** lead signs out then a player registers, and a fresh device registers. Both go through the last step, the profile and the dashboard with no toast and no form error, with push failing throughout.
+- **Visual pass at 390 px on Android:** the busy "CREANT EL PERFIL…", the ⋮ steps, the menu entry, and the test answering "no device" in the emulator.
+- **Production read:** the owner's own row sits in the demo club's `fa_users__amateur` (dated 9 Oct, from a visit). It was left alone.
+
+**Tests:**
+- New `session.test.js` (12): the sign-out reset, `signOutFully` order, `afterSignIn`, the handler standing aside, `setSession` stripping, toast coalescing, `TB.cleanup` on the real boards.js.
+- `login.test.js` 59 → 81: the HTTPS join, refusals kept, the retry, going on after a failed load, no raw errors, busy states, the Android fallback, the test button.
+- `push-guard.test.js` +7: `sendTestPush`, `sendToTokens` counts, `Push.init` for a second account.
+- `club-visit.test.js`: one marker updated.
+- Mutations 33/33. Unit 4009 → **4044**. Functions 112 passing / 1 pre-existing failure.
+
+**Deploy order:** functions first (`sendTestPush`), then push v284 + v285 together.
+
+Version triple → **v285**.
