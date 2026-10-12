@@ -2177,7 +2177,22 @@
     'auth.notif_accept':     { ca:'Accepto rebre notificacions de l\'equip', es:'Acepto recibir notificaciones del equipo', en:'I accept team notifications' },
     'auth.notif_denied':     { ca:'Les notificacions estan bloquejades en aquest navegador. Activa-les a la configuració del lloc (la icona del cadenat, al costat de l\'adreça) i torna aquí.', es:'Las notificaciones están bloqueadas en este navegador. Actívalas en la configuración del sitio (el icono del candado, junto a la dirección) y vuelve aquí.', en:'Notifications are blocked in this browser. Allow them in the site settings (the padlock next to the address) and come back.' },
     'auth.notif_retry':      { ca:'Cal permetre les notificacions per registrar-te. Torna a marcar la casella i tria «Permet».', es:'Debes permitir las notificaciones para registrarte. Vuelve a marcar la casilla y elige «Permitir».', en:'You need to allow notifications to sign up. Tick the box again and choose “Allow”.' },
-    'auth.notif_ios_steps':  { ca:'A l\'iPhone, les notificacions només funcionen des de l\'app de la pantalla d\'inici:\n1. Toca Compartir (el quadrat amb la fletxa).\n2. Tria «Afegeix a la pantalla d\'inici».\n3. Obre EsquerrApp des de la icona nova i registra\'t allà.', es:'En el iPhone, las notificaciones solo funcionan desde la app de la pantalla de inicio:\n1. Toca Compartir (el cuadrado con la flecha).\n2. Elige «Añadir a pantalla de inicio».\n3. Abre EsquerrApp desde el icono nuevo y regístrate allí.', en:'On iPhone, notifications only work from the home-screen app:\n1. Tap Share (the square with the arrow).\n2. Choose “Add to Home Screen”.\n3. Open EsquerrApp from the new icon and sign up there.' },
+    'auth.notif_ios_later':  { ca:'A l\'iPhone, les notificacions s\'activen des de l\'app de la pantalla d\'inici. Quan acabis el registre t\'expliquem com afegir-la, i quan l\'obris tria «Permet».', es:'En el iPhone, las notificaciones se activan desde la app de la pantalla de inicio. Al terminar el registro te explicamos cómo añadirla, y cuando la abras elige «Permitir».', en:'On iPhone, notifications are turned on from the home-screen app. When you finish signing up we will show you how to add it, and when you open it choose “Allow”.' },
+    'app.install_title':     { ca:'Afegeix l\'app a la pantalla d\'inici', es:'Añade la app a la pantalla de inicio', en:'Add the app to your home screen' },
+    'app.install_sub':       { ca:'La tindràs com una app més, amb l\'escut del teu club.', es:'La tendrás como una app más, con el escudo de tu club.', en:'It will sit with your other apps, with your club\'s crest.' },
+    'app.install_btn':       { ca:'Instal·la l\'app', es:'Instalar la app', en:'Install the app' },
+    'app.later':             { ca:'Ara no', es:'Ahora no', en:'Not now' },
+    'app.ios_title':         { ca:'Últim pas: l\'app a la pantalla d\'inici', es:'Último paso: la app en la pantalla de inicio', en:'Last step: the app on your home screen' },
+    'app.ios_sub':           { ca:'A l\'iPhone, els avisos de l\'equip només arriben a l\'app de la pantalla d\'inici.', es:'En el iPhone, los avisos del equipo solo llegan a la app de la pantalla de inicio.', en:'On iPhone, team notifications only reach the home-screen app.' },
+    'app.ios_1':             { ca:'Toca Compartir (el quadrat amb la fletxa) a la barra de Safari.', es:'Toca Compartir (el cuadrado con la flecha) en la barra de Safari.', en:'Tap Share (the square with the arrow) in Safari\'s bar.' },
+    'app.ios_2':             { ca:'Tria «Afegeix a la pantalla d\'inici» i després «Afegeix».', es:'Elige «Añadir a pantalla de inicio» y después «Añadir».', en:'Choose “Add to Home Screen”, then “Add”.' },
+    'app.ios_3':             { ca:'Obre EsquerrApp des de la icona nova i entra amb el teu correu i contrasenya.', es:'Abre EsquerrApp desde el icono nuevo y entra con tu correo y contraseña.', en:'Open EsquerrApp from the new icon and sign in with your email and password.' },
+    'app.ios_4':             { ca:'Quan l\'app et demani enviar-te notificacions, tria «Permet».', es:'Cuando la app te pida enviarte notificaciones, elige «Permitir».', en:'When the app asks to send you notifications, choose “Allow”.' },
+    'app.notif_title':       { ca:'Activa les notificacions', es:'Activa las notificaciones', en:'Turn on notifications' },
+    'app.notif_sub':         { ca:'Els avisos d\'entrenaments, convocatòries i RPE arriben per notificació. Toca el botó i tria «Permet».', es:'Los avisos de entrenamientos, convocatorias y RPE llegan por notificación. Toca el botón y elige «Permitir».', en:'Training, call-up and RPE reminders arrive as notifications. Tap the button and choose “Allow”.' },
+    'app.notif_btn':         { ca:'Activa les notificacions', es:'Activar las notificaciones', en:'Turn on notifications' },
+    'app.notif_denied':      { ca:'Les notificacions estan desactivades per a EsquerrApp. Obre Configuració → Notificacions → EsquerrApp, activa «Permet notificacions» i torna aquí.', es:'Las notificaciones están desactivadas para EsquerrApp. Abre Ajustes → Notificaciones → EsquerrApp, activa «Permitir notificaciones» y vuelve aquí.', en:'Notifications are off for EsquerrApp. Open Settings → Notifications → EsquerrApp, turn on “Allow Notifications” and come back.' },
+    'app.notif_check':       { ca:'Torna a comprovar', es:'Volver a comprobar', en:'Check again' },
     'auth.notif_unsupported':{ ca:'Aquest navegador no pot rebre notificacions. Obre l\'enllaç amb Chrome o Safari per registrar-te.', es:'Este navegador no puede recibir notificaciones. Abre el enlace con Chrome o Safari para registrarte.', en:'This browser cannot receive notifications. Open the link in Chrome or Safari to sign up.' },
     'auth.install_label':    { ca:'Afegeix l\'app a la pantalla d\'inici', es:'Añade la app a la pantalla de inicio', en:'Add the app to my home screen' },
     'auth.install_done':     { ca:'Ja és a la pantalla d\'inici.', es:'Ya está en la pantalla de inicio.', en:'It is on your home screen.' },
@@ -3050,7 +3065,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 282;
+  const APP_VERSION = 283;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -3628,6 +3643,12 @@
       }
       if (_clubConfig && _clubConfig.name) localStorage.setItem('_splash_club_name', _clubConfig.name);
       paintCrest();
+      // The installed app's icon (v283): this club's crest, or the app's own.
+      if (_clubConfig) {
+        if (_clubConfig.badgeUrl) localStorage.setItem('_app_icon_club', clubId);
+        else localStorage.removeItem('_app_icon_club');
+      }
+      paintAppIcon();
     }
     // Enabled categories are part of the visible set, so the scope moves
     // with the config as well as with the session.
@@ -3684,6 +3705,39 @@
       hand-rolled at three call sites before the kit shirt needed a fourth. */
   function clubBadgeUrl() {
     return (_clubConfig && _clubConfig.badgeUrl) ? _clubConfig.badgeUrl : 'img/logo.png';
+  }
+
+  /* ── The installed app's icon follows the club (v283) ───────────────
+     The manifest and the apple-touch-icon are what Chrome's install dialog
+     and Safari's "Add to Home Screen" read at the moment of installing. For
+     a club with a crest they point at appManifest / appIcon (functions/
+     app-icon.js) — real URLs, because Chrome's install server fetches them;
+     without one, at the app's own manifest.json and logo.
+     ⚠ The same two URLs are built by the inline script in index.html's
+     <head>, from the same `_app_icon_club`. login.test.js holds them equal.
+     The APK's icon is compiled in and cannot follow anything. */
+  const APP_MANIFEST_FN = 'https://appmanifest-674dkdzfja-uc.a.run.app';
+  const APP_ICON_FN = 'https://appicon-674dkdzfja-uc.a.run.app';
+  function appIconHrefs(clubId) {
+    if (!clubId || !/^[A-Za-z0-9_-]{1,64}$/.test(clubId)) {
+      return { manifest: 'manifest.json', touch: 'img/logo-192.png' };
+    }
+    const app = location.origin + location.pathname.replace(/[^\/]*$/, '');
+    return {
+      manifest: APP_MANIFEST_FN + '?club=' + clubId + '&app=' + encodeURIComponent(app),
+      touch: APP_ICON_FN + '?club=' + clubId + '&s=180'
+    };
+  }
+  function paintAppIcon() {
+    let club = '';
+    try { club = localStorage.getItem('_app_icon_club') || ''; } catch (e) { /* none */ }
+    const h = appIconHrefs(club);
+    const m = document.getElementById('app-manifest');
+    const a = document.getElementById('app-touch-icon');
+    /* Only on a change: a new manifest href makes Chrome re-check the app
+       and fire a fresh beforeinstallprompt — wanted once, not per render. */
+    if (m && m.getAttribute('href') !== h.manifest) m.setAttribute('href', h.manifest);
+    if (a && a.getAttribute('href') !== h.touch) a.setAttribute('href', h.touch);
   }
 
   /** This club's kits — configured, or the two that reproduce today's look. */
@@ -4720,23 +4774,19 @@
     /* The consent, checked again here and not only by the disabled button:
        Enter in a field, autofill or a stale paint must not get round it. */
     const notifBox = $('#reg-notif');
-    if (_regNotif !== 'granted' || !notifBox || !notifBox.checked) {
+    const granted = _regNotif === 'granted' && !!notifBox && notifBox.checked;
+    if (!granted && !regIosLater(_regNotif)) {
       errEl.textContent = t('error.notif_required');
       errEl.hidden = false;
       return;
     }
-    /* The install dialog BEFORE the first await: the submit tap is the user
-       activation Chrome demands, and it does not survive an await. A
-       beforeinstallprompt can be shown once, so it is spent here. */
+    /* The install dialog comes AFTER the account exists (v283), on the
+       last-step screen: only then is the club known, and with it the crest
+       the installed app will wear (paintAppIcon). Read the box now — the
+       form is reset on success. */
     const installBox = $('#reg-install');
     const installRow = $('#reg-install-row');
-    if (window._bip && installBox && installBox.checked && installRow && !installRow.hidden) {
-      const bip = window._bip;
-      window._bip = null;
-      try {
-        Promise.resolve(bip.prompt()).catch((err) => console.warn('install prompt:', err));
-      } catch (err) { console.warn('install prompt:', err); }
-    }
+    const wantInstall = !!(installBox && installBox.checked && installRow && !installRow.hidden);
 
     if (pw !== pw2) {
       errEl.textContent = t('error.passwords_mismatch');
@@ -4805,7 +4855,12 @@
         // setup by the member; `agent` only ever by staff on Registracions.
         phone: '',
         agent: '',
-        profileSetupDone: false
+        profileSetupDone: false,
+        /* v283: registered under the notifications rule. On an iPhone the
+           grant can only happen in the home-screen app, so the app asks
+           for it there (appStepMode 'notif') — for these accounts only, not
+           for members who joined before the rule existed. */
+        notifRequired: true
       };
       await db.collection('users').doc(uid).set(profileFields, { merge: true });
 
@@ -4861,6 +4916,7 @@
       e.target.reset();
       errEl.hidden = true;
       _authFlowBusy = false;
+      _appStepInstall = wantInstall;
       navigate();
     } catch (err) {
       const msg = err.code === 'auth/email-already-in-use' ? 'An account with this email already exists.'
@@ -4909,6 +4965,10 @@
   function regIsNative() {
     return typeof Capacitor !== 'undefined' && !!Capacitor.isNativePlatform && Capacitor.isNativePlatform();
   }
+  /** An iPhone/iPad in the browser, where no Notification API exists. */
+  function regIosLater(state) {
+    return state === 'unsupported' && regIsIos() && !regIsStandalone() && !regIsNative();
+  }
 
   /** One help line: its key goes on data-i18n so a language switch
       (applyI18nHtml) retranslates it like every other label here. */
@@ -4930,15 +4990,19 @@
     _regNotif = state;
     const box = $('#reg-notif'), row = $('#reg-notif-row'), btn = $('#reg-submit');
     if (!box || !btn) return;
-    const iosFirst = state === 'unsupported' && regIsIos() && !regIsStandalone();
-    row.hidden = iosFirst;
+    /* v283: an iPhone in Safari registers HERE and turns notifications on
+       in the home-screen app — the only place Apple lets a web app have
+       them. The line says so now, and the last-step screen after sign-up
+       (appStepMode 'ios') walks through it. */
+    const iosLater = regIosLater(state);
+    row.hidden = iosLater;
     box.disabled = state === 'denied' || state === 'unsupported';
     // A grant ticks the box unless the person took the tick off themselves.
     box.checked = state === 'granted' && box.dataset.off !== '1';
-    btn.disabled = !box.checked;
+    btn.disabled = !(box.checked || iosLater);
     regHelp($('#reg-notif-help'),
       state === 'denied' ? 'auth.notif_denied'
-        : iosFirst ? 'auth.notif_ios_steps'
+        : iosLater ? 'auth.notif_ios_later'
         : state === 'unsupported' ? 'auth.notif_unsupported' : '');
 
     const iRow = $('#reg-install-row');
@@ -4948,6 +5012,97 @@
         installed || !window._bip;
       regHelp($('#reg-install-help'), installed ? 'auth.install_done' : '');
     }
+  }
+
+  /* ── The last step after sign-up (v283) ────────────────────────────
+     One screen, three jobs, chosen by appStepMode():
+       'install' — Chrome: the install dialog, behind a tap (the gesture it
+                   needs), now that the manifest carries the club's crest.
+                   Optional: "Ara no" goes on.
+       'ios'     — an iPhone in Safari: the add-to-home-screen steps,
+                   ending with "tap Allow". No way on: notifications are the
+                   rule, and in Safari there are none to give.
+       'notif'   — the home-screen app on an iPhone, for an account that
+                   registered under the rule, until the phone says granted.
+     navigate() asks first, before the profile, so it is the first thing a
+     new member sees. */
+  let _appStepInstall = false;
+
+  function appStepMode(session) {
+    if (!session || regIsNative()) return '';
+    const hasApi = typeof Notification !== 'undefined';
+    if (session.notifRequired && regIsIos()) {
+      if (!regIsStandalone() && !hasApi) return 'ios';
+      if (regIsStandalone() && hasApi && Notification.permission !== 'granted') return 'notif';
+    }
+    if (_appStepInstall && window._bip && !regIsStandalone()) return 'install';
+    return '';
+  }
+
+  function appStepHtml(mode) {
+    const c = cachedCrest();
+    const head = (c.badge ? '<img class="lg-crest" src="' + sanitize(c.badge) + '" alt="">' : '') +
+      '<div class="lg-eyebrow">' + sanitize(c.name || 'EsquerrApp') + '</div>';
+    const title = (k) => '<h1 class="lg-h1">' + sanitize(t(k)) + '</h1>';
+    const sub = (k) => '<p class="lg-sub">' + sanitize(t(k)) + '</p>';
+    const btn = (id, k) => '<button type="button" class="btn btn-primary btn-full" id="' + id + '">' +
+      sanitize(t(k)) + '</button>';
+    const link = (id, k) => '<p class="auth-switch"><a href="#" id="' + id + '">' + sanitize(t(k)) + '</a></p>';
+    if (mode === 'install') {
+      return head + title('app.install_title') + sub('app.install_sub') +
+        btn('app-step-install', 'app.install_btn') + link('app-step-later', 'app.later');
+    }
+    if (mode === 'ios') {
+      return head + title('app.ios_title') + sub('app.ios_sub') +
+        '<ol class="lg-steps">' + [1, 2, 3, 4].map(function (i) {
+          return '<li' + (i === 4 ? ' class="lg-step-key"' : '') + '>' + sanitize(t('app.ios_' + i)) + '</li>';
+        }).join('') + '</ol>' + link('app-step-logout', 'auth.logout');
+    }
+    // 'notif'. A refusal is remembered by iOS: only Settings can undo it.
+    const denied = typeof Notification !== 'undefined' && Notification.permission === 'denied';
+    return head + title('app.notif_title') +
+      (denied
+        ? '<p class="lg-step-warn">' + sanitize(t('app.notif_denied')) + '</p>' +
+          btn('app-step-check', 'app.notif_check')
+        : sub('app.notif_sub') + btn('app-step-notif', 'app.notif_btn')) +
+      link('app-step-logout', 'auth.logout');
+  }
+
+  function showAppStep(mode) {
+    const card = $('#app-step-card');
+    if (!card) return;
+    card.innerHTML = appStepHtml(mode);
+    card.dataset.mode = mode;
+    showView('#view-app-step');
+    const on = (id, fn) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', function (e) { e.preventDefault(); fn(); });
+    };
+    on('app-step-install', function () {
+      const bip = window._bip;
+      window._bip = null;
+      _appStepInstall = false;
+      let p = null;
+      try { p = bip && bip.prompt(); } catch (err) { console.warn('install prompt:', err); }
+      Promise.resolve(p)
+        .then(function () { return bip && bip.userChoice; })
+        .catch(function (err) { console.warn('install prompt:', err); })
+        .then(function () { navigate(); });
+    });
+    on('app-step-later', function () { _appStepInstall = false; navigate(); });
+    on('app-step-logout', function () { auth.signOut(); });
+    on('app-step-notif', async function () {
+      // Inside the tap, the raw ask first; the token once there is a yes.
+      let st = 'unsupported';
+      try { st = await Push.askPermission(); } catch (err) { /* stays unsupported */ }
+      if (st === 'granted') {
+        try {
+          Promise.resolve(Push.requestPermission()).catch((err) => console.warn('push token:', err));
+        } catch (err) { console.warn('push token:', err); }
+      }
+      navigate();
+    });
+    on('app-step-check', function () { navigate(); });
   }
 
   async function regConsentSync() {
@@ -4981,6 +5136,11 @@
     });
     window.addEventListener('focus', regConsentSync);
     document.addEventListener('bip-ready', regConsentSync);
+    // The last-step screen re-decides on return from Settings (v283).
+    document.addEventListener('visibilitychange', () => {
+      const v = document.getElementById('view-app-step');
+      if (document.visibilityState === 'visible' && v && !v.hidden) navigate();
+    });
     regConsentSync();
   }
 
@@ -5140,6 +5300,13 @@
     // Users without a club must join one first (superuser skips — manages clubs from admin settings)
     if (!session.isAdmin && (!session.teamId || session.teamId === 'none' || session.teamId === 'default')) {
       showView('#view-join-club');
+      _hideSplash();
+      return;
+    }
+    // The last step after sign-up: install / notifications (v283).
+    const appStep = appStepMode(session);
+    if (appStep) {
+      showAppStep(appStep);
       _hideSplash();
       return;
     }

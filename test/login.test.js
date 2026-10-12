@@ -139,6 +139,13 @@ describe('login — paintCrest', () => {
   });
 });
 
+/* v283: the installed app's icon follows the club. The real builder, shared
+   by paintAppIcon() and checked against index.html's head script below. */
+const APP_ICON_SRC = grab("  /* ── The installed app's icon follows the club (v283)",
+    "  /** This club's kits");
+const MANIFEST_FN = 'https://appmanifest-674dkdzfja-uc.a.run.app';
+const ICON_FN = 'https://appicon-674dkdzfja-uc.a.run.app';
+
 describe('login — the crest cache (loadClubConfig)', () => {
   /* `visiting`: a superadmin visiting another club (v281), whose home club's
      cache must survive the visit. */
@@ -147,13 +154,16 @@ describe('login — the crest cache (loadClubConfig)', () => {
     let fetched = 0;
     // eslint-disable-next-line no-new-func
     const load = new Function('document', 'localStorage', 'paintCrest', 'getClub', 'fetch', 'FileReader',
+        'location',
         'let _clubConfig = null;' +
         'let _visitHome = ' + (visiting ? '{ teamId: "club1" }' : 'null') + ';' +
         'const pruneStaleLeagueCache = () => {}; const setSeasonBoundary = () => {};' +
         'const syncDbScope = () => {}; const loadRosters = async () => ({});' +
+        APP_ICON_SRC +
         grab('  async function loadClubConfig(clubId) {', '  // Get the club display name') +
         'return loadClubConfig;')(w.document, w.localStorage, api.paintCrest,
-        async () => club, async () => { fetched++; throw new Error('CORS'); }, w.FileReader);
+        async () => club, async () => { fetched++; throw new Error('CORS'); }, w.FileReader,
+        w.location);
     return {w, api, load, fetched: () => fetched};
   }
 
@@ -164,6 +174,47 @@ describe('login — the crest cache (loadClubConfig)', () => {
     assert.strictEqual(r.w.localStorage.getItem('_splash_club_name'), CLUB);
     assert.strictEqual(r.w.document.getElementById('app-favicon').getAttribute('href'), 'https://x/badge.png');
     assert.strictEqual(r.fetched(), 1, 'and it tried to upgrade it to a data URL');
+  });
+
+  it('v283: a club with a crest points the install at ITS icon', async () => {
+    const r = run({name: CLUB, badgeUrl: 'https://x/badge.png'});
+    await r.load('club1');
+    const d = r.w.document;
+    assert.strictEqual(r.w.localStorage.getItem('_app_icon_club'), 'club1');
+    assert.strictEqual(d.getElementById('app-manifest').getAttribute('href'),
+        MANIFEST_FN + '?club=club1&app=' + encodeURIComponent('http://localhost/'));
+    assert.strictEqual(d.getElementById('app-touch-icon').getAttribute('href'),
+        ICON_FN + '?club=club1&s=180');
+  });
+
+  it('v283: a club without one goes back to the app\'s own icon', async () => {
+    const r = run({name: 'C.F. Nou'}, {_app_icon_club: 'club1'});
+    const d = r.w.document;
+    d.getElementById('app-manifest').setAttribute('href', MANIFEST_FN + '?club=club1');
+    await r.load('club2');
+    assert.strictEqual(r.w.localStorage.getItem('_app_icon_club'), null);
+    assert.strictEqual(d.getElementById('app-manifest').getAttribute('href'), 'manifest.json');
+    assert.strictEqual(d.getElementById('app-touch-icon').getAttribute('href'), 'img/logo-192.png');
+  });
+
+  it('v283: a VISIT leaves the home club\'s icon alone', async () => {
+    const r = run({name: 'C.E. Europa', badgeUrl: 'https://x/europa.png'}, {_app_icon_club: 'club1'}, true);
+    await r.load('club2');
+    assert.strictEqual(r.w.localStorage.getItem('_app_icon_club'), 'club1');
+  });
+
+  it('v283: the head script builds the SAME two addresses before anything renders', () => {
+    const w = boot({_app_icon_club: 'club1'});
+    // eslint-disable-next-line no-new-func
+    const hrefs = new Function('location', APP_ICON_SRC + 'return appIconHrefs;')(w.location)('club1');
+    assert.strictEqual(w.document.getElementById('app-manifest').getAttribute('href'), hrefs.manifest);
+    assert.strictEqual(w.document.getElementById('app-touch-icon').getAttribute('href'), hrefs.touch);
+    // An id that could steer the URL is refused, by both.
+    const bad = boot({_app_icon_club: 'x&app=https://evil'});
+    assert.strictEqual(bad.document.getElementById('app-manifest').getAttribute('href'), 'manifest.json');
+    // eslint-disable-next-line no-new-func
+    assert.strictEqual(new Function('location', APP_ICON_SRC + 'return appIconHrefs;')(w.location)(
+        'x&app=https://evil').manifest, 'manifest.json');
   });
 
   it('a club WITHOUT a crest clears the previous club\'s', async () => {
@@ -310,6 +361,12 @@ describe('v282 — sign-up needs notifications', () => {
   const IPAD13 = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15';
   const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
   const tick = () => new Promise((r) => setTimeout(r, 0));
+  const utilsSrc = fs.readFileSync(path.join(ROOT, 'js', 'utils.js'), 'utf8');
+  // eslint-disable-next-line no-new-func
+  const realSanitize = new Function('document', utilsSrc.slice(
+      utilsSrc.indexOf('function sanitize(str) {'),
+      utilsSrc.indexOf('// ---------- Tactical Formations ----------')) +
+      '\n return sanitize;')(new JSDOM('').window.document);
 
   /**
    * The form, with the consent code bound over it.
@@ -329,25 +386,42 @@ describe('v282 — sign-up needs notifications', () => {
       requestPermission: async () => null,
     };
     const nav = {userAgent: o.ua || ANDROID, maxTouchPoints: o.touch || 0, standalone: !!o.iosStandalone};
+    calls.navigated = 0; calls.tokens = 0; calls.profile = null; calls.signedOut = 0;
     const win = {
       navigator: nav, _bip: o.bip || null, _appInstalled: !!o.installed,
       matchMedia: (q) => ({matches: !!o.standalone && /standalone/.test(q)}),
       addEventListener: () => {},
     };
     const Capacitor = o.native ? {isNativePlatform: () => true} : undefined;
-    const auth = {createUserWithEmailAndPassword: (email) => {
-      calls.created.push(email); calls.order.push('create');
-      return Promise.reject(Object.assign(new Error('stop here'), {code: 'auth/email-already-in-use'}));
-    }};
+    Push.requestPermission = async () => { calls.tokens++; return 'tok'; };
+    const auth = {
+      createUserWithEmailAndPassword: (email) => {
+        calls.created.push(email); calls.order.push('create');
+        if (o.succeed) {
+          return Promise.resolve({user: {uid: 'u1', delete: async () => {}, getIdToken: async () => ''}});
+        }
+        return Promise.reject(Object.assign(new Error('stop here'), {code: 'auth/email-already-in-use'}));
+      },
+      signOut: () => { calls.signedOut++; },
+    };
+    const firebase = {app: () => ({functions: () => ({httpsCallable: () => async () =>
+      ({data: {clubId: 'c1', roles: ['player']}})})})};
+    const db = {collection: () => ({doc: () => ({set: async (data) => { calls.profile = data; }})})};
     const api = {
       $: (s) => d.querySelector(s), t: (k) => 'T:' + k, Push, navigator: nav, window: win,
-      document: d, Capacitor, auth, showView: () => {}, _hideSplash: () => {},
+      document: d, Capacitor, auth, showView: (id) => { calls.view = id; }, _hideSplash: () => {},
       ADMIN_EMAIL: 'admin@x', console: {warn() {}, log() {}, error() {}},
+      firebase, db, loadClubConfig: async () => {}, getUsers: () => [], saveUsers: () => {},
+      DB: {init: async () => {}}, getVisibleCategories: () => [], addStaffNotification: () => {},
+      navigate: () => { calls.navigated++; }, Notification: o.Notification,
+      sanitize: realSanitize, cachedCrest: () => ({badge: o.crest || '', name: o.club || ''}),
     };
     // eslint-disable-next-line no-new-func
     const fns = new Function(...Object.keys(api),
-        'let _authFlowBusy = false;\n' + REGISTER + CONSENT +
-        '\nreturn {regPaintConsent, regConsentSync, bindRegConsent, handleRegister};')(
+        'let _authFlowBusy = false; let _currentSession = null;\n' + REGISTER + CONSENT +
+        '\nreturn {regPaintConsent, regConsentSync, bindRegConsent, handleRegister,' +
+        ' appStepMode, showAppStep, step: () => _appStepInstall,' +
+        ' setStep: (v) => { _appStepInstall = v; }};')(
         ...Object.values(api));
     if (o.bip) {
       const p = o.bip.prompt;
@@ -430,17 +504,33 @@ describe('v282 — sign-up needs notifications', () => {
     assert.strictEqual(f.calls.ask, 0);
   });
 
-  it('an iPhone in Safari: install-first steps instead of the box', async () => {
+  /* v283: the owner's call — an iPhone registers in Safari, is told on the
+     form that notifications come from the home-screen app, and the screen
+     after sign-up walks through it (see 'the last step after sign-up'). */
+  it('an iPhone in Safari may register, and the form says what comes next', async () => {
     const f = await bound({state: 'unsupported', ua: IPHONE, touch: 5});
     assert.ok(f.el('reg-notif-row').hidden, 'a box that can never be ticked is shown');
-    assert.strictEqual(helpKey(f, 'reg-notif-help'), 'auth.notif_ios_steps');
-    assert.ok(f.el('reg-submit').disabled);
+    assert.strictEqual(helpKey(f, 'reg-notif-help'), 'auth.notif_ios_later');
+    assert.ok(!f.el('reg-submit').disabled, 'the iPhone is locked out of registering');
     assert.ok(f.el('reg-install-row').hidden, 'iOS has no install dialog to offer');
+  });
+
+  it('...and handleRegister lets it through, marking the account', async () => {
+    const f = await bound({state: 'unsupported', ua: IPHONE, touch: 5, succeed: true});
+    await submit(f);
+    assert.deepStrictEqual(f.calls.created, ['marc@x.cat']);
+    assert.strictEqual(f.calls.profile.notifRequired, true, 'the app will not know to ask');
+  });
+
+  it('a non-iPhone browser with no API is still refused', async () => {
+    const f = await bound({state: 'unsupported', succeed: true});
+    await submit(f);
+    assert.deepStrictEqual(f.calls.created, [], 'an in-app browser registered without notifications');
   });
 
   it('an iPad that says it is a Mac is still an iPad', async () => {
     const f = await bound({state: 'unsupported', ua: IPAD13, touch: 5});
-    assert.strictEqual(helpKey(f, 'reg-notif-help'), 'auth.notif_ios_steps');
+    assert.strictEqual(helpKey(f, 'reg-notif-help'), 'auth.notif_ios_later');
     const mac = await bound({state: 'unsupported', ua: IPAD13, touch: 0});
     assert.strictEqual(helpKey(mac, 'reg-notif-help'), 'auth.notif_unsupported', 'a real Mac is not an iPad');
   });
@@ -498,23 +588,31 @@ describe('v282 — sign-up needs notifications', () => {
       assert.strictEqual(helpKey(f, 'reg-install-help'), 'auth.install_done');
     });
 
-    it('the submit tap opens the install dialog, BEFORE the first await', async () => {
+    /* v283: the dialog moved OFF the submit, to the last-step screen —
+       only once the account exists is the club, and so its crest, known. */
+    it('a ticked box queues the last step; the submit opens no dialog', async () => {
       const bip = bipStub();
-      const f = await bound({state: 'granted', bip});
+      const f = await bound({state: 'granted', bip, succeed: true});
       await submit(f);
-      assert.strictEqual(bip.n, 1, 'no install dialog');
-      assert.deepStrictEqual(f.calls.order, ['prompt', 'create'],
-          'the prompt came after an await — the user activation is gone by then');
-      assert.strictEqual(f.win._bip, null, 'a spent prompt can be shown only once');
+      assert.strictEqual(bip.n, 0, 'the dialog opened before the club was known');
+      assert.strictEqual(f.fns.step(), true, 'the last step was not queued');
+      assert.strictEqual(f.calls.navigated, 1);
+      assert.ok(f.win._bip, 'the prompt was spent');
     });
 
-    it('an unticked box opens nothing', async () => {
+    it('an unticked box queues nothing', async () => {
       const bip = bipStub();
-      const f = await bound({state: 'granted', bip});
+      const f = await bound({state: 'granted', bip, succeed: true});
       f.el('reg-install').checked = false;
       await submit(f);
-      assert.strictEqual(bip.n, 0);
+      assert.strictEqual(f.fns.step(), false);
       assert.deepStrictEqual(f.calls.created, ['marc@x.cat'], 'and registration still goes ahead');
+    });
+
+    it('a failed registration queues nothing either', async () => {
+      const f = await bound({state: 'granted', bip: bipStub()});
+      await submit(f);
+      assert.strictEqual(f.fns.step(), false);
     });
 
     it('a refused registration does not spend the install prompt either', async () => {
@@ -542,13 +640,122 @@ describe('v282 — sign-up needs notifications', () => {
   });
 
   it('every new string exists in ca, es and en', () => {
-    ['auth.notif_accept', 'auth.notif_denied', 'auth.notif_retry', 'auth.notif_ios_steps',
-      'auth.notif_unsupported', 'auth.install_label', 'auth.install_done', 'error.notif_required']
+    ['auth.notif_accept', 'auth.notif_denied', 'auth.notif_retry', 'auth.notif_ios_later',
+      'auth.notif_unsupported', 'auth.install_label', 'auth.install_done', 'error.notif_required',
+      'app.install_title', 'app.install_sub', 'app.install_btn', 'app.later', 'app.ios_title',
+      'app.ios_sub', 'app.ios_1', 'app.ios_2', 'app.ios_3', 'app.ios_4', 'app.notif_title',
+      'app.notif_sub', 'app.notif_btn', 'app.notif_denied', 'app.notif_check']
         .forEach((k) => {
           const m = new RegExp("'" + k.replace('.', '\\.') + "':\\s*\\{(.*)\\},?\\s*$", 'm').exec(src);
           assert.ok(m, k);
           ['ca:', 'es:', 'en:'].forEach((l) => assert.ok(m[1].includes(l), k + ' ' + l));
         });
+  });
+
+  describe('v283 — the last step after sign-up', () => {
+    const NEW = {id: 'u1', notifRequired: true};
+    const OLD = {id: 'u0'};
+    const N = (permission, answer) => ({permission, requestPermission: async () => answer});
+
+    it('an iPhone in Safari: the four steps, "tap Allow" in bold, and no way on', () => {
+      const f = form({ua: IPHONE, touch: 5, crest: 'https://x/c.png', club: 'C.E. Sant Andreu'});
+      assert.strictEqual(f.fns.appStepMode(NEW), 'ios');
+      f.fns.showAppStep('ios');
+      assert.strictEqual(f.calls.view, '#view-app-step');
+      const card = f.el('app-step-card');
+      const li = [...card.querySelectorAll('ol.lg-steps li')];
+      assert.deepStrictEqual(li.map((x) => x.textContent),
+          ['T:app.ios_1', 'T:app.ios_2', 'T:app.ios_3', 'T:app.ios_4']);
+      assert.ok(li[3].classList.contains('lg-step-key'), 'the Allow step does not stand out');
+      assert.strictEqual(card.querySelector('img.lg-crest').getAttribute('src'), 'https://x/c.png');
+      assert.strictEqual(card.querySelector('button'), null, 'there is a button that skips it');
+      f.el('app-step-logout').click();
+      assert.strictEqual(f.calls.signedOut, 1);
+    });
+
+    it('a member from before the rule is not stopped in Safari', () => {
+      assert.strictEqual(form({ua: IPHONE, touch: 5}).fns.appStepMode(OLD), '');
+    });
+
+    it('the iPhone home-screen app asks — and a yes saves the token and goes on', async () => {
+      const f = form({ua: IPHONE, touch: 5, iosStandalone: true, Notification: N('default'),
+        ask: 'granted'});
+      assert.strictEqual(f.fns.appStepMode(NEW), 'notif');
+      assert.strictEqual(f.fns.appStepMode(OLD), '', 'an old account is gated too');
+      f.fns.showAppStep('notif');
+      f.el('app-step-notif').click();
+      await tick();
+      assert.strictEqual(f.calls.ask, 1, 'the tap did not ask');
+      assert.strictEqual(f.calls.tokens, 1, 'no token was saved for the yes');
+      assert.strictEqual(f.calls.navigated, 1);
+      assert.deepStrictEqual(f.errors, []);
+    });
+
+    it('after a refusal: the Settings path, and a re-check', () => {
+      const f = form({ua: IPHONE, touch: 5, iosStandalone: true, Notification: N('denied')});
+      assert.strictEqual(f.fns.appStepMode(NEW), 'notif');
+      f.fns.showAppStep('notif');
+      assert.ok(f.el('app-step-card').querySelector('.lg-step-warn').textContent.includes('app.notif_denied'));
+      assert.strictEqual(f.el('app-step-notif'), null, 'a prompt iOS will not show again');
+      f.el('app-step-check').click();
+      assert.strictEqual(f.calls.navigated, 1);
+    });
+
+    it('a home-screen app on an iOS too old for web push is not sent round in circles', () => {
+      // No API even when installed (iOS < 16.4): the install steps would loop.
+      const f = form({ua: IPHONE, touch: 5, iosStandalone: true});
+      assert.strictEqual(f.fns.appStepMode(NEW), '');
+    });
+
+    it('a granted home-screen app goes straight on', () => {
+      const f = form({ua: IPHONE, touch: 5, iosStandalone: true, Notification: N('granted')});
+      assert.strictEqual(f.fns.appStepMode(NEW), '');
+    });
+
+    it('Chrome: the install, behind a tap, once', async () => {
+      const b = {n: 0, userChoice: Promise.resolve({outcome: 'accepted'})};
+      b.prompt = () => { b.n++; return Promise.resolve(); };
+      const f = form({bip: b});
+      assert.strictEqual(f.fns.appStepMode(NEW), '', 'shown without the box being ticked');
+      f.fns.setStep(true);
+      assert.strictEqual(f.fns.appStepMode(NEW), 'install');
+      f.fns.showAppStep('install');
+      f.el('app-step-install').click();
+      await tick(); await tick();
+      assert.strictEqual(b.n, 1);
+      assert.strictEqual(f.fns.step(), false, 'it would ask again on the next navigate');
+      assert.strictEqual(f.win._bip, null);
+      assert.strictEqual(f.calls.navigated, 1, 'did not go on after the answer');
+    });
+
+    it('"Ara no" goes on and does not come back', () => {
+      const f = form({bip: {prompt() {}}});
+      f.fns.setStep(true);
+      f.fns.showAppStep('install');
+      f.el('app-step-later').click();
+      assert.strictEqual(f.fns.step(), false);
+      assert.strictEqual(f.calls.navigated, 1);
+    });
+
+    it('never in the APK', () => {
+      const f = form({ua: IPHONE, touch: 5, native: true, bip: {prompt() {}}});
+      f.fns.setStep(true);
+      assert.strictEqual(f.fns.appStepMode(NEW), '');
+    });
+
+    it('navigate() asks before the profile, so it is the first thing a new member sees', () => {
+      const nav = grab('  function navigate(page) {', '  function applyPushNav(d) {');
+      const at = nav.indexOf('appStepMode(session)');
+      assert.ok(at > 0 && at < nav.indexOf('showProfileSetup(session)'));
+      assert.ok(at > nav.indexOf("showView('#view-join-club')"), 'before the club is joined');
+    });
+
+    it('the view exists, on paper', () => {
+      const d = new JSDOM(html).window.document;
+      const v = d.getElementById('view-app-step');
+      assert.ok(v && v.classList.contains('lg-view') && v.hidden);
+      assert.ok(d.querySelector('#view-app-step #app-step-card'));
+    });
   });
 
   it('the new token is saved after sign-up, without awaiting it', () => {

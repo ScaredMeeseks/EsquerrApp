@@ -5774,3 +5774,78 @@ exports.archiveSeason = onRequest(
       }
     },
 );
+
+// ── The installed app's icon, per club (v283) ──
+//
+// Two public endpoints the page points its manifest and apple-touch-icon at
+// once it knows the member's club, so a home-screen install wears THAT
+// club's crest instead of L'Esquerra's. Helpers and the why: app-icon.js.
+//
+// Public on purpose: Chrome's install server and Safari fetch them with no
+// credentials. All they reveal is a club's name and crest, to someone who
+// already holds its random document id; the crest itself is behind a
+// tokenised Storage URL that every member's page already loads.
+const appIcon = require("./app-icon");
+const APP_ICON_BASE = "https://appicon-674dkdzfja-uc.a.run.app";
+const _appIconCache = new Map();   // per instance: club|size|mask → PNG
+
+async function _clubForIcon(clubId) {
+  if (!clubId) return null;
+  const snap = await db.collection("clubs").doc(clubId).get();
+  if (!snap.exists) return null;
+  const c = snap.data() || {};
+  return {name: String(c.name || ""), badge: appIcon.safeBadgeUrl(c.badgeUrl)};
+}
+
+exports.appManifest = onRequest(
+    {cors: true, region: "us-central1", memory: "256MiB"},
+    async (req, res) => {
+      const clubId = appIcon.validClubId(req.query.club);
+      try {
+        const club = await _clubForIcon(clubId);
+        res.set("Cache-Control", "public, max-age=3600");
+        res.type("application/manifest+json");
+        res.send(JSON.stringify(appIcon.buildManifest({
+          clubId, clubName: club ? club.name : "",
+          hasBadge: !!(club && club.badge),
+          app: req.query.app, iconBase: APP_ICON_BASE,
+        })));
+      } catch (err) {
+        logger.error("appManifest error", err);
+        res.status(500).json({error: "manifest failed"});
+      }
+    },
+);
+
+exports.appIcon = onRequest(
+    {cors: true, region: "us-central1", memory: "512MiB"},
+    async (req, res) => {
+      const clubId = appIcon.validClubId(req.query.club);
+      const size = appIcon.iconSize(req.query.s);
+      const mask = req.query.m === "1";
+      // Anything that cannot be the club's crest is the app's own icon.
+      const fallback = () => res.redirect(302, appIcon.PROD_APP +
+          (size <= 192 ? "img/logo-192.png" : "img/logo-512.png"));
+      try {
+        const club = await _clubForIcon(clubId);
+        if (!club || !club.badge) return fallback();
+        const key = clubId + "|" + size + "|" + (mask ? 1 : 0) + "|" + club.badge;
+        let png = _appIconCache.get(key);
+        if (!png) {
+          const resp = await fetch(club.badge);
+          if (!resp.ok) throw new Error("badge fetch " + resp.status);
+          const sharp = require("sharp");
+          png = await appIcon.renderIcon(sharp,
+              Buffer.from(await resp.arrayBuffer()), size, mask);
+          if (_appIconCache.size > 200) _appIconCache.clear();
+          _appIconCache.set(key, png);
+        }
+        res.set("Cache-Control", "public, max-age=86400");
+        res.type("image/png");
+        res.send(png);
+      } catch (err) {
+        logger.warn("appIcon fell back", {clubId, err: err && err.message});
+        fallback();
+      }
+    },
+);

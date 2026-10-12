@@ -8,8 +8,21 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 282** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
+**Version triple is at 283** — `CACHE_NAME` (sw.js), `APP_VERSION` (js/app.js), `CURRENT`
 (functions/check-deploy.js). `version-check.test.js` fails the suite if two of them disagree.
+
+## 2026-10-12 — v283: iPhone registers in Safari; the installed app wears the club's crest
+
+Full detail in CONTEXT.md (v283).
+- **Not deployed yet.** The order is `.\deploy.ps1 functions` FIRST (new public endpoints `appManifest`,
+  `appIcon`; new dep `sharp`), then check that `https://appmanifest-674dkdzfja-uc.a.run.app?club=x` and
+  `https://appicon-674dkdzfja-uc.a.run.app?s=192` answer, then push. If the run.app hash differs, fix
+  the three copies (index.js, app.js, index.html) first.
+- ⚠ Never leave a `functions/package-lock.json` behind: one pinned a broken `@firebase` tree. Install
+  with `npm install --no-package-lock`.
+- After deploy, check on real phones: an iPhone (register in Safari → steps → Add to Home Screen shows
+  the club crest → the app asks for notifications) and Android Chrome (Install → club crest).
+- The APK icon is unchanged (one per build).
 
 ## 2026-10-12 — v282: five owner asks in one release
 
@@ -34,7 +47,7 @@ Full detail in CONTEXT.md (v282). What a next session needs:
 
 | | |
 |---|---|
-| Unit tests | **3969** (v282) — `cd test && npm run test:unit` (~35 s), all passing |
+| Unit tests | **4002** (v283) — `cd test && npm run test:unit` (~35 s), all passing |
 | Functions tests | 93 — **not re-run since v272**; `functions/` changed only `check-deploy.js`'s constant and the synced `private/board3d.js` |
 | Rules tests | 178 — **not re-run**; `firestore.rules` was not touched |
 

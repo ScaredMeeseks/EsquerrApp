@@ -12747,3 +12747,41 @@ Tests:
   is a Cloud Shell script, so no functions deploy is needed.
 
 Version triple → **v282**.
+
+### 2026-10-12 — v283: iPhones register in Safari, a last step after sign-up, the installed app wears the club's crest
+
+**The owner's asks:** iPhone users should see the instructions during registration, so that when they open the app they know to accept notifications. The installed app's icon should be the club's crest, not L'Esquerra's.
+
+- **iPhone in Safari registers again.**
+  - v282 locked it out: there is no Notification API outside the home-screen app.
+  - The form now hides the box and says `auth.notif_ios_later`.
+  - `handleRegister` lets `regIosLater()` through. That is iOS/iPadOS, not standalone, not the APK. Any other browser with no API is still refused.
+- **`notifRequired: true`** is a new client-owned profile field written at sign-up. It marks accounts made under the notifications rule. Members from before the rule are never gated. No rules change was needed (the field is not in the protected list).
+- **The last step** (`#view-app-step`, `appStepMode` / `showAppStep`, in the consent block after `handleRegister`). `navigate()` asks for it right after the club check, before the profile.
+  - `ios` (Safari, `notifRequired`): four steps. The last one is "tap «Permet»", in bold. There is no way on except signing out: Safari can't receive notifications.
+  - `notif` (iOS home-screen app, `notifRequired`, permission not granted): one tap runs `Push.askPermission()`, then saves the token. If permission was denied, it shows the Settings path and a re-check, and it re-decides on `visibilitychange`. iOS older than 16.4 (no API even when installed) is not gated.
+  - `install` (Chrome): the install dialog moved OFF the submit tap and onto this screen. Only once the account exists is the club, and so the crest, known. The register box now only queues the step (`_appStepInstall`). "Ara no" goes on.
+- **Per-club icon.**
+  - New public endpoints in `functions/index.js`, with their helpers in `functions/app-icon.js`:
+    - `appManifest?club=&app=`: same name, colours and start_url as `manifest.json` (Chrome keys an install on start_url), with the club's icons and its name as the description. `app=` is allowlisted (Pages and localhost); anything else gets prod.
+    - `appIcon?club=&s=180|192|512[&m=1]`: sharp renders the crest on a white square with padding, plus a maskable one with 20% padding. It is flattened in a SECOND pass, because sharp runs `composite` last. The crest is fetched only from Storage hosts over https. Without a crest it 302s to the app's logo.
+  - The page points `#app-manifest` and `#app-touch-icon` at them through `paintAppIcon()` (from `loadClubConfig`, home club only), and an inline `<head>` script does the same from `_app_icon_club` before render.
+  - ⚠ Three copies of the two URLs (index.js, app.js, index.html); `app-icon.test.js` holds them equal. The run.app hash `674dkdzfja` is predicted from the existing functions, so **verify the deployed URLs before pushing**.
+  - The APK's icon is compiled in and is unchanged.
+- ⚠ **`functions/package-lock.json` must not exist.** `npm i sharp` created one (git-ignored) that pinned `@firebase/database-compat` 2.1.5 without its `@firebase/app` peer, so `index.js` stopped loading. A deploy uploads the functions folder, lock included. It was deleted and reinstalled with `--no-package-lock` (2.1.7 loads). Install functions deps that way.
+
+**Checked:**
+- In headless Chrome against the real page, as the demo coach: `paintAppIcon` set the production URLs for the club. With the manifest swapped to a local stand-in built on the real `app-icon.js`: no manifest errors, no installability errors, a fresh `beforeinstallprompt` after the swap, and all three icons 200 at 192/512/512.
+- The rendered icons were looked at: square, white, crest centred, the maskable one inside the safe zone.
+- The four last-step screens were rendered at 390 px with the real stylesheet and strings.
+- **Not checked:** a real iPhone (Safari's Add to Home Screen reading a dynamic apple-touch-icon) and a real Android WebAPK mint. Both need a phone after deploy.
+
+Tests:
+- `login.test.js` 41 → 59: iPhone registers, the profile field, no prompt on submit, the last step's three modes run over the real markup, the icon hrefs from `loadClubConfig`, and head script = `appIconHrefs`.
+- `app-icon.test.js` 15 (new): allowlists, manifest identity vs `manifest.json`, real sharp output (size, no alpha, white corner, crest, maskable padding), the three URL copies, sharp declared.
+- Mutations 34/34.
+- Unit 3969 → **4002**. Functions 112 passing, 1 failing: the same pre-existing `acta-import` "stale phone" case as v280.
+
+**Deploy order:** `.\deploy.ps1 functions` FIRST (the new frontend points at endpoints that don't exist until then), check both URLs answer, then push.
+
+Version triple → **v283**.

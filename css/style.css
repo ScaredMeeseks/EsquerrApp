@@ -326,6 +326,18 @@ a:hover { text-decoration: underline; }
    from, and these steps ARE the instruction, so they read in full ink. */
 .lg-check[hidden] + .lg-check-help { margin: 0 0 12px; font-size: 13.5px; color: var(--pp-ink); }
 .lg-view .btn-primary.btn-full:disabled { background: var(--pp-rule-4); opacity: 1; cursor: default; }
+/* The last step after sign-up (v283): numbered instructions, the one that
+   matters most ("tap Allow") in full ink and bold. */
+.lg-steps {
+  margin: 0 0 22px; padding-left: 22px; font-size: 14.5px; line-height: 1.5; color: var(--pp-ink-2);
+}
+.lg-steps li { margin-bottom: 10px; padding-left: 4px; }
+.lg-steps li::marker { color: var(--pp-red); font-weight: 600; }
+.lg-steps .lg-step-key { color: var(--pp-ink); font-weight: 600; }
+.lg-step-warn {
+  margin: 0 0 20px; padding: 12px 14px; font-size: 14px; line-height: 1.45;
+  background: var(--pp-med-doubt-bg); color: var(--pp-med-doubt-ink);
+}
 /* Its phone sizes live in the 600px block under "Auth pages". */
 
 /* ===== Role Selection ===== */

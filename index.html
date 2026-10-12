@@ -10,12 +10,12 @@
   <meta http-equiv="Expires" content="0">
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" id="app-manifest" href="manifest.json">
   <meta name="theme-color" content="#BD162C">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="EsquerrApp">
-  <link rel="apple-touch-icon" href="img/logo-192.png">
+  <link rel="apple-touch-icon" id="app-touch-icon" href="img/logo-192.png">
   <!-- The browser-tab icon is the club's crest once this device has seen a
        sign-in (paintCrest() keeps it current), and blank before that. Set
        here, before anything renders, so the tab never flashes another club's
@@ -28,6 +28,18 @@
   <!-- Install-to-home-screen (v282). Caught HERE, in the head: Chrome fires
        beforeinstallprompt once, early, and an app script loaded at the foot of
        the body can miss it. The sign-up form replays it (regConsentSync). -->
+  <!-- The installed app's icon follows the club (v283). The page that last
+       signed in here points the manifest and the home-screen icon at the
+       club's (appManifest / appIcon), before anything renders, so Chrome's
+       install and Safari's "Add to Home Screen" read the crest even from
+       the sign-in screen. paintAppIcon() keeps it current. -->
+  <script>
+  (function(){try{var c=localStorage.getItem('_app_icon_club');if(!c||!/^[A-Za-z0-9_-]{1,64}$/.test(c))return;
+    var app=location.origin+location.pathname.replace(/[^\/]*$/,'');
+    document.getElementById('app-manifest').href='https://appmanifest-674dkdzfja-uc.a.run.app?club='+c+'&app='+encodeURIComponent(app);
+    document.getElementById('app-touch-icon').href='https://appicon-674dkdzfja-uc.a.run.app?club='+c+'&s=180';
+  }catch(e){}})();
+  </script>
   <script>
   (function(){
     window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window._bip=e;document.dispatchEvent(new Event('bip-ready'));});
@@ -164,6 +176,16 @@
         </form>
         <p class="auth-switch"><span data-i18n="auth.has_account">Ja tens un perfil?</span> <a href="#" id="go-login" data-i18n="auth.login_link">Entra</a></p>
       </div>
+    </div>
+  </div>
+
+  <!-- ========== LAST STEP AFTER SIGN-UP (v283) ========== -->
+  <!-- Install the app (Chrome), add it to the home screen (iPhone in Safari),
+       or allow notifications (the iPhone home-screen app). showAppStep()
+       fills the card; navigate() decides when (appStepMode). -->
+  <div id="view-app-step" class="view lg-view" hidden>
+    <div class="auth-container">
+      <div class="auth-card" id="app-step-card"></div>
     </div>
   </div>
 
