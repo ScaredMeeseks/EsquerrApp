@@ -24,7 +24,8 @@ Full detail in CONTEXT.md (v286).
 - **Staff "Marca com a ajornat"** sets `manualState`; it gives way to the FCF.
 - ⚠ **`canEditPage` is true for a player** (no sub-role means 'edit'). Gate staff-only controls on `isStaffViewer(session) && canEditPage(...)`. The Partit "Editar" was visible to players until v286.
 - **Unverified in the wild:** the FCF re-issuing an acta id for a postponed fixture (handled by `_findReissued`), and whether ESTADO goes back to 0 on the new date (`matchState` doesn't depend on it).
-- **After deploy:** the first sync announces every current AJORNAT / SUSPÈS once.
+- **Deployed 2026-10-13 ~16:50:** functions first (34 updated, `fcfMatchdayWatch` created), then `849f2ca` pushed. Pages serves `esquerrapp-v286`. Right after, prod still showed 4149304 and 4119518 unstamped: no sync had run yet.
+- **After deploy:** the first sync (06:00, the watch, or "Actualitza des de la FCF") announces every current AJORNAT / SUSPÈS once. Check with a read: 4149304 → `fcfState: postponed`, 4119518 → `suspended`.
 
 ## 2026-10-13 — v284-v285: "Partits" this season; sign-up/sign-in cleaned up
 
