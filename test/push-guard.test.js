@@ -246,12 +246,12 @@ describe('sendTestPush — one test, to the caller\'s own devices only', () => {
     };
     const db = {collection: (c) => { assert.strictEqual(c, 'users'); return {doc: (id) => { calls.doc = id; return userDoc; }}; }};
     // eslint-disable-next-line no-new-func
-    const fn = new Function('onCall', 'HttpsError', 'db', 'FieldValue', 'sendToTokens', 'logger',
+    const fn = new Function('onCall', 'HttpsError', 'db', 'FieldValue', 'sendToTokens', 'logger', 'SUPERUSER_EMAIL',
         'var exports = {};\n' + grab(fnSrc, 'const TEST_PUSH_GAP_MS', '\n});\n') +
         '\n});\nreturn exports.sendTestPush;')(
         (opts, h) => h, HttpsError, db, {serverTimestamp: () => 'ts'},
         async (entries, payload) => { calls.sent.push({entries, payload}); return {successCount: entries.length, failureCount: 0}; },
-        {info() {}});
+        {info() {}}, 'su@x.cat');
     return {fn, calls};
   }
   const exportsShim = 'var exports = {};';
@@ -263,22 +263,32 @@ describe('sendTestPush — one test, to the caller\'s own devices only', () => {
 
   it('sends to the CALLER\'s tokens, whatever the request says', async () => {
     const {fn, calls} = server({tokens: [{token: 'a', platform: 'android'}, {token: 'b', platform: 'web'}, {platform: 'web'}]});
-    const r = await fn({auth: {uid: 'me'}, data: {uid: 'someone-else'}});
+    const r = await fn({auth: {uid: 'me', token: {email: 'SU@x.cat'}}, data: {uid: 'someone-else'}});
     assert.strictEqual(calls.doc, 'me', 'the target came from the request');
     assert.deepStrictEqual(r, {tokens: 2, sent: 2});
     assert.deepStrictEqual(calls.sent[0].entries.map((e) => e.uid + ':' + e.token), ['me:a', 'me:b']);
     assert.strictEqual(calls.stamped, 1, 'not stamped, so not rate-limited');
   });
 
+  // v286: the superadmin's tool only. Anybody else is refused before anything is read.
+  it('refuses anybody but the superadmin', async () => {
+    const {fn, calls} = server({tokens: [{token: 'a'}]});
+    await assert.rejects(() => fn({auth: {uid: 'me', token: {email: 'coach@x.cat'}}}),
+        (e) => e.code === 'permission-denied');
+    await assert.rejects(() => fn({auth: {uid: 'me', token: {}}}), (e) => e.code === 'permission-denied');
+    assert.strictEqual(calls.sent.length, 0);
+    assert.strictEqual(calls.stamped, 0);
+  });
+
   it('one per minute', async () => {
     const {fn, calls} = server({lastMs: Date.now() - 20e3, tokens: [{token: 'a'}]});
-    await assert.rejects(() => fn({auth: {uid: 'me'}}), (e) => e.code === 'resource-exhausted');
+    await assert.rejects(() => fn({auth: {uid: 'me', token: {email: 'su@x.cat'}}}), (e) => e.code === 'resource-exhausted');
     assert.strictEqual(calls.sent.length, 0);
   });
 
   it('no device registered: says so, sends nothing', async () => {
     const {fn, calls} = server({tokens: []});
-    assert.deepStrictEqual(await fn({auth: {uid: 'me'}}), {tokens: 0, sent: 0});
+    assert.deepStrictEqual(await fn({auth: {uid: 'me', token: {email: 'su@x.cat'}}}), {tokens: 0, sent: 0});
     assert.strictEqual(calls.sent.length, 0);
   });
 

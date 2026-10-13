@@ -109,6 +109,20 @@ describe('app.js — applyPushNav', () => {
     assert.strictEqual(s.detailMatchId, 12);
   });
 
+  it('"Partit ajornat" / "Nova data" open the fixture, back to the Calendari (v286)', () => {
+    // The staff's own push, through pushQueue: no `page` survives the trip.
+    const a = load();
+    assert.strictEqual(a.run({ type: 'match_change', matchId: '4149304' }), true);
+    assert.deepStrictEqual(a.state(),
+        { currentPage: 'match-detail', detailMatchId: 4149304, detailMatchFrom: 'calendar' });
+    // The sync's own push carries page:'match-detail' — the type still wins.
+    const b = load();
+    b.run({ type: 'match_change', page: 'match-detail', matchId: '9' });
+    assert.strictEqual(b.state().detailMatchFrom, 'calendar');
+    // No id: nowhere to go.
+    assert.strictEqual(load().run({ type: 'match_change' }), false);
+  });
+
   it('leaves the page alone for a notification it does not recognise', () => {
     // Returning false is what stops the caller re-rendering for nothing.
     const a = load();

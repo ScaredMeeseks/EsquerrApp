@@ -28,7 +28,7 @@ const {FieldValue} = require("firebase-admin/firestore");
 // second copy and how the two are kept honest.
 const {
   fcfGrupIdOf, sameClubNameOf, squadLetterOfName, parseFcfFixtures, parseFcfKits, parseFcfPositions,
-  mergeFcfFixtures,
+  mergeFcfFixtures, matchState,
   parseFcfActa, fcfRefereeSlug, fcfList, pickFcfTiers, fcfRefIndexId,
   fcfActasDue, fcfActaEntry, parseFcfSanctionsByActa, aggregateFcfReferees,
   fcfShouldRebuild, fcfLinkedGroups, fcfLabelsById, fcfScopeKey,
@@ -1025,8 +1025,12 @@ exports.scheduledRpeReminder = onSchedule({
       dates.includes(t.date) && !isActivity(t) &&
       endedInWindow(t, "training", now));
     // Same reason: two categories play on the same Saturday.
+    /* Not for a match that was not played (v286): postponed by the FCF or
+       marked by staff, or withdrawn (`fcfRemoved`, a latent gap). A
+       SUSPENDED one is asked: its first half was played. */
     const dueMatches = matches.filter((m) =>
-      dates.includes(m.date) && endedInWindow(m, "match", now));
+      dates.includes(m.date) && !m.fcfRemoved && matchState(m) !== "postponed" &&
+      endedInWindow(m, "match", now));
     if (!dueTraining.length && !dueMatches.length) return;
 
     /* Only the dates something actually ended on. `in` takes at most 30
@@ -1084,8 +1088,11 @@ exports.scheduledRpeReminder = onSchedule({
 
     for (const match of dueMatches) {
       const called = await squadForMatch(teamId, match, shards);
-      const missing = called.uids.filter((uid) =>
-        !rpeIds.has(uid + "_match_" + match.id));
+      /* A suspended match's restart is a session of its own, answered
+         under `_r` (v286): the first part's answer is not the restart's. */
+      const rpeKey = (uid) => uid + "_match_" + match.id +
+        (matchState(match) === "resumption" ? "_r" : "");
+      const missing = called.uids.filter((uid) => !rpeIds.has(rpeKey(uid)));
       logger.info("rpeReminder", {teamId, kind: "match", date: match.date,
         matchId: match.id, source: called.source, called: called.uids.length,
         missing: missing.length});
@@ -1137,8 +1144,11 @@ exports.scheduledMatchAvailReminder = onSchedule({
        played. Asking a squad to confirm availability for a cancelled match is
        a push that wastes everyone's Friday evening and teaches them to ignore
        the next one. */
+    /* Nor a postponed one, nor a suspended one still waiting for its new
+       date (v286): there is nothing to be available for. */
     const weekendMatches = matches.filter((m) =>
       m.status !== "past" && !m.fcfRemoved && m.date &&
+      matchState(m) !== "postponed" && matchState(m) !== "suspended" &&
       (m.date === satStr || m.date === sunStr));
     if (!weekendMatches.length) return;
 
@@ -1419,7 +1429,7 @@ async function _syncFcfSquad(clubId, category, letter, club) {
      the first and the last was overwritten. withDataShards writes `category`
      with the shard, which the client's where('category','in',…) needs. */
   const shard = shardDocId("fa_matches", category);
-  const {matches, summary} = await withDataShards(clubId,
+  const {matches, summary, changes} = await withDataShards(clubId,
       [{key: "fa_matches", cat: category, fallback: []}], (vals) => {
         const existing = vals[shard];
         const res = mergeFcfFixtures(
@@ -1443,8 +1453,156 @@ async function _syncFcfSquad(clubId, category, letter, club) {
   } catch (err) {
     logger.error("acta enqueue failed", {clubId, category, err: String(err)});
   }
+  /* Postponed, suspended, a new date (v286): tell the squad, and on a new
+     date clear the availability answers given for the old one. AFTER the
+     transaction — a retried transaction must not push twice — and never
+     fatal to the sync. */
+  try {
+    if ((changes || []).length) await _announceMatchChanges(clubId, changes, matches);
+  } catch (err) {
+    logger.error("match change announce failed", {clubId, category, err: String(err)});
+  }
   return summary;
 }
+
+const CA_DOW = ["dg", "dl", "dt", "dc", "dj", "dv", "ds"];
+/** "ds 18/10" — the day as the app writes it. */
+function _caDay(iso) {
+  const p = String(iso || "").split("-");
+  if (p.length !== 3) return String(iso || "");
+  const d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2], 12));
+  return CA_DOW[d.getUTCDay()] + " " + p[2] + "/" + p[1];
+}
+
+/** The push for one change — title and body, in Catalan (v286). */
+function matchChangeMessage(c) {
+  const rival = String(c.rival || "el partit");
+  const when = (x) => _caDay(x.date) + (x.time ? " a les " + x.time : "");
+  if (c.kind === "postponed") {
+    return {title: "Partit ajornat",
+      body: rival + " (" + _caDay(c.from.date) + ") queda ajornat per la Federació. Et direm la nova data."};
+  }
+  if (c.kind === "suspended") {
+    return {title: "Partit suspès",
+      body: rival + ": suspès. Es reprendrà quan la Federació en fixi la data."};
+  }
+  if (c.kind === "rescheduled") {
+    return {title: "Nova data",
+      body: rival + ": " + when(c.to) + ". Torna a dir si hi pots anar."};
+  }
+  return {title: "Represa", body: rival + " es reprèn el " + when(c.to) + "."};
+}
+
+/**
+ * Tell a squad what the federation did to one of its matches (v286).
+ * Players by the squad rule the reminders use; staff whose categories
+ * include it, and the club's leads. On a new date, the availability answers
+ * given for the old one are deleted, so the squad answers for the real day.
+ */
+async function _announceMatchChanges(clubId, changes, matches) {
+  const usersSnap = await db.collection("users").where("teamId", "==", clubId).get();
+  for (const c of changes) {
+    const match = (matches || []).find((m) => String(m.id) === String(c.id)) ||
+      {id: c.id, category: c.category, team: c.letter, date: c.to.date};
+    const players = await squadForSession(clubId, matchAsSession(match));
+    const staff = [];
+    usersSnap.forEach((doc) => {
+      const d = doc.data() || {};
+      const isStaff = Array.isArray(d.roles) && d.roles.includes("staff");
+      const cats = Array.isArray(d.staffCategories) ? d.staffCategories : [];
+      if (d.isTeamLead === true || (isStaff && cats.includes(c.category))) staff.push(String(doc.id));
+    });
+    const uids = [...new Set(players.concat(staff))];
+    if (c.kind === "rescheduled" || c.kind === "resumption") {
+      const avail = await db.collection("teams").doc(clubId).collection("matchAvail")
+          .where("matchId", "==", String(c.id)).get();
+      const avail2 = Number.isFinite(Number(c.id)) ? await db.collection("teams").doc(clubId)
+          .collection("matchAvail").where("matchId", "==", Number(c.id)).get() : null;
+      const docs = avail.docs.concat(avail2 ? avail2.docs : []);
+      for (let i = 0; i < docs.length; i += 400) {
+        const batch = db.batch();
+        docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+      logger.info("match rescheduled: availability cleared", {clubId, matchId: c.id, cleared: docs.length});
+    }
+    const tokens = await getTokensForUsers(uids);
+    const msg = matchChangeMessage(c);
+    logger.info("match change", {clubId, matchId: c.id, kind: c.kind, people: uids.length, tokens: tokens.length});
+    if (tokens.length) {
+      await sendToTokens(tokens, {title: msg.title, body: msg.body, type: "match_change",
+        page: "match-detail", matchId: String(c.id), tag: "esq-match-" + c.id + "-" + c.kind});
+    }
+  }
+}
+
+/* ── The matchday watch (v286) ───────────────────────────────────────
+   The daily 06:00 sync sees a postponement up to a day late — a Saturday-
+   morning AJORNAT would reach the squad on Sunday. Hourly, this re-syncs
+   just the squads with a fixture kicking off in the next 72 h (the owner's
+   window) or within the last 3 h: every 3 h while it is 72–24 h away, every
+   hour after that. Same _syncFcfSquad, same merge, same announcements. */
+const WATCH_AHEAD_H = 72;
+const WATCH_AFTER_H = 3;
+
+/** Is a squad due a check now, given its next kick-off and last check? */
+function watchDue(kickMs, lastMs, nowMs) {
+  if (!kickMs) return false;
+  const ahead = (kickMs - nowMs) / 36e5;
+  if (ahead > WATCH_AHEAD_H || ahead < -WATCH_AFTER_H) return false;
+  const gapH = ahead > 24 ? 3 : 1;
+  return !lastMs || (nowMs - lastMs) >= gapH * 36e5 - 5 * 60e3;
+}
+
+exports.fcfMatchdayWatch = onSchedule({
+  schedule: "5 * * * *",
+  timeZone: "Europe/Madrid",
+  region: "us-central1",
+  timeoutSeconds: 300,
+}, async () => {
+  const nowMs = Date.now();
+  const clubs = await db.collection("clubs").get();
+  for (const doc of clubs.docs) {
+    const club = doc.data() || {};
+    if (club.demoSeed) continue;
+    const squads = fcfSquadsOf(club);
+    if (!squads.length) continue;
+    const shards = await readDataShards(doc.id, ["fa_matches"]);
+    const matches = mergeArrayShards(shards.get("fa_matches"));
+    const nextOf = {};
+    for (const s of squads) {
+      let next = 0;
+      matches.forEach((m) => {
+        if ((m.category || "") !== s.category || (m.team || "") !== s.letter) return;
+        if (!m.fcfActaId || m.fcfRemoved || !m.date) return;
+        let k = 0;
+        try { k = parseMadridDate(m.date, String(m.time || "12:00").slice(0, 5)).getTime(); } catch (e) { k = 0; }
+        if (!k || (k - nowMs) / 36e5 < -WATCH_AFTER_H) return;
+        if (!next || k < next) next = k;
+      });
+      nextOf[s.category + "-" + s.letter] = next;
+    }
+    // Off a matchday, nothing is in the window — and nothing more is read.
+    if (!squads.some((s) => watchDue(nextOf[s.category + "-" + s.letter], 0, nowMs))) continue;
+    const stateRef = db.collection("fcfWatch").doc(doc.id);
+    const stateSnap = await stateRef.get();
+    const last = (stateSnap.exists && stateSnap.data().last) || {};
+    const touched = {};
+    for (const s of squads) {
+      const key = s.category + "-" + s.letter;
+      if (!watchDue(nextOf[key], Number(last[key]) || 0, nowMs)) continue;
+      try {
+        await _syncFcfSquad(doc.id, s.category, s.letter, club);
+        touched[key] = nowMs;
+      } catch (err) {
+        logger.warn("matchday watch: sync failed", {clubId: doc.id, key, err: String(err)});
+      }
+    }
+    if (Object.keys(touched).length) {
+      await stateRef.set({last: Object.assign({}, last, touched)}, {merge: true});
+    }
+  }
+});
 
 /** Every {category, letter} of a club that has an FCF link configured. */
 function fcfSquadsOf(club) {
@@ -2706,8 +2864,14 @@ async function _enqueueActaImports(clubId, category, rows) {
   const now = Date.now();
   const plan = planActaQueue(rows, {
     nowMs: now,
+    /* No acta will close for a postponed match, nor for a suspended one
+       until it is resumed (v286) — its new date re-arms it like any move. */
+    skip: (r) => { const st = matchState(r); return st === "postponed" || st === "suspended"; },
     kickoffMsOf: (r) => {
-      const d = parseMadridDate(r.date, String(r.time || "").slice(0, 5));
+      /* A date-only kick-off ("" time) made parseMadridDate throw, and that
+         one row stopped the whole category's queue every night (v286). */
+      let d;
+      try { d = parseMadridDate(r.date, String(r.time || "").slice(0, 5)); } catch (e) { return 0; }
       return isNaN(d.getTime()) ? 0 : d.getTime();
     },
     endMsOf: (r) => {
@@ -5853,15 +6017,18 @@ exports.appIcon = onRequest(
 
 // ── sendTestPush — "Prova les notificacions" (v285) ──
 //
-// One test notification to the CALLER's own devices, so a member can see
-// for themselves that notifications reach their phone. Nobody else's: the
-// target is the authenticated uid, never a parameter. One per minute per
-// account, stamped server-side, so the button cannot be used as a buzzer.
+// One test notification to the CALLER's own devices. The superadmin's tool
+// only (v286): the button shows for nobody else, and this refuses anybody
+// else. Nobody else's devices either: the target is the authenticated uid,
+// never a parameter. One per minute, stamped server-side.
 const TEST_PUSH_GAP_MS = 60e3;
 
 exports.sendTestPush = onCall({region: "us-central1"}, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Cal iniciar sessió.");
+  }
+  if (String(request.auth.token.email || "").toLowerCase() !== SUPERUSER_EMAIL) {
+    throw new HttpsError("permission-denied", "Només per a l'administrador.");
   }
   const uid = request.auth.uid;
   const ref = db.collection("users").doc(uid);

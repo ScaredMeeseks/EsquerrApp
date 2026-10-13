@@ -49,6 +49,11 @@ function grab(from, to) {
 
 const BLOCK = grab('  /* ---------- Convocatòria, redesigned (v227)',
     '  function renderAdminUsers()');
+/* v286: the REAL off-fixture helpers (matchOffLabel, matchIsOff,
+   matchMovedNote) and the matchState they read, declared in the body —
+   a postponed fixture renders here exactly as it does live. */
+const OFF_HELPERS = require('../js/utils.js').matchState.toString() + '\n' +
+    grab('  /* ── Postponed, suspended, withdrawn (v286)', '  function calMatchBlockHtml(m, ctx)');
 const BIND = grab('  // ---------- Convocatòria: drag-and-drop, menus, bands',
     '  // #endregion Matchday, Calendar & Convocatòria');
 
@@ -95,7 +100,7 @@ function build(selectedId) {
       'clubKits', 'shirtSvg', 'shortsSvg', 'kitSockSvg', 'safeHttpUrl',
       'viewOnlyBanner', 'TB', 'tbLinkedKey', 'convSelectedMatchId',
       'getCurrentSquad', 'currentSquadOrNull',
-      BLOCK + '\n return {renderConvocatoria, cvMins, cvQuickTimes, cvDelta,' +
+      OFF_HELPERS + BLOCK + '\n return {renderConvocatoria, cvMins, cvQuickTimes, cvDelta,' +
         ' cvAvailability, cvMenu, cvRowHtml, cvHead};')(
       (k) => k,
       sanitize,
@@ -414,6 +419,36 @@ describe('Convocatòria — enllaços de vídeo', () => {
   });
 });
 
+describe('Convocatòria — the fixture picker and a postponed match (v286)', () => {
+  beforeEach(reset);
+  const OFF = Object.assign({}, MATCH, {id: 2, date: '2099-10-04',
+    fcfState: 'postponed', postponedFrom: {date: '2099-10-04', time: '20:00'}});
+
+  it('opens on the next fixture that is ON, not on the postponed one before it', () => {
+    STORE.fa_matches = JSON.stringify([OFF, MATCH]);
+    const html = build(null).renderConvocatoria();
+    assert.ok(/cv-menu-o cv-menu-o-on" data-cv-match="1"/.test(html), 'opened on the postponed match');
+  });
+
+  it('still lists the postponed one, tagged', () => {
+    STORE.fa_matches = JSON.stringify([OFF, MATCH]);
+    const html = build(null).renderConvocatoria();
+    const opt = html.slice(html.indexOf('data-cv-match="2"'), html.indexOf('data-cv-match="1"'));
+    assert.ok(opt.includes('<span class="cv-off">match.state_postponed</span>'), opt);
+    const on = html.slice(html.indexOf('data-cv-match="1"'));
+    assert.ok(!on.slice(0, on.indexOf('</div>')).includes('cv-off'), 'the tag on an ordinary fixture');
+  });
+
+  it('with nothing else ahead, the postponed one is offered rather than nothing', () => {
+    STORE.fa_matches = JSON.stringify([OFF]);
+    assert.ok(/cv-menu-o-on" data-cv-match="2"/.test(build(null).renderConvocatoria()));
+  });
+
+  it('the tag has a rule, square-cornered like the rest of the page', () => {
+    assert.ok(/\.cv-off\s*\{/.test(CVCSS), 'no .cv-off rule in the cv- block');
+  });
+});
+
 describe('Convocatòria — the footer', () => {
   beforeEach(reset);
 
@@ -509,7 +544,7 @@ function wire(selectedId) {
   const dom = new JSDOM('<body><div id="app">' +
       api.renderConvocatoria() + '</div></body>');
   const {window} = dom;
-  const bindSrc = BIND + '\n return bindConvocatoria;';
+  const bindSrc = OFF_HELPERS + BIND + '\n return bindConvocatoria;';
   let renders = 0;
   const FITTED = [];            // every root fitCvTeams was asked to fit
   // eslint-disable-next-line no-new-func
@@ -708,6 +743,39 @@ describe('Convocatòria — the binder, wired to a real DOM', () => {
   it('will not send an empty acta', () => {
     click(wire().doc, '#btn-conv-send');
     assert.strictEqual(STORE.fa_convocatoria_sent, '{}');
+  });
+
+  describe('for a postponed fixture (v286)', () => {
+    /* `confirm` is the page's global; jsdom's would not be the one the
+       binder reaches through new Function, so it is set on Node's. */
+    let asked;
+    const answer = (yes) => { asked = []; global.confirm = (q) => { asked.push(q); return yes; }; };
+    afterEach(() => { delete global.confirm; });
+    const postponed = () => {
+      STORE.fa_matches = JSON.stringify([Object.assign({}, MATCH,
+          {manualState: 'postponed', postponedFrom: {date: MATCH.date, time: MATCH.time}})]);
+      STORE.fa_convocatoria = JSON.stringify({1: ['p1']});
+    };
+
+    it('asks first, and a no sends nothing', () => {
+      postponed(); answer(false);
+      click(wire().doc, '#btn-conv-send');
+      assert.deepStrictEqual(asked, ['conv.confirm_postponed']);
+      assert.strictEqual(STORE.fa_convocatoria_sent, '{}', 'sent over a no');
+    });
+
+    it('a yes sends', () => {
+      postponed(); answer(true);
+      click(wire().doc, '#btn-conv-send');
+      assert.deepStrictEqual(JSON.parse(STORE.fa_convocatoria_sent)['1'].players, ['p1']);
+    });
+
+    it('an ordinary fixture is never asked about', () => {
+      STORE.fa_convocatoria = JSON.stringify({1: ['p1']}); answer(false);
+      click(wire().doc, '#btn-conv-send');
+      assert.deepStrictEqual(asked, []);
+      assert.ok(JSON.parse(STORE.fa_convocatoria_sent)['1']);
+    });
   });
 
   /* THE XI FOLLOWS THE CALL-UP OUT. convSentEntry survived the redesign

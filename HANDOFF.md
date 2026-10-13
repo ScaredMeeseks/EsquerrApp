@@ -8,7 +8,23 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 285**
+**Version triple is at 286**
+
+## 2026-10-13 — v286: postponed and suspended matches
+
+Full detail in CONTEXT.md (v286).
+- **One reading of a fixture's state: `matchState(m)`** (js/utils.js, copied in functions/fcf.js; `fcf-state.test.js` holds them equal). It is date-aware:
+  - `'postponed'`: on its original kick-off.
+  - `'suspended'`: waiting for a restart.
+  - `'resumption'`: moved after a suspension.
+  - Use it, or `matchIsOff`, `matchOffLabel` and `matchMovedNote` in app.js. Don't read `fcfState` directly.
+- **The FCF's ESTADO** ("2" AJORNAT, "3" SUSPÈS) drives `fcfState`. The merge stamps `postponedFrom` / `suspendedOn` once and returns `changes[]`; `_announceMatchChanges` pushes the squad and clears answers on a new date.
+- **`fcfMatchdayWatch`** re-syncs squads hourly in the 72 h before a kick-off (every 3 h while 72–24 h out), with state in `fcfWatch/{clubId}`.
+- **A suspended match is two RPE sessions:** `{uid}_match_{id}` on `suspendedOn.date`, and `{uid}_match_{id}_r` on the restart day.
+- **Staff "Marca com a ajornat"** sets `manualState`; it gives way to the FCF.
+- ⚠ **`canEditPage` is true for a player** (no sub-role means 'edit'). Gate staff-only controls on `isStaffViewer(session) && canEditPage(...)`. The Partit "Editar" was visible to players until v286.
+- **Unverified in the wild:** the FCF re-issuing an acta id for a postponed fixture (handled by `_findReissued`), and whether ESTADO goes back to 0 on the new date (`matchState` doesn't depend on it).
+- **After deploy:** the first sync announces every current AJORNAT / SUSPÈS once.
 
 ## 2026-10-13 — v284-v285: "Partits" this season; sign-up/sign-in cleaned up
 
@@ -54,8 +70,8 @@ Full detail in CONTEXT.md (v282). What a next session needs:
 
 | | |
 |---|---|
-| Unit tests | **4044** (v285) — `cd test && npm run test:unit` (~35 s), all passing |
-| Functions tests | 93 — **not re-run since v272**; `functions/` changed only `check-deploy.js`'s constant and the synced `private/board3d.js` |
+| Unit tests | **4138** (v286) — `cd test && npm run test:unit` (~35 s), all passing |
+| Functions tests | **117** (v286), all passing — `npm run test:functions` from PowerShell with Java on PATH, backgrounded with `2>&1 | Out-File <log>` (a foreground run with `*>` stopped at function discovery) |
 | Rules tests | 178 — **not re-run**; `firestore.rules` was not touched |
 
 **Deploy state.** `main` is current and deployed through **v277 `669b2ba`**. Both v276 and v277

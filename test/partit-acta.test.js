@@ -373,6 +373,21 @@ describe('Partit — the acta line and the import button', () => {
     await tick();
     assert.ok(/pt\.acta_not_closed/.test(P.calls.toast[0][1]));
   });
+
+  it('...and names the page\'s own pill when it is AJORNAT or SUSPÈS (v286)', async () => {
+    const said = async (pill) => {
+      const P = mount({match: Object.assign(importedMatch(), {fcfActa: undefined}), events: []});
+      P.setAnswer({status: 'not-closed', fcfStatus: pill});
+      P.click('.pt-acta-import');
+      await tick();
+      await tick();
+      return P.calls.toast[0][1];
+    };
+    assert.ok(/pt\.acta_postponed/.test(await said('AJORNAT')));
+    assert.ok(/pt\.acta_suspended/.test(await said('SUSPÈS')));
+    assert.ok(/pt\.acta_suspended/.test(await said('Suspès')), 'the pill\'s case is the page\'s');
+    assert.ok(/pt\.acta_not_closed/.test(await said('Pendent')));
+  });
 });
 
 describe('Partit — "Vincula jugadors"', () => {

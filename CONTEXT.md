@@ -12866,3 +12866,100 @@ Production showed the test sign-up had worked: `notifRequired` set, club joined,
 **Deploy order:** functions first (`sendTestPush`), then push v284 + v285 together.
 
 Version triple → **v285**.
+
+### 2026-10-13 — v286: postponed and suspended matches; the notification test is the superadmin's
+
+**The owner's asks:**
+- "Prova les notificacions" only for them, as superadmin.
+- Deal with postponed matches (Esquerra B's 11/10 at Salesians Bosco-Horta, acta 4149304).
+  - Postponed: tag it, don't count it as played, no RPE, no stats or load, no availability reminders, tell the squad, re-ask availability on the new date, and let staff mark one by hand.
+  - Suspended: "usually the game was playing and got stopped"; it stays ONE match, and line-up changes on the restart day count as normal substitutions.
+- Check for postponements in the 72 h before a game.
+
+**What the FCF exposes** (read-only checks):
+- Every fixture in `partidos?grupId=` carries `ESTADO`: "0" Pendent, "1" played, "2" AJORNAT, "3" SUSPÈS. The acta pages show the same word as a pill, and `parseFcfActaEvents` already returned it as `status`.
+- Of 720 fixtures in the 6 linked groups: 3 AJORNAT, 9 SUSPÈS. All 3 AJORNAT were past their dates. When the federation flips the state is unknown, so the app now looks often near kick-off.
+- SUSPÈS covers a game stopped mid-way (lineups and cards in the acta) and one never started (4119518, Esquerra A, 03/10).
+- A new date arrives as a changed `COMIENZO1` on the same acta. Whether ESTADO resets to 0 then is not known. Between two captures today, one SUSPÈS row of another team left the 3 state.
+- Before v286 a postponed match became a phantom 0–0 after its kick-off:
+  - an RPE push and an Accions row;
+  - "Partits" +1 and 90 minutes;
+  - match load;
+  - a draw in Calendari;
+  - the acta retried for 10 days.
+
+**The model: `matchState(m)`.** It is in js/utils.js, copied into functions/fcf.js, and `fcf-state.test.js` holds the two equal. It is date-aware, so it doesn't matter whether the FCF resets ESTADO.
+
+| Returns | When |
+|---|---|
+| `'postponed'` | `fcfState` or `manualState` is postponed, and the match is still on the `postponedFrom` kick-off |
+| `'resumption'` | `suspendedOn` is set and the date or time has moved |
+| `'suspended'` | `fcfState` is suspended and the match hasn't moved |
+| `''` | anything else: on, or played |
+
+**Server (functions):**
+- `parseFcfFixtures` reads ESTADO into `f.state` (`fcfStateOf`).
+- **`mergeFcfFixtures` stamps the state:**
+  - It stores `fcfState`, and stamps `postponedFrom` / `suspendedOn` once from the row's kick-off before any move.
+  - A fixture postponed again on its new date is re-stamped from that date.
+  - It returns `changes[]` beside the summary (not inside it, since the summary is the skip-the-write contract): `postponed`, `suspended`, `rescheduled` (a postponed one moved), `resumption` (a suspended one moved).
+  - No change is announced on a first import, for an adopted row, or when the federation only confirms the staff's own mark.
+  - `manualState` gives way once the FCF reports a state or a new date.
+  - A coach-owned date is still never moved (unchanged rule), so it is not announced either.
+  - A NEW acta id for a fixture we hold as postponed or suspended (same squad, jornada and rival; old acta gone) is adopted onto our row (`_findReissued`). Not seen in the wild.
+- **`_announceMatchChanges`**, after the transaction:
+  - It pushes the squad (`squadForSession`), the category's staff and the leads. The push is in Catalan, `type: match_change`.
+  - On `rescheduled` or `resumption` it deletes that match's `matchAvail` docs, matching both id spellings.
+- **`fcfMatchdayWatch`** (hourly at :05, Madrid) re-runs `_syncFcfSquad` for squads with a fixture kicking off in the next 72 h or the last 3 h.
+  - Every 3 h while the match is 72–24 h away, then every hour.
+  - Last runs are kept in `fcfWatch/{clubId}.last`.
+  - Off a matchday it reads only the club's `fa_matches`.
+- **Reminders:**
+  - The RPE reminder skips postponed and `fcfRemoved` fixtures. A restart is chased for its own `_r` answer.
+  - The Friday availability push skips postponed fixtures, and suspended ones still waiting.
+- **Acta queue:** `planActaQueue` takes a `skip`, which skips postponed fixtures and suspended ones still waiting. `parseMadridDate` is guarded there, because a date-only fixture threw and stopped the category's queue.
+- **`sendTestPush`** refuses anyone but `SUPERUSER_EMAIL`.
+
+**Client:**
+- **Not played** (postponed; withdrawn where it was missing):
+  - `computePlayerMatchStats` (suspended shows result "S" until it resumes), `msTeamMatchdays`, `calMatchDates` (the microcycle), Sancions' next fixture;
+  - the readiness engine and the coach's per-player session list;
+  - Accions;
+  - Inici's next match on both pages, the coach's chase list and pending call-ups.
+- **Suspended = one match, two sessions.**
+  - The first part: key `{uid}_match_{id}`, on `suspendedOn.date`, with the lineup's minutes.
+  - The restart: key `{uid}_match_{id}_r`, on the new date, minutes null, because the lineup's minutes are the whole match's and already sit on the first part.
+  - Accions shows two rows, the second tagged "Represa".
+- **Calendari:** an off fixture gets a tag in the score's slot (AJORNAT / SUSPÈS / RETIRAT, struck through when withdrawn), a note, and no outcome colour. A moved one shows "Ajornat del dd/mm" or "Represa · suspès el dd/mm". Helpers: `matchOffLabel`, `matchIsOff`, `matchMovedNote`.
+- **Partit:**
+  - The state is in the score's slot, with a band explaining it.
+  - A postponed or withdrawn match is never "past": no `+ Event`, no score.
+  - A suspended match keeps its events; staff are told to log the restart's changes as normal substitutions.
+  - Staff who run the calendar get "⏸ Marca com a ajornat" (`setMatchPostponedByHand`). It asks, stamps the date, and queues "Partit ajornat" to the squad through pushQueue. The undo "Treu l'ajornament" is in the band. The federation's own state has no undo.
+  - The acta toast names AJORNAT / SUSPÈS from `fcfStatus`.
+- **A new date typed by staff** on a postponed or suspended fixture (`calUpdateMatch`): the stamp is kept or set, `manualState` is cleared, that match's answers are deleted (`matchClearAvailability`), and "Nova data" or "Represa" is queued, worded as the server's.
+- **Inici:** the week strips show the tag and drop the availability pills and the call-up button.
+- **Convocatòria:** the picker opens on the next fixture that is ON. A postponed fixture is listed and tagged, and sending for one asks first.
+- **Push taps** of `match_change` open the Partit page, back to Calendari.
+- **Fixed on the way:**
+  - Players saw "✏️ Editar" on the Partit page. A player has no sub-role, so `canEditPage` falls through to 'edit', and the rules refuse their `fa_matches` write anyway. It is now gated on `isStaffViewer` as well.
+  - Accions asked for an RPE on a withdrawn fixture.
+
+**Checked:**
+- **Emulators at 390 px**, as coach and as player, with one fixture in each state:
+  - Calendari, every Partit state, mark/undo, Inici, the picker, Accions, and the coach's player stats.
+  - A new date through the real edit dialog: the answer for that match was deleted locally and on the server, the other match's answer stayed, and "Nova data" was queued.
+- **The sync end to end in the emulator** (`sync-fcf-states.test.js`, the captured B feed, FCM stubbed): Pendent → AJORNAT gives one push, to B and the category's staff only. The next sync is silent. The new date gives "Nova data" and clears that match's answers, both id spellings.
+
+**Tests:**
+- New `fcf-state.test.js` (47): parse over two real captures, both matchState copies, every merge transition, a re-issued acta, the push text, the watch cadence, the reminder and queue filters, the staff's mark, and a new date typed by hand.
+- New `sync-fcf-states.test.js` (4, functions).
+- Additions in calendar-render, partit, partit-acta, convocatoria, inici, push-nav, accions, readiness-engine, login (stats), ms, fcf-tabs-render, acta and push-guard.
+- New fixtures `fcf-partidos-postponed.json` and `fcf-partidos-suspended.json`.
+- Mutations 81/81 (+1 for the withdrawn skip). Unit 4045 → **4138**. Functions **117 passing**; the pre-existing acta-import failure passes now.
+
+**After deploy:** the first sync stamps every AJORNAT / SUSPÈS fixture in the linked groups and announces each one once: B's 4149304 "Partit ajornat", A's 4119518 "Partit suspès". Previous RPE answers for the phantom 11/10 stay stored but no longer count.
+
+**Deploy order:** functions first (sync, watch, reminders, `sendTestPush`), then push.
+
+Version triple → **v286**.

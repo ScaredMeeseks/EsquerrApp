@@ -695,7 +695,8 @@ describe('training — the staff badge and the coach\'s week', () => {
     const body = grab('  function playerActionModel(session, nowArg) {',
         '  function getPendingActionCount() {');
     assert.ok(body.includes('sessionEndsAt(tr)'), 'the training gate moved');
-    assert.ok(body.includes('matchEndsAt(m)'), 'the match gate moved');
+    // v286: per SESSION of a match (a suspended one has two), same gate.
+    assert.ok(body.includes('matchEndsAt({ date: x.date, time: x.time })'), 'the match gate moved');
     assert.ok(!body.includes('90 * 60 * 1000'));
   });
 });
@@ -1178,7 +1179,8 @@ describe('training — the RPE form defaults', () => {
     assert.ok(!body.includes('playerMatchMinutesKnown'),
         'the model computes match minutes for a page that must not show them');
     const save = grab('    $$(\'.ac-save\').forEach(btn => {', '        const ua = minutes == null');
-    assert.ok(save.includes("playerMatchMinutesKnown(getSession().id, key.split('_match_')[1])"),
+    // v286: the id without a resumption's `_r`; a resumption has no lineup minutes of its own.
+    assert.ok(save.includes("resumedRow ? null : playerMatchMinutesKnown(getSession().id, matchIdOf)"),
         'the club records substitutions; the save must take them from there');
   });
 

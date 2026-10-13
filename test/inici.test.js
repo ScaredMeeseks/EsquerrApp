@@ -1199,6 +1199,41 @@ describe('Inici — the heroes are rendered, not just read', () => {
         'the session count under the ring uses a different window: ' +
         (h.match(/ini\.sess_matches:\S{0,40}/) || [])[0]);
   });
+
+  /* v286: "the next match" is the next one that is ON. A postponed fixture
+     tomorrow used to be the coach's chase list and the player's citació. */
+  describe('a postponed fixture is not the next match', () => {
+    // eslint-disable-next-line no-new-func
+    const OFF = new Function('t', 'matchState',
+        grab('  /* ── Postponed, suspended, withdrawn (v286)', '  function calMatchBlockHtml(m, ctx)') +
+        '\nreturn {matchIsOff};')((k) => k, utils.matchState);
+    const STORE = {
+      fa_matches: JSON.stringify([
+        { id: 1, date: dayOff(1), time: '18:00', category: 'amateur', team: 'A',
+          fcfState: 'postponed', postponedFrom: { date: dayOff(1), time: '18:00' } },
+        { id: 2, date: dayOff(3), time: '18:00', category: 'amateur', team: 'A' },
+      ]),
+      fa_convocatoria_callup: JSON.stringify({ 1: '16:30', 2: '16:45' }),
+    };
+    const withMatches = {
+      localStorage: { getItem: (k) => (k in STORE ? STORE[k] : null) },
+      matchIsOff: OFF.matchIsOff,
+      matchState: utils.matchState,
+    };
+
+    it('the player\'s citació is the next real match\'s', () => {
+      const h = renderPlayer(withMatches);
+      assert.ok(h.includes('16:45'), 'no citació for the match that is on');
+      assert.ok(!h.includes('16:30'), 'the postponed match\'s citació');
+    });
+
+    it('the coach chases the next real match, and is not nagged to call one up', () => {
+      const h = renderStaff(Object.assign({ tDayDDMM: (d) => 'DAY:' + d }, withMatches));
+      assert.ok(h.includes('DAY:' + dayOff(3)), 'the chase list is for the postponed match');
+      assert.ok(!h.includes('DAY:' + dayOff(1)));
+      assert.ok(/ini-c-warn">1</.test(h), 'the postponed match counted as a call-up to send');
+    });
+  });
 });
 
 /* v272. Verified by rendering (headless Edge, real stylesheet and Oswald):

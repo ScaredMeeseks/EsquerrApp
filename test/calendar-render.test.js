@@ -112,6 +112,7 @@ function make(o) {
     resolveKitPieces: U.resolveKitPieces,
     kitIconsHtml: () => '<span class="kit-icons">KIT</span>',
     isOurTeam: (n) => n === CLUB.name,
+    matchState: U.matchState,   // v286, the real one
     calcMatchScore: (evs) => {
       let home = 0; let away = 0;
       (evs || []).forEach((e) => {
@@ -504,6 +505,102 @@ describe('the match block', () => {
     const ev = {9: [{type: 'goal', side: 'home'}, {type: 'goal', side: 'away'}]};
     assert.ok(make({matches: [M({id: 9, date: '2026-03-01'})], events: ev})(null, '2026-03')
         .includes('cal-k-draw'));
+  });
+});
+
+describe('postponed, suspended and withdrawn fixtures (v286)', () => {
+  /* Before v286 a fixture the FCF postponed went on being a match: past
+     its kick-off it was a 0–0, coloured as a draw, with nothing to say it
+     never happened. */
+  const render = (m, extra) => make(Object.assign({matches: [m]}, extra || {}))(null, '2026-03');
+
+  it('a postponed fixture past its date: the tag, no 0–0, no draw colour', () => {
+    const m = M({id: 9, date: '2026-03-01', fcfState: 'postponed',
+      postponedFrom: {date: '2026-03-01', time: '18:00'}});
+    const cell = cellOf(render(m), '2026-03-01');
+    assert.ok(cell.includes('cal-b-off'), 'not marked off');
+    assert.ok(cell.includes('<span class="cal-b-state">match.state_postponed</span>'));
+    assert.ok(cell.includes('match.note_postponed'));
+    assert.ok(!cell.includes('0 – 0'), 'a postponed match read as 0–0');
+    assert.ok(!/cal-k-(win|draw|loss)/.test(cell), 'coloured with an outcome');
+    assert.ok(cell.includes('cal-k-match'));
+    assert.ok(cell.includes('data-cal-match="9"'), 'still opens the Partit page');
+  });
+
+  it('an upcoming postponed one drops the call-up, the kit and the "not sent" nag', () => {
+    const m = M({id: 9, date: '2026-03-07', manualState: 'postponed',
+      postponedFrom: {date: '2026-03-07', time: '18:00'}});
+    const cell = cellOf(render(m, {sent: {9: {players: ['p1']}}}), '2026-03-07');
+    assert.ok(cell.includes('match.state_postponed'));
+    assert.ok(!cell.includes('cal-kick'), 'kick-off for a match that is off');
+    assert.ok(!cell.includes('kit-icons'));
+    assert.ok(!cell.includes('cal.squad_not_sent') && !cell.includes('cal.squad_sent'));
+  });
+
+  it('given its new date, it is a match again — with where it came from', () => {
+    const m = M({id: 9, date: '2026-03-12', time: '20:00', fcfState: 'postponed',
+      postponedFrom: {date: '2026-03-07', time: '18:00'}});
+    const cell = cellOf(render(m), '2026-03-12');
+    assert.ok(!cell.includes('cal-b-off'));
+    assert.ok(cell.includes('cal-kick'), 'the new kick-off is shown');
+    assert.ok(cell.includes('match.postponed_from'.replace('{d}', '')),
+        'no "Ajornat del" line');
+  });
+
+  it('moved by an hour on the same day: on again, but no "Ajornat del"', () => {
+    const m = M({id: 9, date: '2026-03-07', time: '20:00', fcfState: 'postponed',
+      postponedFrom: {date: '2026-03-07', time: '18:00'}});
+    const cell = cellOf(render(m), '2026-03-07');
+    assert.ok(!cell.includes('cal-b-off'));
+    assert.ok(!cell.includes('match.postponed_from'), 'a same-day move announced as postponed');
+  });
+
+  it('suspended: the tag and no result — even with the events of its first half', () => {
+    const m = M({id: 9, date: '2026-03-01', fcfState: 'suspended',
+      suspendedOn: {date: '2026-03-01', time: '18:00'}});
+    const cell = cellOf(render(m, {events: {9: [{type: 'goal', side: 'home'}]}}), '2026-03-01');
+    assert.ok(cell.includes('match.state_suspended'));
+    assert.ok(cell.includes('match.note_suspended'));
+    assert.ok(!cell.includes('1 – 0'), 'a half-played match shown as a result');
+    assert.ok(!/cal-k-(win|draw|loss)/.test(cell));
+  });
+
+  it('its resumption day is the match, played, with "Represa"', () => {
+    const m = M({id: 9, date: '2026-03-01', time: '12:00', fcfState: 'suspended',
+      suspendedOn: {date: '2026-02-22', time: '18:00'}});
+    const cell = cellOf(render(m, {events: {9: [{type: 'goal', side: 'home'}]}}), '2026-03-01');
+    assert.ok(!cell.includes('cal-b-off'));
+    assert.ok(cell.includes('1 – 0'));
+    assert.ok(cell.includes('match.resumed_from'));
+  });
+
+  it('the microcycle counts to the next match that is ON', () => {
+    /* A postponed Saturday is not the matchday the week builds to: Tuesday
+       is M-4 before the real one, and a week out from nothing at all. */
+    const off = M({date: '2026-03-07', fcfState: 'postponed',
+      postponedFrom: {date: '2026-03-07', time: '18:00'}});
+    const alone = cellOf(make({trainings: [T()], matches: [off]})(null, '2026-03'), '2026-03-03');
+    assert.ok(!/>M-\d</.test(alone), 'measured against the postponed match: ' + alone);
+    const next = M({id: 2, date: '2026-03-08'});
+    const both = cellOf(make({trainings: [T()], matches: [off, next]})(null, '2026-03'), '2026-03-03');
+    assert.ok(both.includes('>M-5<'), 'not measured against Sunday\'s match');
+  });
+
+  it('withdrawn by the federation: struck through, and never a result', () => {
+    const m = M({id: 9, date: '2026-03-01', fcfRemoved: true});
+    const cell = cellOf(render(m), '2026-03-01');
+    assert.ok(cell.includes('cal-b-removed'));
+    assert.ok(cell.includes('match.state_removed') && cell.includes('cal.removed'));
+    assert.ok(!cell.includes('0 – 0'));
+  });
+
+  it('every class it draws has a rule, and the tag is the warning ink', () => {
+    // The raw sheet: readCss() resolves the tokens to hex, which is not the question.
+    const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'css', 'style.css'), 'utf8');
+    ['cal-b-off', 'cal-b-state', 'cal-b-removed', 'cal-b-note'].forEach((c) =>
+      assert.ok(new RegExp('\\.' + c + '\\b').test(css), 'no rule for .' + c));
+    const rule = css.slice(css.indexOf('.cal-b-state {'), css.indexOf('}', css.indexOf('.cal-b-state {')));
+    assert.ok(rule.includes('var(--pp-amber)'), 'not a palette token');
   });
 });
 

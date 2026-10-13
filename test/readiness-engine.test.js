@@ -81,6 +81,8 @@ function engine(o) {
        well as sessions, and trainingOnly (sliced in below) is the only
        thing keeping a team dinner out of the acute:chronic ratio. */
     isActivity: utils.isActivity,
+    // v286: the real one — a postponed match carries no load.
+    matchState: utils.matchState,
     Date: class extends Date {
       constructor(...a) { return a.length ? new Date(...a) : new Date(TODAY + 'T12:00:00'); }
       static now() { return new Date(TODAY + 'T12:00:00').getTime(); }
@@ -401,6 +403,48 @@ describe('readiness — a match RPE saved without minutes', () => {
   it('keeps minutes a player saved before v282', () => {
     // A recorded 60 is the record's word, even if the lineup says 90.
     assert.notStrictEqual(run(60, 90).matchFatigueScore, run(90, 90).matchFatigueScore);
+  });
+});
+
+describe('readiness — postponed and suspended matches (v286)', () => {
+  const matchSessions = (r) => (r.sessions || []).filter((x) => x.type === 'match');
+
+  it('a postponed match is no load — not even the answers given for it', () => {
+    /* The 11/10 case: the squad was asked for an RPE after the kick-off of
+       a match that was never played, and some answered. */
+    const b = baseTrainings('p1');
+    const d = day(-1);
+    const base = engine(b)('p1');
+    b.matches = [{id: 1, date: d, time: '18:00', category: 'amateur', team: 'A',
+      fcfState: 'postponed', postponedFrom: {date: d, time: '18:00'}}];
+    b.rpe['p1_match_1'] = {rpe: 8, minutes: 90, date: d};
+    b.minutes = {1: {p1: 90}};
+    const r = engine(b)('p1');
+    assert.deepStrictEqual(matchSessions(r), [], 'a postponed match carries load');
+    assert.strictEqual(r.matchFatigueScore, base.matchFatigueScore);
+    assert.strictEqual(r.acwr, base.acwr);
+  });
+
+  it('resumed: the first part on the day it was played, the restart on its own day', () => {
+    const b = baseTrainings('p1');
+    const first = day(-6); const restart = day(-1);
+    b.matches = [{id: 1, date: restart, time: '18:00', category: 'amateur', team: 'A',
+      suspendedOn: {date: first, time: '18:00'}}];
+    b.rpe['p1_match_1'] = {rpe: 7, minutes: 45, date: first};
+    b.rpe['p1_match_1_r'] = {rpe: 5, minutes: null, date: restart};
+    const s = matchSessions(engine(b)('p1'));
+    assert.deepStrictEqual(s.map((x) => [x.date, x.rpe]).sort(),
+        [[first, 7], [restart, 5]].sort(), JSON.stringify(s));
+  });
+
+  it('still waiting for its restart: one session, on the day it was stopped', () => {
+    const b = baseTrainings('p1');
+    const d = day(-2);
+    b.matches = [{id: 1, date: d, time: '18:00', category: 'amateur', team: 'A',
+      fcfState: 'suspended', suspendedOn: {date: d, time: '18:00'}}];
+    b.rpe['p1_match_1'] = {rpe: 7, minutes: 45, date: d};
+    const s = matchSessions(engine(b)('p1'));
+    assert.deepStrictEqual(s.map((x) => x.date), [d]);
   });
 });
 

@@ -643,6 +643,7 @@ function planActaQueue(rows, opts) {
   const out = [];
   (rows || []).forEach((r) => {
     if (!r || !r.fcfActaId || r.fcfRemoved || r.fcfActa) return;
+    if (o.skip && o.skip(r)) return;
     const kick = o.kickoffMsOf(r);
     const end = o.endMsOf(r);
     if (!kick || !end) return;

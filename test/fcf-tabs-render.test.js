@@ -79,7 +79,8 @@ function makeTabs(opts) {
       'clubMonogram', 'safeHttpUrl', 'CATEGORY_LABELS', 'tDay', 'tMonth',
       'tDateShort', '_leagueCache', 'fetch', 'document', 'window',
       'getVisibleCategories',
-      block + stdSel + bar +
+      // v286: the real matchState, declared in the body (the factory is positional).
+      F.matchState.toString() + '\n' + block + stdSel + bar +
       '\n return {renderCategoryBar, renderSancions, renderScorers, sancionsBodyHtml,' +
       ' scorersTableHtml, scorersSortedRows, sancionsNextFixture,' +
       ' fcfOurTeamId, fcfSeasonId, scZone, scClubCardHtml, _fcfClubs,' +
@@ -413,6 +414,15 @@ describe('renderSancions', () => {
     assert.ok(doc.querySelector('.sanc-card-ours'), 'our own side is missing');
     assert.ok(doc.querySelector('.sanc-card-rival .sanc-card-name').textContent
         .includes('CAN BUXERES, F.C.'), 'the rival side is missing');
+  });
+
+  it('the next fixture is the next one that is ON — not a postponed one (v286)', () => {
+    const off = fixture({id: 1, fcfActaId: '1', date: '2099-09-12', away: 'SALESIANS BOSCO-HORTA CE. A',
+      fcfState: 'postponed', postponedFrom: {date: '2099-09-12', time: '18:00'}});
+    const R = makeTabs({matches: [off, fixture()]});
+    const doc = docOf(R.sancionsBodyHtml(F.parseFcfSanctions(SANCIONS), 'amateur', 'A'));
+    assert.ok(doc.querySelector('.sanc-card-rival .sanc-card-name').textContent
+        .includes('CAN BUXERES, F.C.'), 'the bans are counted against the postponed fixture');
   });
 
   it('counts the matches STILL TO SERVE, and prints the window', () => {

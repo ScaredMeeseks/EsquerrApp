@@ -182,6 +182,7 @@ function render(over) {
        calls is a fixture that can silently stop mattering. */
     availContext: () => ({ availData: (o.avail || AVAIL), overrides: {} }),
     isOurTeam: (n) => n === 'CE L\'Esquerra',
+    matchState: utils.matchState,   // v286, the real one
     seasonStartStr: () => SEASON_START,
     DEFAULT_SESSION_MINS: 90,
     DEFAULT_MATCH_MINS: 120,
@@ -368,6 +369,8 @@ describe('Les meves estadístiques — the season figures', () => {
       m('in1', -3), m('in2', -10), m('in3', -38),
       m('last-season', -45),                      // before SEASON_START (−40)
       m('withdrawn', -17, { fcfRemoved: true }),  // the FCF dropped it
+      // v286: postponed, never played — but a suspended one WAS a matchday.
+      m('postponed', -7, { fcfState: 'postponed', postponedFrom: { date: dayOff(-7), time: '12:00' } }),
       m('other-squad', -5, { team: 'B' }),
       m('tomorrow', 1),
     ] }) } });

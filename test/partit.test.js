@@ -57,6 +57,12 @@ function grab(from, to) {
 const BLOCK = grab('  /**\n   * Which side of this fixture is US',
     '  function renderMatchDetail()');
 
+/* v286: the REAL off-fixture helpers (matchOffLabel, matchIsOff,
+   matchMovedNote) and the matchState they read, declared in the body —
+   a postponed fixture renders here exactly as it does live. */
+const OFF_HELPERS = require('../js/utils.js').matchState.toString() + '\n' +
+    grab('  /* ── Postponed, suspended, withdrawn (v286)', '  function calMatchBlockHtml(m, ctx)');
+
 const sanitize = (s) => String(s === undefined || s === null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
@@ -103,8 +109,8 @@ function build() {
       'playerMatchMinutesKnown', 'mnOutcome', 'mnSentBoards', 'mnSentVideos',
       'mnMediaColHtml', 'MN', 'MN_BRIEF_COLLAPSED', 'tDateShort',
       'getMatchEvents', 'fcfKitPieces', 'fcfShirtSvg', 'shortsSvg', 'kitSockSvg',
-      BLOCK + '\n return {ptHead, ptCrestHtml, ptRivalStanding, ptFactHtml,' +
-        ' ptFactsHtml, ptScoreboardHtml, ptCallupHtml, ptBoardsHtml,' +
+      OFF_HELPERS + BLOCK + '\n return {ptHead, ptCrestHtml, ptRivalStanding, ptFactHtml,' +
+        ' ptFactsHtml, ptScoreboardHtml, ptStateBandHtml, ptCallupHtml, ptBoardsHtml,' +
         ' ptEventTypes, ptSecondField, ptEventDetail, ptTimelineHtml,' +
         ' ptEventName, ptOurSide, ptRivalRow, ptFormRunHtml,' +
         ' ptAnadaHtml, ptFormation, ptLegRowHtml,' +
@@ -282,6 +288,88 @@ describe('ptScoreboardHtml — the score, or the kick-off', () => {
     const html = API.ptScoreboardHtml(
         {id: 1, home: 'US', away: '<b>X</b>', time: '1'}, [], false);
     assert.ok(!/<b>/.test(html), html);
+  });
+});
+
+describe('a postponed, suspended or withdrawn fixture (v286)', () => {
+  beforeEach(reset);
+  const P = (o) => Object.assign({}, MATCH, o);
+  const POSTPONED = P({fcfState: 'postponed', postponedFrom: {date: MATCH.date, time: MATCH.time}});
+  const SUSPENDED = P({fcfState: 'suspended', suspendedOn: {date: MATCH.date, time: MATCH.time}});
+
+  describe('the scoreboard', () => {
+    it('postponed: the state in the score\'s slot — no kick-off, no 0 – 0', () => {
+      const html = API.ptScoreboardHtml(POSTPONED, [], false);
+      assert.ok(/class="pt-state">match\.state_postponed</.test(html), html);
+      assert.ok(!/pt-kickoff|pt-score|0 – 0/.test(html), html);
+    });
+
+    it('suspended with its first half logged: the score stands', () => {
+      const html = API.ptScoreboardHtml(SUSPENDED, [{side: 'home'}], true);
+      assert.ok(/class="pt-score">1 – 0</.test(html), html);
+      assert.ok(!/pt-state/.test(html));
+    });
+
+    it('withdrawn: struck through, its own class', () => {
+      const html = API.ptScoreboardHtml(P({fcfRemoved: true}), [], false);
+      assert.ok(/class="pt-state pt-state-removed">match\.state_removed</.test(html), html);
+    });
+
+    it('an ordinary fixture is untouched — the kick-off', () => {
+      assert.ok(/pt-kickoff">20:00</.test(API.ptScoreboardHtml(MATCH, [], false)));
+    });
+  });
+
+  describe('the state band', () => {
+    const band = (m, o) => API.ptStateBandHtml(m, o || {});
+
+    it('an ordinary fixture has none', () => {
+      assert.strictEqual(band(MATCH, {staff: true, canEdit: true}), '');
+    });
+
+    it('the federation\'s postponement: what happens next, and NO undo', () => {
+      /* The next sync would put it straight back; a button that cannot
+         stick is worse than none. */
+      const html = band(POSTPONED, {staff: true, canEdit: true});
+      assert.ok(html.includes('pt.state_postponed_fcf'), html);
+      assert.ok(!html.includes('pt-unpostpone'), 'an undo over the federation');
+    });
+
+    it('the staff\'s own postponement: undo for whoever edits the calendar only', () => {
+      const m = P({manualState: 'postponed', postponedFrom: {date: MATCH.date, time: MATCH.time}});
+      const coach = band(m, {staff: true, canEdit: true});
+      assert.ok(coach.includes('pt.state_postponed_staff'));
+      assert.ok(coach.includes('class="btn btn-outline btn-small pt-unpostpone" data-match-id="7"'), coach);
+      assert.ok(!band(m, {staff: true, canEdit: false}).includes('pt-unpostpone'),
+          'an undo for staff who may not edit the calendar');
+      assert.ok(!band(m, {}).includes('pt-unpostpone'), 'an undo for a player');
+    });
+
+    it('suspended: the line about the restart is for staff only', () => {
+      assert.ok(band(SUSPENDED, {staff: true}).includes('pt.state_suspended_staff'));
+      const player = band(SUSPENDED, {});
+      assert.ok(player.includes('pt.state_suspended') && !player.includes('pt.state_suspended_staff'));
+    });
+
+    it('the resumption names the day it was stopped', () => {
+      const m = P({date: '2026-09-20', fcfState: 'suspended',
+        suspendedOn: {date: '2026-09-02', time: '20:00'}});
+      // t() is the identity here, so the {d} placeholder survives only if nobody filled it.
+      const html = band(m, {});
+      assert.ok(html.includes('pt.state_resumption'), html);
+    });
+
+    it('rescheduled: "asked again" before, just where it came from after', () => {
+      const m = P({date: '2026-09-20', fcfState: 'postponed',
+        postponedFrom: {date: '2026-09-02', time: '20:00'}});
+      assert.ok(band(m, {isPast: false}).includes('pt.state_rescheduled'));
+      const after = band(m, {isPast: true});
+      assert.ok(after.includes('match.postponed_from') && !after.includes('pt.state_rescheduled'), after);
+    });
+
+    it('withdrawn: the federation\'s own words', () => {
+      assert.ok(band(P({fcfRemoved: true}), {}).includes('cal.removed'));
+    });
   });
 });
 

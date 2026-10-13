@@ -132,6 +132,43 @@ function fcfMapsLink(lat, lng) {
  * l'Eixample F.C.". Storing FCF's spelling on our own side would make every
  * imported fixture read as though we were the other team.
  */
+/**
+ * The federation's ESTADO, in our words (v286). Not documented by the FCF;
+ * read off its own acta pages for the same fixtures:
+ *   "0" Pendent · "1" played (CERRADA "1") · "2" AJORNAT · "3" SUSPÈS.
+ * Only the two that change what the app does get a name.
+ */
+function fcfStateOf(estado) {
+  const e = String(estado == null ? "" : estado).trim();
+  if (e === "2") return "postponed";
+  if (e === "3") return "suspended";
+  if (e === "1") return "played";
+  return "";
+}
+
+/* ── A match's state (v286) ──────────────────────────────────────────
+   "postponed"  — the federation says AJORNAT (`fcfState`), or staff marked
+                  it (`manualState`), and it is still on its original date;
+   "suspended"  — the federation says SUSPÈS and it has no new date yet;
+   "resumption" — a suspended match whose date has moved: the same match,
+                  continued — a second session on the new day;
+   ""           — on as scheduled, or played.
+   DATE-AWARE on purpose. Whether the federation resets ESTADO to 0 once a
+   postponed match has its new date is not known; a match on a date that is
+   no longer the one it was postponed from is simply on again, whatever the
+   flag still says. The client's copy lives in js/utils.js (the functions deploy from
+   their own folder); fcf-state.test.js holds the two equal. */
+function matchState(m) {
+  if (!m) return "";
+  const moved = function (from) {
+    return !!from && ((m.date || "") !== (from.date || "") || (m.time || "") !== (from.time || ""));
+  };
+  if ((m.fcfState === "postponed" || m.manualState === "postponed") && !moved(m.postponedFrom)) return "postponed";
+  if (m.suspendedOn && moved(m.suspendedOn)) return "resumption";
+  if (m.fcfState === "suspended") return "suspended";
+  return "";
+}
+
 function parseFcfFixtures(json, ourTeamId) {
   const us = String(ourTeamId || "");
   if (!us || !json || typeof json !== "object") return [];
@@ -159,6 +196,7 @@ function parseFcfFixtures(json, ourTeamId) {
         time: stamp.slice(11, 16),
         location: String(m.CAMPO || "").trim(),
         mapLink: fcfMapsLink(m.LATITUD, m.LONGITUD),
+        state: fcfStateOf(m.ESTADO),
       });
     });
   });
@@ -1477,6 +1515,9 @@ function mergeFcfFixtures(existing, incoming, opts) {
   const positions = o.positions || {};
   const rows = Array.isArray(existing) ? existing.slice() : [];
   const summary = {adopted: 0, added: 0, updated: 0, removed: 0};
+  /* What the squad needs telling (v286): postponed, suspended, a new date.
+     Not part of the summary counts — the row changes behind them are. */
+  const changes = [];
 
   const mine = (m) => m && (m.category || "") === category &&
     (m.team || "") === letter;
@@ -1492,6 +1533,7 @@ function mergeFcfFixtures(existing, incoming, opts) {
 
   const seen = new Set();
 
+  const incomingActas = new Set((incoming || []).map((f) => String(f.actaId || "")));
   (incoming || []).forEach((f) => {
     const acta = String(f.actaId || "");
     if (!acta) return;
@@ -1507,6 +1549,14 @@ function mergeFcfFixtures(existing, incoming, opts) {
     if (idx === -1) {
       idx = _findAdoptable(rows, orphans, f, clubName);
       if (idx !== -1) { adopting = true; orphans.delete(idx); summary.adopted++; }
+    }
+    /* A fixture we hold as postponed or suspended, re-issued by the FCF under
+       a NEW acta id (v286). Not confirmed to happen — the ones seen keep
+       theirs — but if it does, the call-ups, answers and notes hanging off
+       our row must follow it rather than be left on a dead duplicate. */
+    if (idx === -1) {
+      idx = _findReissued(rows, f, incomingActas, category, letter);
+      if (idx !== -1) byActa.set(acta, idx);
     }
 
     if (idx === -1) {
@@ -1533,6 +1583,15 @@ function mergeFcfFixtures(existing, incoming, opts) {
         opponentTeamId: f.opponentTeamId,
         opponentBadge: f.opponentBadge,
       };
+      /* First seen already postponed or suspended: the state and its stamp,
+         but no change to announce — nobody had been told this match was on. */
+      if (f.state === "postponed") {
+        m.fcfState = "postponed";
+        m.postponedFrom = {date: m.date, time: m.time};
+      } else if (f.state === "suspended") {
+        m.fcfState = "suspended";
+        m.suspendedOn = {date: m.date, time: m.time};
+      }
       /* Two fields rather than one nested object, on purpose: v118 shipped
          `opponentKit` as the flat first-choice kit and clubs have already
          imported a season with it. A nested {home, away} would need every
@@ -1572,6 +1631,43 @@ function mergeFcfFixtures(existing, incoming, opts) {
         next[k] = fcfFields[k];
       }
     });
+    /* ── Postponed and suspended (v286) ────────────────────────────────
+       The STATE follows the federation. The original kick-off is stamped
+       ONCE, from this row before any date it moves to, so a later date
+       cannot erase when the match was meant to be — or, for a suspended
+       one, when its first half was actually played. */
+    const prevState = cur.fcfState || "";
+    const nextState = (f.state === "postponed" || f.state === "suspended") ? f.state : "";
+    if (nextState) next.fcfState = nextState; else delete next.fcfState;
+    /* …except a stamp the fixture has already moved away from: postponed
+       AGAIN on its new date, it is postponed from that one, or matchState
+       would read the stale stamp as "rescheduled" and the match as on. */
+    const staleStamp = (s) => !!s && ((s.date || "") !== (cur.date || "") || (s.time || "") !== (cur.time || ""));
+    if (nextState === "postponed" &&
+        (!next.postponedFrom || (prevState !== "postponed" && staleStamp(next.postponedFrom)))) {
+      next.postponedFrom = {date: cur.date, time: cur.time};
+    }
+    if (nextState === "suspended" && !next.suspendedOn) {
+      next.suspendedOn = {date: cur.date, time: cur.time};
+    }
+    const moved = (next.date || "") !== (cur.date || "") || (next.time || "") !== (cur.time || "");
+    const wasPostponed = prevState === "postponed" || cur.manualState === "postponed" || !!cur.postponedFrom;
+    const wasSuspended = prevState === "suspended" || !!cur.suspendedOn;
+    let kind = "";
+    if (moved && (wasPostponed || nextState === "postponed")) kind = "rescheduled";
+    else if (moved && (wasSuspended || nextState === "suspended")) kind = "resumption";
+    else if (nextState === "postponed" && prevState !== "postponed" && cur.manualState !== "postponed") kind = "postponed";
+    else if (nextState === "suspended" && prevState !== "suspended") kind = "suspended";
+    // A coach's "marked as postponed" gives way once the federation speaks.
+    if (cur.manualState && (nextState || moved)) delete next.manualState;
+    if (kind && !adopting) {
+      changes.push({
+        kind, id: cur.id, category, letter,
+        rival: f.opponentName, isHome: f.isHome,
+        from: {date: cur.date || "", time: cur.time || ""},
+        to: {date: next.date || "", time: next.time || ""},
+      });
+    }
     next.fcfActaId = acta;
     next.fcfJornada = f.jornada;
     next.fcfSnapshot = Object.assign({}, fcfFields);
@@ -1647,7 +1743,28 @@ function mergeFcfFixtures(existing, incoming, opts) {
     });
   }
 
-  return {matches: rows, summary};
+  // `changes` beside the summary, not in it: the summary's shape is the
+  // contract _syncFcfSquad's skip-the-write guard (and its tests) rely on.
+  return {matches: rows, summary, changes};
+}
+
+/**
+ * Our postponed / suspended row that a NEW acta id is plainly a re-issue of,
+ * or -1 (v286): same squad, same jornada, same rival, its own acta no longer
+ * listed. Nothing looser — a wrong claim would move one match's call-ups
+ * onto another.
+ */
+function _findReissued(rows, f, incomingActas, category, letter) {
+  for (let i = 0; i < rows.length; i++) {
+    const m = rows[i];
+    if (!m || (m.category || "") !== category || (m.team || "") !== letter) continue;
+    if (!m.fcfActaId || incomingActas.has(String(m.fcfActaId))) continue;
+    if (!(m.fcfState || m.postponedFrom || m.suspendedOn)) continue;
+    if (Number(m.fcfJornada) !== Number(f.jornada)) continue;
+    if (String(m.opponentTeamId || "") !== String(f.opponentTeamId || "")) continue;
+    return i;
+  }
+  return -1;
 }
 
 /**
@@ -1724,4 +1841,6 @@ module.exports = {
   FCF_OFFENCE_ORDER,
   fcfArticleOffences,
   FCF_OWNED,
+  fcfStateOf,
+  matchState,
 };

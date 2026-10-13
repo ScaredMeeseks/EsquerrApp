@@ -486,6 +486,29 @@ function activityTitleOf(row, fallback) {
   return s || fallback || '';
 }
 
+/* ── A match's state (v286) ──────────────────────────────────────────
+   'postponed'  — the federation says AJORNAT (`fcfState`), or staff marked
+                  it (`manualState`), and it is still on its original date;
+   'suspended'  — the federation says SUSPÈS and it has no new date yet;
+   'resumption' — a suspended match whose date has moved: the same match,
+                  continued — a second session on the new day;
+   ''           — on as scheduled, or played.
+   DATE-AWARE on purpose. Whether the federation resets ESTADO to 0 once a
+   postponed match has its new date is not known; a match on a date that is
+   no longer the one it was postponed from is simply on again, whatever the
+   flag still says. A COPY of this lives in functions/fcf.js (the functions
+   deploy from their own folder); fcf-state.test.js holds the two equal. */
+function matchState(m) {
+  if (!m) return '';
+  const moved = function (from) {
+    return !!from && ((m.date || '') !== (from.date || '') || (m.time || '') !== (from.time || ''));
+  };
+  if ((m.fcfState === 'postponed' || m.manualState === 'postponed') && !moved(m.postponedFrom)) return 'postponed';
+  if (m.suspendedOn && moved(m.suspendedOn)) return 'resumption';
+  if (m.fcfState === 'suspended') return 'suspended';
+  return '';
+}
+
 /* ---------- Link safety ----------
 
    A URL we are willing to hand to window.open(), or ''.
@@ -1892,6 +1915,7 @@ function bodyMapHtml(opts) {
    time (`sanitize` uses `document`, but only when called). */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    matchState,
     localDateStr,
     seasonStartStr,
     setSeasonBoundary,

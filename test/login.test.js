@@ -38,6 +38,8 @@ function grab(from, to) {
   return src.slice(i, j);
 }
 
+// v286: the REAL matchState, declared in a sliced body (several harnesses are positional).
+const MATCH_STATE_SRC = require('../js/utils.js').matchState.toString() + '\n';
 const BADGE = 'data:image/png;base64,QkFER0U=';
 const CLUB = 'C.E. Sant Andreu del Palomar';
 
@@ -328,6 +330,7 @@ describe('v280 — "Partits" counts the player\'s own category', () => {
     // A FIXED season start: the fixtures below are dated, and a real
     // seasonStartStr() would move them into "last season" one August.
     return new Function('getUsers', 'isOurTeam', 'localStorage', 'seasonStartStr',
+        MATCH_STATE_SRC +
         grab('  function calcMatchScore(events)', '  function formatEventMinute') +
         grab('  function getStartingXI(matchId, sentData)', '  // ── Match history table builder ──') +
         'return computePlayerMatchStats;')(() => players, (n) => n === 'Club', {getItem: () => null},
@@ -360,6 +363,7 @@ describe('v280 — "Partits" counts the player\'s own category', () => {
 describe('v284 — "Partits" is this season\'s call-ups', () => {
   const players = [{id: 'me', team: 'B', category: 'amateur'}];
   const stats = new Function('getUsers', 'isOurTeam', 'localStorage', 'seasonStartStr',
+      MATCH_STATE_SRC +
       grab('  function calcMatchScore(events)', '  function formatEventMinute') +
       grab('  function getStartingXI(matchId, sentData)', '  // ── Match history table builder ──') +
       'return computePlayerMatchStats;')(() => players, (n) => n === 'Club', {getItem: () => null},
@@ -392,6 +396,37 @@ describe('v284 — "Partits" is this season\'s call-ups', () => {
     assert.deepStrictEqual(s.matchRows.map((r) => r.matchId), ['p']);
     assert.strictEqual(s.totals.matches, 0);
     assert.strictEqual(s.totals.titulars, 0, 'the withdrawn start still counts');
+  });
+
+  it('a postponed fixture is not a match either — call-up or not (v286)', () => {
+    /* The B team's 11/10: called up, a starter, and never played. */
+    const c = {matches: [fx('aj', '2026-10-11', {fcfState: 'postponed',
+      postponedFrom: {date: '2026-10-11', time: '18:00'}}), fx('p', '2026-09-28')],
+    allEvents: {}, sentData: {aj: {players: ['me'], startingXI: ['me']}}};
+    const s = stats('me', c);
+    assert.deepStrictEqual(s.matchRows.map((r) => r.matchId), ['p']);
+    assert.strictEqual(s.totals.matches, 0);
+    assert.strictEqual(s.totals.titulars, 0);
+  });
+
+  it('...but once played on its new date, it counts (v286)', () => {
+    const c = {matches: [fx('aj', '2026-10-12', {fcfState: 'postponed',
+      postponedFrom: {date: '2026-10-11', time: '18:00'}})],
+    allEvents: {}, sentData: {aj: {players: ['me'], startingXI: ['me']}}};
+    assert.strictEqual(stats('me', c).totals.matches, 1);
+  });
+
+  it('a suspended one is ONE match, its result "S" until it resumes (v286)', () => {
+    const c = {matches: [fx('su', '2026-10-03', {fcfState: 'suspended',
+      suspendedOn: {date: '2026-10-03', time: '18:00'}})],
+    allEvents: {su: [{type: 'goal', side: 'home', minute: 10}]},
+    sentData: {su: {players: ['me'], startingXI: ['me']}}};
+    const s = stats('me', c);
+    assert.strictEqual(s.totals.matches, 1);
+    assert.strictEqual(s.matchRows[0].resultLetter, 'S', 'a half-played match read as a win');
+    const resumed = {matches: [fx('su', '2026-10-12', {suspendedOn: {date: '2026-10-03', time: '18:00'}})],
+      allEvents: c.allEvents, sentData: c.sentData};
+    assert.strictEqual(stats('me', resumed).matchRows[0].resultLetter, 'V');
   });
 
   it('keeps the squad\'s NC rows for the coach, and still counts T / S', () => {
@@ -1008,12 +1043,29 @@ describe('v282 — sign-up needs notifications', () => {
       assert.deepStrictEqual(g.calls.toasts, ['Espera un minut abans de tornar-ho a provar.']);
     });
 
-    it('lives in the side menu for every role, not as a page', () => {
+    /* v286: the superadmin's only — run over the real renderSidebar. */
+    it('is in the side menu for the superadmin only, not as a page', () => {
       const side = src.slice(src.indexOf('  function renderSidebar(session) {'), src.indexOf('  // ---------- Page renderers ----------'));
-      assert.ok(side.includes('id="sidebar-test-push"') && side.includes('testPushNow(testItem)'));
+      const render = (session) => {
+        const dom = new JSDOM('<aside id="sidebar"></aside>');
+        const d = dom.window.document;
+        // eslint-disable-next-line no-new-func
+        const fn = new Function('$', '$$', 'document', 'buildSidebarItems', 'currentPage', 'getPendingActionCount',
+            'getUnreadStaffNotifCount', 'sanitize', 't', 'regIsNative', 'testPushNow', 'renderPage', 'getSession',
+            'Notification', side + '\nreturn renderSidebar;')(
+            (s) => d.querySelector(s), (s) => d.querySelectorAll(s), d,
+            () => [{id: 'player-home', icon: 'x', label: 'Inici'}], 'player-home', () => 0, () => 0,
+            (x) => String(x), (k) => k, () => false, () => {}, () => {}, () => session, function N() {});
+        fn(session);
+        return d;
+      };
+      ['player', 'staff'].forEach((r) =>
+        assert.strictEqual(render({roles: [r], isAdmin: false}).getElementById('sidebar-test-push'), null, r + ' sees it'));
+      assert.strictEqual(render({roles: ['staff', 'lead'], isTeamLead: true, isAdmin: false})
+          .getElementById('sidebar-test-push'), null, 'a lead sees it');
+      assert.ok(render({roles: ['player', 'staff', 'lead'], isAdmin: true}).getElementById('sidebar-test-push'),
+          'the superadmin lost it');
       assert.ok(side.includes("$$('.sidebar-item[data-page]')"), 'the page click would swallow the action');
-      assert.ok(/typeof Notification !== 'undefined' \|\| regIsNative\(\)/.test(side),
-          'offered where it can only fail (Safari on iPhone)');
     });
   });
 

@@ -382,6 +382,14 @@ describe('when to try — the import queue', () => {
       assert.deepStrictEqual(A.planActaQueue([row(o)], Object.assign({nowMs: 90 * H}, clock)), []);
     });
   });
+  it('skips what the caller says to (v286: postponed, or suspended and waiting)', () => {
+    /* A postponed acta has nothing to import; asking for it every fifteen
+       minutes for ten days was the 11/10 case. */
+    const skip = (r) => r.id === 7;
+    const p = A.planActaQueue([row(), row({id: 8, fcfActaId: '43'})],
+        Object.assign({nowMs: 90 * H, skip}, clock));
+    assert.deepStrictEqual(p.map((x) => x.matchId), [8]);
+  });
   it('re-arms for ten days, and not beyond', () => {
     assert.strictEqual(A.planActaQueue([row()], Object.assign({nowMs: 100 * H + 9 * 24 * H}, clock)).length, 1);
     assert.strictEqual(A.planActaQueue([row()], Object.assign({nowMs: 100 * H + 11 * 24 * H}, clock)).length, 0);

@@ -91,6 +91,7 @@ function load(over) {
     recordKey: (uid, sess, kind) =>
       uid + (kind === 'rpe' ? '_training_' : '_') + sess.id,
     isOurTeam: (n) => n === 'CE L\'Esquerra',
+    matchState: utils.matchState,   // v286, the real one
     getSeasonWeek: utils.getSeasonWeek,
     localDateStr: utils.localDateStr,
     ACTION_MINUTES_MAX: 300,
@@ -428,6 +429,100 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
     assert.strictEqual(r.saved[0].data.minutes, null);
     assert.strictEqual(r.saved[0].data.ua, null, 'a load was made up from no minutes');
     assert.strictEqual(r.notes[0].detail, 'RPE 7', 'the coach\'s feed says "null min"');
+  });
+
+  /* v286. A suspended match is ONE match in two sessions: its first part
+     on the day it was stopped, its restart on the new date, each asked
+     for an RPE of its own. */
+  describe('postponed and suspended matches', () => {
+    const RIVAL = { home: 'CF Vilassar de Mar', away: 'CE L\'Esquerra', team: 'A' };
+    const POSTPONED = Object.assign({ id: 'mp', date: back(1), time: '12:15',
+      fcfState: 'postponed', postponedFrom: { date: back(1), time: '12:15' } }, RIVAL);
+    const STOPPED = Object.assign({ id: 'ms', date: back(1), time: '12:15',
+      fcfState: 'suspended', suspendedOn: { date: back(1), time: '12:15' } }, RIVAL);
+    // Stopped five days ago, resumed yesterday.
+    const RESUMED = Object.assign({ id: 'mr', date: back(1), time: '12:15',
+      suspendedOn: { date: back(5), time: '18:00' } }, RIVAL);
+    const matchRows = (r) => r.model.rows.filter((x) => x.kind === 'match');
+
+    it('a postponed match is not asked about', () => {
+      assert.deepStrictEqual(matchRows(load({ matches: [POSTPONED] })), []);
+    });
+
+    it('nor one the federation withdrew', () => {
+      const gone = Object.assign({}, MATCHES[0], { id: 'mw', fcfRemoved: true });
+      assert.deepStrictEqual(matchRows(load({ matches: [gone] })), []);
+    });
+
+    it('a suspended one IS — its first part was played', () => {
+      const rows = matchRows(load({ matches: [STOPPED] }));
+      assert.deepStrictEqual(rows.map((x) => x.key), ['p1_match_ms']);
+    });
+
+    it('resumed: two rows, the first on the day it was stopped, the restart tagged', () => {
+      const rows = matchRows(load({ matches: [RESUMED] }));
+      const byKey = {};
+      rows.forEach((x) => { byKey[x.key] = x; });
+      assert.deepStrictEqual(Object.keys(byKey).sort(), ['p1_match_mr', 'p1_match_mr_r']);
+      assert.strictEqual(byKey.p1_match_mr.date, back(5));
+      assert.strictEqual(byKey.p1_match_mr.title, 'CF Vilassar de Mar');
+      assert.strictEqual(byKey.p1_match_mr_r.date, back(1));
+      assert.strictEqual(byKey.p1_match_mr_r.title, 'CF Vilassar de Mar · match.resumption_tag');
+    });
+
+    it('answering the first part leaves the restart pending', () => {
+      const r = load({ matches: [RESUMED],
+        rpe: { p1_match_mr: { rpe: 6, minutes: 45, date: back(5) } } });
+      const open = matchRows(r).filter((x) => x.rpe == null).map((x) => x.key);
+      assert.deepStrictEqual(open, ['p1_match_mr_r']);
+    });
+
+    /* The save, over the real handler and the real rows. */
+    function save(matches, key) {
+      const dom = new JSDOM('<body>' + load({ matches }).html + '</body>', { url: 'http://localhost/' });
+      const w = dom.window; const d = w.document;
+      const errors = [];
+      w.addEventListener('error', (e) => errors.push(e.error || e.message));
+      const store = { fa_player_rpe: '{}', fa_matches: JSON.stringify(matches) };
+      const asked = []; const saved = [];
+      const api = {
+        $$: (sel) => Array.from(d.querySelectorAll(sel)),
+        getSession: () => SESSION,
+        getTrainings: () => TRAININGS,
+        localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } },
+        playerMatchMinutesKnown: (uid, mid) => { asked.push(mid); return 78; },
+        addStaffNotification: () => {},
+        ackSaveRecord: (coll, id, data) => { saved.push({ coll, id, data }); return Promise.resolve(); },
+        renderPage: () => {}, updateActionsBadge: () => {},
+        t: (k) => k, ACTION_MINUTES_MAX: 300,
+      };
+      // eslint-disable-next-line no-new-func
+      new Function(...Object.keys(api), HANDLER)(...Object.values(api));
+      const row = d.querySelector('.ac-row[data-action-key="' + key + '"]');
+      assert.ok(row, 'no row for ' + key);
+      row.querySelector('.ac-cell[data-ac-rpe="7"]').classList.add('ac-cell-on');
+      row.querySelector('.ac-save').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+      assert.deepStrictEqual(errors, [], 'the handler threw: ' + errors.join(' | '));
+      assert.strictEqual(saved.length, 1, 'nothing saved');
+      return { asked, data: saved[0].data, id: saved[0].id };
+    }
+
+    it('the first part saves on the day it was played, with the lineup\'s minutes', () => {
+      const r = save([RESUMED], 'p1_match_mr');
+      assert.strictEqual(r.data.date, back(5), 'loaded on the restart day');
+      assert.deepStrictEqual(r.asked, ['mr']);
+      assert.strictEqual(r.data.minutes, 78);
+    });
+
+    it('the restart saves on its own day, under its own key, with no minutes of its own', () => {
+      /* The lineup's minutes are the WHOLE match's and already sit on the
+         first part; counting them twice would double the match's load. */
+      const r = save([RESUMED], 'p1_match_mr_r');
+      assert.strictEqual(r.id, 'p1_match_mr_r');
+      assert.strictEqual(r.data.date, back(1));
+      assert.strictEqual(r.data.minutes, null);
+      assert.deepStrictEqual(r.asked, [], 'the lineup asked about "mr_r"');
+    });
   });
 
   it('still reads, and still caps, a training\'s typed minutes', () => {
