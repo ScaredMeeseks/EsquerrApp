@@ -27,6 +27,9 @@ Full detail in CONTEXT.md (v287).
   - New told-sites must use the first; stats and minutes the second.
 - **Match load uses the line-up's current minutes**, not the ones saved with the RPE, whenever there is a line-up.
 - **Pills:** `.st-pill` with `--pp-orange` (AJORNAT) / `--pp-red` (SUSPÈS), above the result everywhere.
+- **Deployed 2026-10-14:** functions first (35 updated), then `03e67cf` pushed; Pages serves `esquerrapp-v287`.
+  - Prod at that moment had 4149304 `postponed` and 4119518 `suspended`, stamped by the v286 06:00 sync.
+  - The v287 probe sets 4119518 `suspendedStarted: false` on the next sync (or on "Actualitza des de la FCF").
 - **Emulators:** `emulators:start` needs `$env:FUNCTIONS_DISCOVERY_TIMEOUT = 120` on this machine, or it stops at discovery with exit 9 and leaves java on :8080. Inside `emulators:exec`, call `npx mocha`.
 
 ## 2026-10-13 — v286: postponed and suspended matches
