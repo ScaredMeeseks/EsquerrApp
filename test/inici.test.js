@@ -1205,7 +1205,7 @@ describe('Inici — the heroes are rendered, not just read', () => {
   describe('a postponed fixture is not the next match', () => {
     // eslint-disable-next-line no-new-func
     const OFF = new Function('t', 'matchState',
-        grab('  /* ── Postponed, suspended, withdrawn (v286)', '  function calMatchBlockHtml(m, ctx)') +
+        grab('  /* ── Postponed, suspended, withdrawn (v286)', '  function calMatchBlockHtml(m, ctx, variant)') +
         '\nreturn {matchIsOff};')((k) => k, utils.matchState);
     const STORE = {
       fa_matches: JSON.stringify([
@@ -1219,12 +1219,29 @@ describe('Inici — the heroes are rendered, not just read', () => {
       localStorage: { getItem: (k) => (k in STORE ? STORE[k] : null) },
       matchIsOff: OFF.matchIsOff,
       matchState: utils.matchState,
+      matchParts: utils.matchParts,
+      convToldList: utils.convToldList,
     };
 
     it('the player\'s citació is the next real match\'s', () => {
       const h = renderPlayer(withMatches);
       assert.ok(h.includes('16:45'), 'no citació for the match that is on');
       assert.ok(!h.includes('16:30'), 'the postponed match\'s citació');
+    });
+
+    it('a call-up sent before a move is one still to send; one sent for the new day is not (v287)', () => {
+      const moved = JSON.parse(STORE.fa_matches);
+      moved[1].postponedFrom = { date: dayOff(2), time: '18:00' };
+      const store = (sent) => Object.assign({}, STORE, {
+        fa_matches: JSON.stringify(moved), fa_convocatoria_sent: JSON.stringify(sent) });
+      const pending = (sent) => {
+        const s = store(sent);
+        const h = renderStaff(Object.assign({}, withMatches, {
+          localStorage: { getItem: (k) => (k in s ? s[k] : null) } }));
+        return (h.match(/ini-c-warn">(\d+)</) || [])[1];
+      };
+      assert.strictEqual(pending({ 2: { players: ['p1'] } }), '1', 'the old day\'s call-up counted as sent');
+      assert.strictEqual(pending({ 2: { players: ['p1'], sentFor: { date: dayOff(3), time: '18:00' } } }), '0');
     });
 
     it('the coach chases the next real match, and is not nagged to call one up', () => {

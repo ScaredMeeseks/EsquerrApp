@@ -146,7 +146,102 @@ describe('a postponed fixture, synced from the federation (v286)', function () {
     assert.deepStrictEqual(pushes(), []);
   });
 
-  it('4. a new date: moved, "Nova data", and only that match\'s answers cleared', async () => {
+  it('4. a new date: moved, "Nova data", and only that match\'s answers cleared', async function () {
+    await step4();
+  });
+});
+
+/* v287: a SUSPÈS game, started or not. The club here is the one on the
+   captured mid-game acta (4119507, Barcelona City v Can Buxeres, stopped
+   after 79'), so the real page imports onto a real row. */
+describe('a suspended fixture, probed from its acta (v287)', function () {
+  this.timeout(120000);
+  const SCLUB = 'suspClub';
+  const ACTA_HTML = fs.readFileSync(path.join(__dirname, 'fixtures', 'acta-events-suspended.html'), 'utf8');
+  const FEED_A = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'fcf-partidos-suspended.json'), 'utf8'));
+  let actaGets = 0;
+  let fetchBefore = null;
+
+  const callS = () => fns.syncFcfFixtures.run({
+    auth: {uid: 'staffX', token: {teamId: SCLUB, role: 'staff'}},
+    data: {category: 'amateur'}, rawRequest: {},
+  });
+  const rowS = async (id) => {
+    const snap = await db.doc('teams/' + SCLUB + '/data/fa_matches__amateur').get();
+    return JSON.parse(snap.data().v).find((m) => String(m.fcfActaId) === id);
+  };
+
+  before(async () => {
+    fetchBefore = global.fetch;
+    global.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes('/competicio/acta/')) {
+        actaGets++;
+        return {ok: true, status: 200, text: async () => ACTA_HTML};
+      }
+      const body = u.includes('classificacio')
+        ? {data: [{position: '1', team: {name: 'BARCELONA CITY FOOTBALL CLUB A', teamId: '50621624'}}]}
+        : u.includes('partidos') ? FEED_A : [];
+      return {ok: true, status: 200, json: async () => body};
+    };
+    fcm.sendEachForMulticast = async (msg) => ({successCount: msg.tokens.length, failureCount: 0,
+      responses: msg.tokens.map(() => ({success: true}))});
+    await db.doc('clubs/' + SCLUB).set({
+      name: 'Barcelona City Football Club',
+      categories: {amateur: {enabled: true, letters: ['A']}},
+      fcfLinks: {'amateur-A': 'https://www.fcf.cat/calendari?grupId=58161881'},
+    });
+    await db.doc('teams/' + SCLUB + '/data/fa_matches__amateur').delete();
+    await db.doc('teams/' + SCLUB + '/data/fa_match_events__amateur').delete();
+  });
+  after(() => {
+    global.fetch = fetchBefore;
+    fcm.sendEachForMulticast = realSend;
+  });
+
+  it('stopped mid-way: the first part imported, started, the stop guessed from the acta', async () => {
+    const r = await callS();
+    assert.strictEqual(r.squads, 1, JSON.stringify(r));
+    const m = await rowS('4119507');
+    assert.ok(m, 'the fixture was not imported');
+    assert.strictEqual(m.fcfState, 'suspended');
+    assert.strictEqual(m.suspendedStarted, true);
+    assert.deepStrictEqual(m.suspendedAt, {minute: 79, src: 'acta'});
+    assert.ok(m.fcfActaPartial, 'no record of the partial import');
+    assert.strictEqual(m.fcfActa, undefined, 'marked imported — the closed acta would never come in');
+    // No final score written: the result is the restart's, when the acta closes.
+    assert.strictEqual(m.score, null);
+    const ev = JSON.parse((await db.doc('teams/' + SCLUB + '/data/fa_match_events__amateur').get()).data().v);
+    const list = ev[String(m.id)] || [];
+    assert.strictEqual(list.filter((e) => e.type === 'goal').length, 3, JSON.stringify(list).slice(0, 300));
+    assert.ok(list.every((e) => e.src === 'fcf'));
+  });
+
+  it('known now: the next sync does not ask the acta again', async () => {
+    const before = actaGets;
+    await callS();
+    assert.strictEqual(actaGets, before, 'the acta was fetched again');
+  });
+
+  it('a minute the staff gave survives a re-import', async () => {
+    const shard = db.doc('teams/' + SCLUB + '/data/fa_matches__amateur');
+    const rows = JSON.parse((await shard.get()).data().v);
+    rows.forEach((m) => {
+      if (String(m.fcfActaId) === '4119507') {
+        m.suspendedAt = {minute: 86, src: 'staff'};
+        delete m.suspendedStarted;                 // so the sync asks again
+      }
+    });
+    await shard.set({v: JSON.stringify(rows), category: 'amateur'});
+    await callS();
+    const m = await rowS('4119507');
+    assert.deepStrictEqual(m.suspendedAt, {minute: 86, src: 'staff'});
+    assert.strictEqual(m.suspendedStarted, true);
+  });
+});
+
+async function step4() {
+  {
     const avail = db.collection('teams').doc(CLUB).collection('matchAvail');
     await avail.doc('pB1_' + ACTA).set({uid: 'pB1', matchId: ACTA, value: 'disponible'});
     await avail.doc('pA1_' + ACTA).set({uid: 'pA1', matchId: Number(ACTA), value: 'no'});
@@ -163,5 +258,5 @@ describe('a postponed fixture, synced from the federation (v286)', function () {
     assert.deepStrictEqual(p[0].tokens, ['tok-pB1', 'tok-stA']);
     const left = (await avail.get()).docs.map((d) => d.id).sort();
     assert.deepStrictEqual(left, ['pB1_999'], 'answers for the old day survived, or another match\'s went');
-  });
-});
+  }
+}

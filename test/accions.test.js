@@ -92,6 +92,11 @@ function load(over) {
       uid + (kind === 'rpe' ? '_training_' : '_') + sess.id,
     isOurTeam: (n) => n === 'CE L\'Esquerra',
     matchState: utils.matchState,   // v286, the real one
+    // v287: the real ones — sessions per fixture, and the call-up told vs called.
+    matchParts: utils.matchParts,
+    convToldList: utils.convToldList,
+    convCalledIds: utils.convCalledIds,
+    convStale: utils.convStale,
     getSeasonWeek: utils.getSeasonWeek,
     localDateStr: utils.localDateStr,
     ACTION_MINUTES_MAX: 300,
@@ -400,6 +405,7 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
       ackSaveRecord: (coll, id, data) => { saved.push({ coll, id, data }); return Promise.resolve(); },
       renderPage: () => {}, updateActionsBadge: () => {},
       t: (k) => k, ACTION_MINUTES_MAX: 300,
+      matchParts: utils.matchParts,   // v287: which session of the fixture the row is
     };
     // eslint-disable-next-line no-new-func
     new Function(...Object.keys(api), HANDLER)(...Object.values(api));
@@ -438,10 +444,10 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
     const RIVAL = { home: 'CF Vilassar de Mar', away: 'CE L\'Esquerra', team: 'A' };
     const POSTPONED = Object.assign({ id: 'mp', date: back(1), time: '12:15',
       fcfState: 'postponed', postponedFrom: { date: back(1), time: '12:15' } }, RIVAL);
-    const STOPPED = Object.assign({ id: 'ms', date: back(1), time: '12:15',
+    const STOPPED = Object.assign({ id: 'ms', date: back(1), time: '12:15', suspendedStarted: true,
       fcfState: 'suspended', suspendedOn: { date: back(1), time: '12:15' } }, RIVAL);
     // Stopped five days ago, resumed yesterday.
-    const RESUMED = Object.assign({ id: 'mr', date: back(1), time: '12:15',
+    const RESUMED = Object.assign({ id: 'mr', date: back(1), time: '12:15', suspendedStarted: true,
       suspendedOn: { date: back(5), time: '18:00' } }, RIVAL);
     const matchRows = (r) => r.model.rows.filter((x) => x.kind === 'match');
 
@@ -454,7 +460,20 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
       assert.deepStrictEqual(matchRows(load({ matches: [gone] })), []);
     });
 
-    it('a suspended one IS — its first part was played', () => {
+    it('one suspended before it started is not — nor one not known to have (v287)', () => {
+      assert.deepStrictEqual(matchRows(load({ matches: [Object.assign({}, STOPPED, { suspendedStarted: false })] })), []);
+      const unknown = Object.assign({}, STOPPED);
+      delete unknown.suspendedStarted;
+      assert.deepStrictEqual(matchRows(load({ matches: [unknown] })), []);
+    });
+
+    it('…until it is played on its new date: then ONE row, on that day (v287)', () => {
+      const moved = Object.assign({}, RESUMED, { id: 'mn', suspendedStarted: false });
+      const rows = matchRows(load({ matches: [moved] }));
+      assert.deepStrictEqual(rows.map((x) => [x.key, x.date]), [['p1_match_mn', back(1)]]);
+    });
+
+    it('a suspended one that started IS — its first part was played', () => {
       const rows = matchRows(load({ matches: [STOPPED] }));
       assert.deepStrictEqual(rows.map((x) => x.key), ['p1_match_ms']);
     });
@@ -490,11 +509,17 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
         getSession: () => SESSION,
         getTrainings: () => TRAININGS,
         localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } },
-        playerMatchMinutesKnown: (uid, mid) => { asked.push(mid); return 78; },
+        /* As the real one with no stop minute known: the first part holds
+           every minute, the restart none. Records WHICH part was asked. */
+        playerMatchMinutesKnown: (uid, mid, part) => {
+          asked.push(mid + ':' + part);
+          return part === 'rest' ? null : 78;
+        },
         addStaffNotification: () => {},
         ackSaveRecord: (coll, id, data) => { saved.push({ coll, id, data }); return Promise.resolve(); },
         renderPage: () => {}, updateActionsBadge: () => {},
         t: (k) => k, ACTION_MINUTES_MAX: 300,
+        matchParts: utils.matchParts,
       };
       // eslint-disable-next-line no-new-func
       new Function(...Object.keys(api), HANDLER)(...Object.values(api));
@@ -510,7 +535,7 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
     it('the first part saves on the day it was played, with the lineup\'s minutes', () => {
       const r = save([RESUMED], 'p1_match_mr');
       assert.strictEqual(r.data.date, back(5), 'loaded on the restart day');
-      assert.deepStrictEqual(r.asked, ['mr']);
+      assert.deepStrictEqual(r.asked, ['mr:first']);
       assert.strictEqual(r.data.minutes, 78);
     });
 
@@ -521,7 +546,8 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
       assert.strictEqual(r.id, 'p1_match_mr_r');
       assert.strictEqual(r.data.date, back(1));
       assert.strictEqual(r.data.minutes, null);
-      assert.deepStrictEqual(r.asked, [], 'the lineup asked about "mr_r"');
+      // Asked for the RESTART's share, of match "mr" — never of a match "mr_r".
+      assert.deepStrictEqual(r.asked, ['mr:rest']);
     });
   });
 

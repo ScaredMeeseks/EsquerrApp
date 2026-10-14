@@ -39,7 +39,9 @@ function grab(from, to) {
 }
 
 // v286: the REAL matchState, declared in a sliced body (several harnesses are positional).
-const MATCH_STATE_SRC = require('../js/utils.js').matchState.toString() + '\n';
+// v287: and matchParts / convCalledIds beside it.
+const MATCH_STATE_SRC = ['matchState', 'matchParts', 'convStale', 'convToldList', 'convCalledIds']
+    .map((f) => require('../js/utils.js')[f].toString()).join('\n') + '\n';
 const BADGE = 'data:image/png;base64,QkFER0U=';
 const CLUB = 'C.E. Sant Andreu del Palomar';
 
@@ -416,15 +418,47 @@ describe('v284 — "Partits" is this season\'s call-ups', () => {
     assert.strictEqual(stats('me', c).totals.matches, 1);
   });
 
+  it('a stopped game\'s minutes split at the stop: the first part\'s and the restart\'s (v287)', () => {
+    /* Subbed off at 70', stopped at 60': 60 before the stop, 10 after. */
+    const c = {matches: [fx('st', '2026-10-12', {suspendedStarted: true,
+      suspendedOn: {date: '2026-10-03', time: '18:00'}, suspendedAt: {minute: 60, src: 'acta'}})],
+    allEvents: {st: [{type: 'change', side: 'home', minute: '70', playerOutId: 'me', playerInId: 'x'}]},
+    sentData: {st: {players: ['me'], startingXI: ['me']}}};
+    const row = stats('me', c).matchRows[0];
+    assert.deepStrictEqual([row.minutes, row.minutesFirst, row.minutesRest], [70, 60, 10]);
+    // No stop minute known: no split — the caller puts every minute on the first day.
+    delete c.matches[0].suspendedAt;
+    const whole = stats('me', c).matchRows[0];
+    assert.deepStrictEqual([whole.minutes, whole.minutesFirst, whole.minutesRest], [70, null, null]);
+  });
+
+  it('called for the first part, left out of the restart: still a match he played (v287)', () => {
+    const c = {matches: [fx('st', '2026-10-12', {suspendedStarted: true,
+      suspendedOn: {date: '2026-10-03', time: '18:00'}})],
+    allEvents: {}, sentData: {st: {players: ['other'], startingXI: ['me'],
+      firstPart: {players: ['me'], startingXI: ['me']}}}};
+    const s = stats('me', c);
+    assert.strictEqual(s.totals.matches, 1, 'the first part\'s call-up was not counted');
+    assert.strictEqual(s.matchRows[0].status, 'Titular');
+  });
+
+  it('counted from the day it was stopped, before a restart still to come (v287)', () => {
+    const c = {matches: [fx('st', '2099-01-01', {suspendedStarted: true,
+      suspendedOn: {date: '2026-10-03', time: '18:00'}})],
+    allEvents: {}, sentData: {st: {players: ['me'], startingXI: ['me']}}};
+    assert.strictEqual(stats('me', c).totals.matches, 1);
+  });
+
   it('a suspended one is ONE match, its result "S" until it resumes (v286)', () => {
-    const c = {matches: [fx('su', '2026-10-03', {fcfState: 'suspended',
+    const c = {matches: [fx('su', '2026-10-03', {fcfState: 'suspended', suspendedStarted: true,
       suspendedOn: {date: '2026-10-03', time: '18:00'}})],
     allEvents: {su: [{type: 'goal', side: 'home', minute: 10}]},
     sentData: {su: {players: ['me'], startingXI: ['me']}}};
     const s = stats('me', c);
     assert.strictEqual(s.totals.matches, 1);
     assert.strictEqual(s.matchRows[0].resultLetter, 'S', 'a half-played match read as a win');
-    const resumed = {matches: [fx('su', '2026-10-12', {suspendedOn: {date: '2026-10-03', time: '18:00'}})],
+    const resumed = {matches: [fx('su', '2026-10-12', {suspendedStarted: true,
+      suspendedOn: {date: '2026-10-03', time: '18:00'}})],
       allEvents: c.allEvents, sentData: c.sentData};
     assert.strictEqual(stats('me', resumed).matchRows[0].resultLetter, 'V');
   });
@@ -445,7 +479,7 @@ describe('v284 — "Partits" is this season\'s call-ups', () => {
   it('the season start is the club\'s boundary, read at run time', () => {
     const src2 = grab('  function computePlayerMatchStats(playerId, ctx) {', '  // ── Match history table builder ──');
     assert.ok(/var seasonFrom = seasonStartStr\(now\);/.test(src2));
-    assert.ok(/if \(m\.date < seasonFrom\) return;/.test(src2));
+    assert.ok(/if \(first\.date < seasonFrom\) return;/.test(src2));
   });
 });
 

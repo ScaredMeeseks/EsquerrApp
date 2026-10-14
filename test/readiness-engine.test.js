@@ -72,6 +72,9 @@ function engine(o) {
     computePlayerMatchStats: (uid) => ({
       matchRows: Object.keys(o.minutes || {}).map((mid) => ({
         matchId: Number(mid), minutes: (o.minutes[mid] || {})[uid],
+        // v287: a stopped game's two shares, as the real rows carry them.
+        minutesFirst: ((o.split || {})[mid] || {})[uid] ? o.split[mid][uid][0] : null,
+        minutesRest: ((o.split || {})[mid] || {})[uid] ? o.split[mid][uid][1] : null,
       })).filter((r) => typeof r.minutes === 'number'),
     }),
     localDateStr: utils.localDateStr,
@@ -83,6 +86,11 @@ function engine(o) {
     isActivity: utils.isActivity,
     // v286: the real one — a postponed match carries no load.
     matchState: utils.matchState,
+    // v287: the real ones — sessions per fixture, and the call-up told vs called.
+    matchParts: utils.matchParts,
+    convToldList: utils.convToldList,
+    convCalledIds: utils.convCalledIds,
+    convStale: utils.convStale,
     Date: class extends Date {
       constructor(...a) { return a.length ? new Date(...a) : new Date(TODAY + 'T12:00:00'); }
       static now() { return new Date(TODAY + 'T12:00:00').getTime(); }
@@ -400,9 +408,16 @@ describe('readiness — a match RPE saved without minutes', () => {
         'no minutes weighed as much as 90');
   });
 
-  it('keeps minutes a player saved before v282', () => {
-    // A recorded 60 is the record's word, even if the lineup says 90.
-    assert.notStrictEqual(run(60, 90).matchFatigueScore, run(90, 90).matchFatigueScore);
+  it('the LINE-UP wins over the minutes saved with the RPE (v287)', () => {
+    /* A player who answers before the coach logs the changes saved the
+       line-up's minutes OF THAT MOMENT — a starter's 90 for a man subbed at
+       60. The load follows the line-up as it is now. */
+    assert.strictEqual(run(90, 60).matchFatigueScore, run(60, 60).matchFatigueScore);
+    assert.strictEqual(run(90, 60).acwr, run(60, 60).acwr);
+  });
+
+  it('…and the saved minutes still count when there is no line-up at all', () => {
+    assert.notStrictEqual(run(60, null).matchFatigueScore, run(null, null).matchFatigueScore);
   });
 });
 
@@ -429,7 +444,7 @@ describe('readiness — postponed and suspended matches (v286)', () => {
     const b = baseTrainings('p1');
     const first = day(-6); const restart = day(-1);
     b.matches = [{id: 1, date: restart, time: '18:00', category: 'amateur', team: 'A',
-      suspendedOn: {date: first, time: '18:00'}}];
+      suspendedStarted: true, suspendedOn: {date: first, time: '18:00'}}];
     b.rpe['p1_match_1'] = {rpe: 7, minutes: 45, date: first};
     b.rpe['p1_match_1_r'] = {rpe: 5, minutes: null, date: restart};
     const s = matchSessions(engine(b)('p1'));
@@ -437,11 +452,28 @@ describe('readiness — postponed and suspended matches (v286)', () => {
         [[first, 7], [restart, 5]].sort(), JSON.stringify(s));
   });
 
+  it('each session takes ITS part of the line-up\'s minutes (v287)', () => {
+    const b = baseTrainings('p1');
+    const first = day(-6); const restart = day(-1);
+    b.matches = [{id: 1, date: restart, time: '18:00', category: 'amateur', team: 'A',
+      suspendedStarted: true, suspendedOn: {date: first, time: '18:00'}}];
+    b.rpe['p1_match_1'] = {rpe: 7, minutes: 90, date: first};
+    b.rpe['p1_match_1_r'] = {rpe: 5, minutes: null, date: restart};
+    b.minutes = {1: {p1: 90}};
+    b.split = {1: {p1: [60, 30]}};
+    const s = matchSessions(engine(b)('p1'));
+    assert.deepStrictEqual(s.map((x) => [x.date, x.minutes]).sort(), [[first, 60], [restart, 30]].sort());
+    // No stop minute: the first part holds the 90, the restart none — never 180.
+    delete b.split;
+    const t = matchSessions(engine(b)('p1'));
+    assert.deepStrictEqual(t.map((x) => [x.date, x.minutes]).sort(), [[first, 90], [restart, null]].sort());
+  });
+
   it('still waiting for its restart: one session, on the day it was stopped', () => {
     const b = baseTrainings('p1');
     const d = day(-2);
     b.matches = [{id: 1, date: d, time: '18:00', category: 'amateur', team: 'A',
-      fcfState: 'suspended', suspendedOn: {date: d, time: '18:00'}}];
+      fcfState: 'suspended', suspendedStarted: true, suspendedOn: {date: d, time: '18:00'}}];
     b.rpe['p1_match_1'] = {rpe: 7, minutes: 45, date: d};
     const s = matchSessions(engine(b)('p1'));
     assert.deepStrictEqual(s.map((x) => x.date), [d]);

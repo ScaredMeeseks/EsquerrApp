@@ -490,9 +490,11 @@ function activityTitleOf(row, fallback) {
    'postponed'  — the federation says AJORNAT (`fcfState`), or staff marked
                   it (`manualState`), and it is still on its original date;
    'suspended'  — the federation says SUSPÈS and it has no new date yet;
-   'resumption' — a suspended match whose date has moved: the same match,
-                  continued — a second session on the new day;
-   ''           — on as scheduled, or played.
+   'resumption' — a suspended match that STARTED and whose date has moved:
+                  the same match, continued — a second session on the new day;
+   ''           — on as scheduled, or played. A suspended match that never
+                  started (`suspendedStarted` not true, v287) is, once moved,
+                  simply a match on its new date.
    DATE-AWARE on purpose. Whether the federation resets ESTADO to 0 once a
    postponed match has its new date is not known; a match on a date that is
    no longer the one it was postponed from is simply on again, whatever the
@@ -504,9 +506,79 @@ function matchState(m) {
     return !!from && ((m.date || '') !== (from.date || '') || (m.time || '') !== (from.time || ''));
   };
   if ((m.fcfState === 'postponed' || m.manualState === 'postponed') && !moved(m.postponedFrom)) return 'postponed';
-  if (m.suspendedOn && moved(m.suspendedOn)) return 'resumption';
+  if (m.suspendedOn && moved(m.suspendedOn)) return m.suspendedStarted === true ? 'resumption' : '';
   if (m.fcfState === 'suspended') return 'suspended';
   return '';
+}
+
+/* The SESSIONS a fixture is, for RPE, load and stats (v287) — one entry per
+   part: {date, time, suffix, part}. `suffix` ends the RPE key
+   (`{uid}_match_{id}` + suffix).
+     none — postponed; withdrawn; suspended and not known to have started,
+            still on its day (it was not a match played that day);
+     one  — an ordinary fixture; a suspended one that never started, on its
+            new date (`whole`); a started one still waiting (`first`);
+     two  — a started one with its restart: `first` on suspendedOn, `rest`
+            (`_r`) on the new date.
+   A COPY lives in functions/fcf.js; fcf-state.test.js holds the two equal. */
+function matchParts(m) {
+  if (!m || m.fcfRemoved) return [];
+  const st = matchState(m);
+  if (st === 'postponed') return [];
+  const s = m.suspendedOn;
+  if (s && m.suspendedStarted === true) {
+    const first = { date: s.date || '', time: s.time || '', suffix: '', part: 'first' };
+    return st === 'resumption'
+      ? [first, { date: m.date || '', time: m.time || '', suffix: '_r', part: 'rest' }]
+      : [first];
+  }
+  if (st === 'suspended') return [];
+  return [{ date: m.date || '', time: m.time || '', suffix: '', part: 'whole' }];
+}
+
+/* Has a convocatòria gone stale (v287)? A call-up is for a DAY: one sent
+   for a fixture that has since moved off its postponed or suspended kick-off
+   no longer tells the squad anything true, and the staff must send one for
+   the new day. `sentFor` is stamped at send; an entry without it went out
+   before v287, which for a moved fixture means for the old day. Once a
+   fixture has moved, only a call-up sent for its CURRENT kick-off is
+   current — so a restart moved a second time asks again too (its
+   `suspendedOn` stays the first day, and cannot say so). An ordinary
+   fixture is never stale. */
+function convStale(entry, m) {
+  if (!entry || !m) return false;
+  const from = m.postponedFrom || m.suspendedOn;
+  if (!from) return false;
+  const at = function (x) { return (x.date || '') + 'T' + (x.time || ''); };
+  if (at(from) === at(m)) return false;
+  if (Array.isArray(entry) || !entry.sentFor) return true;
+  return at(entry.sentFor) !== at(m);
+}
+
+/** Everyone called up for a fixture: its convocatòria, and — for a
+    suspended game re-sent for its restart — the first part's too (v287).
+    Who was CALLED, for stats and minutes; whether the squad has been TOLD
+    for the current date is convToldList's question, not this one. */
+function convCalledIds(entry) {
+  if (!entry) return [];
+  const list = Array.isArray(entry) ? entry : (entry.players || []);
+  const first = (entry.firstPart && Array.isArray(entry.firstPart.players)) ? entry.firstPart.players : [];
+  const seen = {};
+  return list.concat(first).filter(function (id) {
+    const k = String(id);
+    if (seen[k]) return false;
+    seen[k] = true;
+    return true;
+  });
+}
+
+/** The players the squad has been TOLD are called up for this fixture's
+    current day — [] when nothing went out, or when what went out is stale.
+    WHO was called (stats, minutes) is convCalledIds. */
+function convToldList(entry, m) {
+  if (!entry) return [];
+  const list = Array.isArray(entry) ? entry : (entry.players || []);
+  return convStale(entry, m) ? [] : list;
 }
 
 /* ---------- Link safety ----------
@@ -1916,6 +1988,10 @@ function bodyMapHtml(opts) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     matchState,
+    matchParts,
+    convStale,
+    convToldList,
+    convCalledIds,
     localDateStr,
     seasonStartStr,
     setSeasonBoundary,

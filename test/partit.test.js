@@ -60,8 +60,9 @@ const BLOCK = grab('  /**\n   * Which side of this fixture is US',
 /* v286: the REAL off-fixture helpers (matchOffLabel, matchIsOff,
    matchMovedNote) and the matchState they read, declared in the body —
    a postponed fixture renders here exactly as it does live. */
-const OFF_HELPERS = require('../js/utils.js').matchState.toString() + '\n' +
-    grab('  /* ── Postponed, suspended, withdrawn (v286)', '  function calMatchBlockHtml(m, ctx)');
+const OFF_HELPERS = ['matchState', 'matchParts', 'convStale', 'convToldList', 'convCalledIds']
+    .map((f) => require('../js/utils.js')[f].toString()).join('\n') + '\n' +
+    grab('  /* ── Postponed, suspended, withdrawn (v286)', '  function calMatchBlockHtml(m, ctx, variant)');
 
 const sanitize = (s) => String(s === undefined || s === null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -110,7 +111,7 @@ function build() {
       'mnMediaColHtml', 'MN', 'MN_BRIEF_COLLAPSED', 'tDateShort',
       'getMatchEvents', 'fcfKitPieces', 'fcfShirtSvg', 'shortsSvg', 'kitSockSvg',
       OFF_HELPERS + BLOCK + '\n return {ptHead, ptCrestHtml, ptRivalStanding, ptFactHtml,' +
-        ' ptFactsHtml, ptScoreboardHtml, ptStateBandHtml, ptCallupHtml, ptBoardsHtml,' +
+        ' ptFactsHtml, ptScoreboardHtml, ptStateBandHtml, ptStopBandHtml, ptCallupHtml, ptBoardsHtml,' +
         ' ptEventTypes, ptSecondField, ptEventDetail, ptTimelineHtml,' +
         ' ptEventName, ptOurSide, ptRivalRow, ptFormRunHtml,' +
         ' ptAnadaHtml, ptFormation, ptLegRowHtml,' +
@@ -295,28 +296,32 @@ describe('a postponed, suspended or withdrawn fixture (v286)', () => {
   beforeEach(reset);
   const P = (o) => Object.assign({}, MATCH, o);
   const POSTPONED = P({fcfState: 'postponed', postponedFrom: {date: MATCH.date, time: MATCH.time}});
-  const SUSPENDED = P({fcfState: 'suspended', suspendedOn: {date: MATCH.date, time: MATCH.time}});
+  const SUSPENDED = P({fcfState: 'suspended', suspendedStarted: true, suspendedOn: {date: MATCH.date, time: MATCH.time}});
 
   describe('the scoreboard', () => {
-    it('postponed: the state in the score\'s slot — no kick-off, no 0 – 0', () => {
+    it('postponed: the orange pill ABOVE the row, the time greyed — no 0 – 0 (v287)', () => {
       const html = API.ptScoreboardHtml(POSTPONED, [], false);
-      assert.ok(/class="pt-state">match\.state_postponed</.test(html), html);
-      assert.ok(!/pt-kickoff|pt-score|0 – 0/.test(html), html);
+      assert.ok(html.includes('<div class="pt-sb-pill"><span class="st-pill st-pill-postponed">match.state_postponed</span></div>'), html);
+      assert.ok(html.indexOf('pt-sb-pill') < html.indexOf('pt-sb-row'), 'the pill is not above the row');
+      assert.ok(/class="pt-kickoff pt-kickoff-off">20:00</.test(html), html);
+      assert.ok(!/pt-score|0 – 0/.test(html), html);
     });
 
-    it('suspended with its first half logged: the score stands', () => {
+    it('suspended with its first half logged: the red pill over the score so far', () => {
       const html = API.ptScoreboardHtml(SUSPENDED, [{side: 'home'}], true);
       assert.ok(/class="pt-score">1 – 0</.test(html), html);
-      assert.ok(!/pt-state/.test(html));
+      assert.ok(html.includes('st-pill st-pill-suspended'), html);
     });
 
-    it('withdrawn: struck through, its own class', () => {
+    it('withdrawn: the grey pill, struck through', () => {
       const html = API.ptScoreboardHtml(P({fcfRemoved: true}), [], false);
-      assert.ok(/class="pt-state pt-state-removed">match\.state_removed</.test(html), html);
+      assert.ok(html.includes('<span class="st-pill st-pill-removed">match.state_removed</span>'), html);
     });
 
-    it('an ordinary fixture is untouched — the kick-off', () => {
-      assert.ok(/pt-kickoff">20:00</.test(API.ptScoreboardHtml(MATCH, [], false)));
+    it('an ordinary fixture is untouched — the kick-off, no pill', () => {
+      const html = API.ptScoreboardHtml(MATCH, [], false);
+      assert.ok(/pt-kickoff">20:00</.test(html));
+      assert.ok(!html.includes('st-pill'));
     });
   });
 
@@ -351,8 +356,15 @@ describe('a postponed, suspended or withdrawn fixture (v286)', () => {
       assert.ok(player.includes('pt.state_suspended') && !player.includes('pt.state_suspended_staff'));
     });
 
+    it('stopped before it started: played later in full — no restart, no line-up changes (v287)', () => {
+      const m = P({fcfState: 'suspended', suspendedStarted: false, suspendedOn: {date: MATCH.date, time: MATCH.time}});
+      const html = band(m, {staff: true});
+      assert.ok(html.includes('pt.state_unstarted'), html);
+      assert.ok(!html.includes('pt.state_suspended_staff'), 'restart instructions for a game that never began');
+    });
+
     it('the resumption names the day it was stopped', () => {
-      const m = P({date: '2026-09-20', fcfState: 'suspended',
+      const m = P({date: '2026-09-20', fcfState: 'suspended', suspendedStarted: true,
         suspendedOn: {date: '2026-09-02', time: '20:00'}});
       // t() is the identity here, so the {d} placeholder survives only if nobody filled it.
       const html = band(m, {});
@@ -369,6 +381,50 @@ describe('a postponed, suspended or withdrawn fixture (v286)', () => {
 
     it('withdrawn: the federation\'s own words', () => {
       assert.ok(band(P({fcfRemoved: true}), {}).includes('cal.removed'));
+    });
+
+    it('never started, on its new date: a match like any other, and why it moved (v287)', () => {
+      const m = P({date: '2026-09-20', fcfState: 'suspended', suspendedStarted: false,
+        suspendedOn: {date: '2026-09-02', time: '20:00'}});
+      assert.ok(band(m, {}).includes('pt.state_suspended_moved'));
+    });
+  });
+
+  describe('the stop minute, for the staff (v287)', () => {
+    const stop = (m, o) => API.ptStopBandHtml(m, o || {canEdit: true});
+    const STARTED = P({fcfState: 'suspended', suspendedStarted: true,
+      suspendedOn: {date: MATCH.date, time: MATCH.time}, suspendedAt: {minute: 79, src: 'acta'}});
+
+    it('a minute guessed from the acta is a WARNING with the field to correct it', () => {
+      const html = stop(STARTED);
+      assert.ok(html.includes('pt-stop-band pt-stop-warn'), html);
+      assert.ok(html.includes('pt.stop_warn'));
+      assert.ok(/class="pt-stop-min"[^>]*value="79"[^>]*data-match-id="7"/.test(html), html);
+      assert.ok(html.includes('pt-stop-save') && html.includes('pt-started-no'));
+    });
+
+    it('a minute the staff gave is a plain line — no warning', () => {
+      const html = stop(P(Object.assign({}, STARTED, {suspendedAt: {minute: 85, src: 'staff'}})));
+      assert.ok(!html.includes('pt-stop-warn') && html.includes('pt.stop_set'), html);
+      assert.ok(/value="85"/.test(html));
+    });
+
+    it('not started, or not known: the question, not a minute', () => {
+      const no = stop(P({fcfState: 'suspended', suspendedStarted: false, suspendedOn: {date: MATCH.date}}));
+      assert.ok(no.includes('pt.not_started') && no.includes('pt-started-yes') && !no.includes('pt-stop-min'));
+      const unk = stop(P({fcfState: 'suspended', suspendedOn: {date: MATCH.date}}));
+      assert.ok(unk.includes('pt.started_unknown') && unk.includes('pt-started-yes') && unk.includes('pt-started-no'));
+    });
+
+    it('nothing for a player, nor for a game that is not suspended', () => {
+      assert.strictEqual(stop(STARTED, {}), '');
+      assert.strictEqual(stop(MATCH), '');
+      assert.strictEqual(stop(P({fcfState: 'postponed'})), '');
+    });
+
+    it('every class it draws has a rule', () => {
+      ['pt-stop-band', 'pt-stop-warn', 'pt-stop-acts', 'pt-stop-f', 'pt-stop-min']
+          .forEach((c) => assert.ok(new RegExp('\\.' + c + '\\b').test(css), 'no rule for .' + c));
     });
   });
 });

@@ -1179,8 +1179,8 @@ describe('training — the RPE form defaults', () => {
     assert.ok(!body.includes('playerMatchMinutesKnown'),
         'the model computes match minutes for a page that must not show them');
     const save = grab('    $$(\'.ac-save\').forEach(btn => {', '        const ua = minutes == null');
-    // v286: the id without a resumption's `_r`; a resumption has no lineup minutes of its own.
-    assert.ok(save.includes("resumedRow ? null : playerMatchMinutesKnown(getSession().id, matchIdOf)"),
+    // v287: the id without a resumption's `_r`, and THIS part's share (matchParts).
+    assert.ok(/minutes = playerMatchMinutesKnown\(getSession\(\)\.id, matchIdOf,\s*thisPart \? thisPart\.part/.test(save),
         'the club records substitutions; the save must take them from there');
   });
 

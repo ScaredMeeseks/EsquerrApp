@@ -28,7 +28,7 @@ const {FieldValue} = require("firebase-admin/firestore");
 // second copy and how the two are kept honest.
 const {
   fcfGrupIdOf, sameClubNameOf, squadLetterOfName, parseFcfFixtures, parseFcfKits, parseFcfPositions,
-  mergeFcfFixtures, matchState,
+  mergeFcfFixtures, matchState, matchParts,
   parseFcfActa, fcfRefereeSlug, fcfList, pickFcfTiers, fcfRefIndexId,
   fcfActasDue, fcfActaEntry, parseFcfSanctionsByActa, aggregateFcfReferees,
   fcfShouldRebuild, fcfLinkedGroups, fcfLabelsById, fcfScopeKey,
@@ -1025,11 +1025,12 @@ exports.scheduledRpeReminder = onSchedule({
       dates.includes(t.date) && !isActivity(t) &&
       endedInWindow(t, "training", now));
     // Same reason: two categories play on the same Saturday.
-    /* Not for a match that was not played (v286): postponed by the FCF or
-       marked by staff, or withdrawn (`fcfRemoved`, a latent gap). A
-       SUSPENDED one is asked: its first half was played. */
+    /* Not for a match that was not played: postponed by the FCF or marked by
+       staff, withdrawn (`fcfRemoved`), or SUSPENDED before it started — or
+       not yet known to have started (v287). A suspended one that started is
+       asked: its first part was played. matchParts is the one rule. */
     const dueMatches = matches.filter((m) =>
-      dates.includes(m.date) && !m.fcfRemoved && matchState(m) !== "postponed" &&
+      dates.includes(m.date) && matchParts(m).length > 0 &&
       endedInWindow(m, "match", now));
     if (!dueTraining.length && !dueMatches.length) return;
 
@@ -1461,6 +1462,23 @@ async function _syncFcfSquad(clubId, category, letter, club) {
     if ((changes || []).length) await _announceMatchChanges(clubId, changes, matches);
   } catch (err) {
     logger.error("match change announce failed", {clubId, category, err: String(err)});
+  }
+  /* SUSPÈS, and nobody knows yet whether it started (v287): one acta page
+     each says so — line-ups or none — and brings the first part with it.
+     Once known it is never asked again, so this costs one GET per suspended
+     game, ever. */
+  if (!club.demoSeed) {
+    const ask = (matches || []).filter((m) => m && (m.category || "") === category &&
+      (m.team || "") === letter && m.fcfActaId && m.fcfState === "suspended" &&
+      typeof m.suspendedStarted !== "boolean");
+    for (const m of ask) {
+      try {
+        const r = await _importActa(clubId, m.id, {src: "auto"});
+        logger.info("suspended acta probed", {clubId, matchId: m.id, status: r.status});
+      } catch (err) {
+        logger.warn("suspended acta probe failed", {clubId, matchId: m.id, err: String(err)});
+      }
+    }
   }
   return summary;
 }
@@ -2732,6 +2750,18 @@ async function actaImportConfig() {
  *   fetch-failed | no-acta | no-match | no-club | already | dry-run
  * `already` only for the automatic path (`src:'auto'`) — the button re-runs.
  */
+/** Record whether a SUSPÈS game had started, unless someone already said (v287). */
+async function _stampSuspendedStart(clubId, cat, matchId, started) {
+  const mid = String(matchId);
+  await withDataShards(clubId, [{key: "fa_matches", cat, fallback: []}], (vals) => {
+    const rows = vals[shardDocId("fa_matches", cat)];
+    const r = Array.isArray(rows) ? rows.find((x) => x && String(x.id) === mid) : null;
+    if (!r || typeof r.suspendedStarted === "boolean") return null;
+    r.suspendedStarted = started;
+    return null;
+  });
+}
+
 async function _importActa(clubId, matchId, opts) {
   const o = opts || {};
   const clubSnap = await db.collection("clubs").doc(clubId).get();
@@ -2762,7 +2792,15 @@ async function _importActa(clubId, matchId, opts) {
       reason: acta.reason, detail: acta.detail});
     return {status: "unreadable", reason: acta.reason};
   }
-  if (!acta.closed) return {status: "not-closed", fcfStatus: acta.status};
+  /* SUSPÈS (v287): the page says whether the game started — line-ups or
+     none — and, if it did, holds its first part. Never started: the row is
+     told so, and nothing is imported. */
+  if (!acta.closed && acta.started === false) {
+    await _stampSuspendedStart(clubId, cat, row.id, false);
+    return {status: "not-started", fcfStatus: acta.status};
+  }
+  const partial = !acta.closed && acta.partial === true;
+  if (!acta.closed && !partial) return {status: "not-closed", fcfStatus: acta.status};
   // Closed with no result: the match was not played. Final, and nothing to write.
   if (acta.played === false) return {status: "no-result"};
   /* A result awarded with no goals (a forfeit). The app's score is the sum of
@@ -2827,15 +2865,28 @@ async function _importActa(clubId, matchId, opts) {
       return {status: "mismatch"};
     }
     evMap[mid] = merged.events;
-    r.score = sc.home + "-" + sc.away;
-    r.status = "played";
-    r.fcfActa = {at, src: o.src || "manual", unlinked, lineup};
+    if (partial) {
+      /* The FIRST PART (v287). Not `fcfActa`: that is "imported", and the
+         automatic import must still run when the acta closes after the
+         restart. Not played either. The stop minute is the page's last
+         event — a guess, which staff are asked to correct; a minute staff
+         already gave is never replaced. */
+      r.fcfActaPartial = {at, src: o.src || "manual", unlinked, lineup};
+      r.suspendedStarted = true;
+      if (!(r.suspendedAt && r.suspendedAt.src === "staff")) {
+        r.suspendedAt = {minute: acta.lastMinute, src: "acta"};
+      }
+    } else {
+      r.score = sc.home + "-" + sc.away;
+      r.status = "played";
+      r.fcfActa = {at, src: o.src || "manual", unlinked, lineup};
+    }
     const entry = applyActaLineup(sent[mid], lineup);
     if (entry) sent[mid] = entry;
     return (tx) => {
       tx.set(ledgerRef(clubId, mid), {
         actaId: String(row.fcfActaId), category: cat, ourSide,
-        score: r.score, importedAt: at, src: o.src || "manual",
+        score: sc.home + "-" + sc.away, importedAt: at, src: o.src || "manual", partial,
         facts: actaFacts(merged.events),
         events: merged.events.filter((e) => e.src === "fcf"),
         lineup, fcfIds: ours.map((p) => p.id),
@@ -2847,7 +2898,8 @@ async function _importActa(clubId, matchId, opts) {
           name: (ours.find((p) => p.id === f) || {}).name || "", at,
         });
       });
-      return {status: "imported", counts, summary: merged.summary};
+      return {status: partial ? "partial" : "imported", counts, summary: merged.summary,
+        stopMinute: partial ? acta.lastMinute : undefined};
     };
   });
   logger.info("acta import", {clubId, matchId: mid, actaId: row.fcfActaId,

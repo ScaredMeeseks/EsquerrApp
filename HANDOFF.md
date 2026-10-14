@@ -8,7 +8,26 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 286**
+**Version triple is at 287**
+
+## 2026-10-14 — v287: postponed/suspended, round two
+
+Full detail in CONTEXT.md (v287).
+- **`matchParts(m)` (utils.js + fcf.js copy) is THE rule for "was it a match, and which sessions":**
+  - none: postponed, withdrawn, or suspended before it started (or not known);
+  - `first`, or `first` + `rest` (`_r`): a game stopped mid-way;
+  - `whole`: everything else.
+  - Don't re-derive it from `matchState`.
+- **Started or not comes from the FCF acta:** a SUSPÈS page with line-ups started. `_syncFcfSquad` probes each unknown one once, and a started one imports its first part (`fcfActaPartial`, not `fcfActa`).
+  - The stop minute is NOT on the page. It defaults to the last event and staff are warned to correct it (Partit).
+- **A convocatòria is for a day:**
+  - A send stamps `sentFor`.
+  - "Told" = `convToldList` (a call-up sent before a move is pending again).
+  - "Called" = `convCalledIds`, which includes a restart's `firstPart`.
+  - New told-sites must use the first; stats and minutes the second.
+- **Match load uses the line-up's current minutes**, not the ones saved with the RPE, whenever there is a line-up.
+- **Pills:** `.st-pill` with `--pp-orange` (AJORNAT) / `--pp-red` (SUSPÈS), above the result everywhere.
+- **Emulators:** `emulators:start` needs `$env:FUNCTIONS_DISCOVERY_TIMEOUT = 120` on this machine, or it stops at discovery with exit 9 and leaves java on :8080. Inside `emulators:exec`, call `npx mocha`.
 
 ## 2026-10-13 — v286: postponed and suspended matches
 
@@ -71,8 +90,8 @@ Full detail in CONTEXT.md (v282). What a next session needs:
 
 | | |
 |---|---|
-| Unit tests | **4138** (v286) — `cd test && npm run test:unit` (~35 s), all passing |
-| Functions tests | **117** (v286), all passing — `npm run test:functions` from PowerShell with Java on PATH, backgrounded with `2>&1 | Out-File <log>` (a foreground run with `*>` stopped at function discovery) |
+| Unit tests | **4184** (v287) — `cd test && npm run test:unit` (~35 s), all passing |
+| Functions tests | **120** (v287), all passing — `npm run test:functions` from PowerShell with Java on PATH, backgrounded with `2>&1 | Out-File <log>` (a foreground run with `*>` stopped at function discovery) |
 | Rules tests | 178 — **not re-run**; `firestore.rules` was not touched |
 
 **Deploy state.** `main` is current and deployed through **v277 `669b2ba`**. Both v276 and v277

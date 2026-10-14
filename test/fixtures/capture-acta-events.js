@@ -36,6 +36,8 @@ const WANTED = [
     "Tercera 2026-27 J1, 1-1: a second yellow eighteen minutes after the first; five players " +
     "registered under one name."],
   ["acta-events-suspended.html", 4119507, "Tercera 2026-27 J1: SUSPÈS — not closed."],
+  ["acta-events-suspended-unstarted.html", 4119518,
+    "Tercera 2026-27 J3 (03/10): SUSPÈS before it started — no line-ups at all."],
   ["acta-events-pending.html", 4119640, "Tercera 2026-27, not yet played: PENDENT."],
   ["acta-events-old.html", 3833222,
     "Tercera 2025-26: two double yellows; staff cards; no substitutions published."],

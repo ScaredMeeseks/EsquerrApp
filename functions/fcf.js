@@ -150,9 +150,11 @@ function fcfStateOf(estado) {
    "postponed"  — the federation says AJORNAT (`fcfState`), or staff marked
                   it (`manualState`), and it is still on its original date;
    "suspended"  — the federation says SUSPÈS and it has no new date yet;
-   "resumption" — a suspended match whose date has moved: the same match,
-                  continued — a second session on the new day;
-   ""           — on as scheduled, or played.
+   "resumption" — a suspended match that STARTED and whose date has moved:
+                  the same match, continued — a second session on the new day;
+   ""           — on as scheduled, or played. A suspended match that never
+                  started (`suspendedStarted` not true, v287) is, once moved,
+                  simply a match on its new date.
    DATE-AWARE on purpose. Whether the federation resets ESTADO to 0 once a
    postponed match has its new date is not known; a match on a date that is
    no longer the one it was postponed from is simply on again, whatever the
@@ -164,9 +166,34 @@ function matchState(m) {
     return !!from && ((m.date || "") !== (from.date || "") || (m.time || "") !== (from.time || ""));
   };
   if ((m.fcfState === "postponed" || m.manualState === "postponed") && !moved(m.postponedFrom)) return "postponed";
-  if (m.suspendedOn && moved(m.suspendedOn)) return "resumption";
+  if (m.suspendedOn && moved(m.suspendedOn)) return m.suspendedStarted === true ? "resumption" : "";
   if (m.fcfState === "suspended") return "suspended";
   return "";
+}
+
+/* The SESSIONS a fixture is, for RPE, load and stats (v287) — one entry per
+   part: {date, time, suffix, part}. `suffix` ends the RPE key
+   (`{uid}_match_{id}` + suffix).
+     none — postponed; withdrawn; suspended and not known to have started,
+            still on its day (it was not a match played that day);
+     one  — an ordinary fixture; a suspended one that never started, on its
+            new date (`whole`); a started one still waiting (`first`);
+     two  — a started one with its restart: `first` on suspendedOn, `rest`
+            (`_r`) on the new date.
+   The client copy is in js/utils.js; fcf-state.test.js holds the two equal. */
+function matchParts(m) {
+  if (!m || m.fcfRemoved) return [];
+  const st = matchState(m);
+  if (st === "postponed") return [];
+  const s = m.suspendedOn;
+  if (s && m.suspendedStarted === true) {
+    const first = { date: s.date || "", time: s.time || "", suffix: "", part: "first" };
+    return st === "resumption"
+      ? [first, { date: m.date || "", time: m.time || "", suffix: "_r", part: "rest" }]
+      : [first];
+  }
+  if (st === "suspended") return [];
+  return [{ date: m.date || "", time: m.time || "", suffix: "", part: "whole" }];
 }
 
 function parseFcfFixtures(json, ourTeamId) {
@@ -690,18 +717,25 @@ function parseFcfActaEvents(html) {
   }
   if (st === -1) return fail("no-header");
   const status = texts[st].s;
-  if (!/^acta tancada$/i.test(status)) return {ok: true, closed: false, status};
+  /* SUSPÈS (v287) is read on, not cut off at its pill: a game stopped
+     mid-way has its line-ups, goals, cards and subs up to the stop (4119507:
+     8'…79'), one stopped before it started has no line-ups at all (4119518
+     and the other five of 3–4 Oct). The header says "- - -" either way, so
+     the score is the goals'. The stop minute is NOT on the page, anywhere. */
+  const suspended = /^susp[eè]s$/i.test(status);
+  if (!/^acta tancada$/i.test(status) && !suspended) return {ok: true, closed: false, status};
   /* Closed with "- - -" and no line-ups: the match was not played (4119514).
      A final answer, not a failure — there is simply nothing to import. */
-  if (texts[st + 1].s === "-" && texts[st + 3].s === "-") {
+  if (!suspended && texts[st + 1].s === "-" && texts[st + 3].s === "-") {
     return {ok: true, closed: true, played: false, status};
   }
-  if (!/^\d+$/.test(texts[st + 1].s) || !/^\d+$/.test(texts[st + 3].s)) return fail("no-score");
-  const score = {home: Number(texts[st + 1].s), away: Number(texts[st + 3].s)};
+  if (!suspended && (!/^\d+$/.test(texts[st + 1].s) || !/^\d+$/.test(texts[st + 3].s))) return fail("no-score");
+  const score = suspended ? null : {home: Number(texts[st + 1].s), away: Number(texts[st + 3].s)};
+  const notStarted = {ok: true, closed: false, status, started: false};
 
   const lineup = order.find((n) => n.p && typeof n.p.localName === "string" &&
     typeof n.p.visitorName === "string");
-  if (!lineup) return fail("no-lineups");
+  if (!lineup) return suspended ? notStarted : fail("no-lineups");
   const home = {name: decodeHtmlEntities(lineup.p.localName).trim()};
   const away = {name: decodeHtmlEntities(lineup.p.visitorName).trim()};
   const sideOfTeam = (team) => {
@@ -742,7 +776,7 @@ function parseFcfActaEvents(html) {
       players.push(rec);
     }
   });
-  if (!players.length) return fail("no-lineups");
+  if (!players.length) return suspended ? notStarted : fail("no-lineups");
   players.forEach((p) => delete p.fromSheet);
 
   /** The single player node inside `n`, or null. */
@@ -846,7 +880,7 @@ function parseFcfActaEvents(html) {
     }
     goals.push({minute, id, side, for: forSide, kind, running: tally.home + "-" + tally.away});
   }
-  if (tally.home !== score.home || tally.away !== score.away) {
+  if (score && (tally.home !== score.home || tally.away !== score.away)) {
     /* A result with NO goal behind it is the committee's, not the pitch's —
        a forfeit, an ineligible player: "0 - 3" over "No hi ha gols
        registrats" (3833178, 3833290). A final answer, but not one the app's
@@ -921,6 +955,16 @@ function parseFcfActaEvents(html) {
   const balls = marks.filter((x) => x.kind === "ball").map((x) => x.id).sort().join(",");
   if (balls !== goals.map((g) => g.id).sort().join(",")) warnings.push("balls-mismatch");
 
+  if (suspended) {
+    /* The FIRST PART of a game stopped mid-way. Not closed: the full acta
+       comes after the restart. `lastMinute` is the latest thing on the page
+       — the best guess at the stop the page allows, and only a guess: a game
+       stopped at 85' with nothing after 79' reads 79'. Staff correct it. */
+    const lastMinute = Math.floor(Math.max(0, ...goals.concat(cards, subs)
+        .map((x) => actaMinuteValue(x.minute)).filter((v) => v < 999)));
+    return {ok: true, closed: false, status, started: true, partial: true, home, away,
+      score: {home: tally.home, away: tally.away}, players, goals, cards, subs, warnings, lastMinute};
+  }
   return {ok: true, closed: true, played: true, status, home, away, score, players, goals, cards,
     subs, warnings};
 }
@@ -1627,7 +1671,19 @@ function mergeFcfFixtures(existing, incoming, opts) {
          `adopting ? !cur[k] : …` branch was written first and removed: it was
          a second spelling of the same condition, and the two could drift. */
       const ownedByFcf = (cur[k] || "") === (snap[k] || "");
-      if (ownedByFcf && (cur[k] || "") !== (fcfFields[k] || "")) {
+      /* …except the KICK-OFF of a fixture that is off (v287). A time the
+         coach tweaked before the federation postponed or suspended it is a
+         time for a day that is not happening, and it must not keep the
+         federation's new date out. Only a CHANGE from the federation moves
+         it, so a quiet sync leaves the coach's value alone; and a date the
+         coach typed WHILE it was off (a reschedule by hand) is no longer
+         "off" by matchState, so that one still wins. */
+      const curState = matchState(cur);
+      const offNow = curState === "postponed" || curState === "suspended" ||
+        ((f.state === "postponed" || f.state === "suspended") && !cur.postponedFrom && !cur.suspendedOn);
+      const fcfMoved = (snap[k] || "") !== (fcfFields[k] || "");
+      const released = (k === "date" || k === "time") && offNow && fcfMoved;
+      if ((ownedByFcf || released) && (cur[k] || "") !== (fcfFields[k] || "")) {
         next[k] = fcfFields[k];
       }
     });
@@ -1655,7 +1711,10 @@ function mergeFcfFixtures(existing, incoming, opts) {
     const wasSuspended = prevState === "suspended" || !!cur.suspendedOn;
     let kind = "";
     if (moved && (wasPostponed || nextState === "postponed")) kind = "rescheduled";
-    else if (moved && (wasSuspended || nextState === "suspended")) kind = "resumption";
+    // A suspended game that never started is simply on a new date (v287).
+    else if (moved && (wasSuspended || nextState === "suspended")) {
+      kind = cur.suspendedStarted === true ? "resumption" : "rescheduled";
+    }
     else if (nextState === "postponed" && prevState !== "postponed" && cur.manualState !== "postponed") kind = "postponed";
     else if (nextState === "suspended" && prevState !== "suspended") kind = "suspended";
     // A coach's "marked as postponed" gives way once the federation speaks.
@@ -1843,4 +1902,5 @@ module.exports = {
   FCF_OWNED,
   fcfStateOf,
   matchState,
+  matchParts,
 };

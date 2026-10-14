@@ -183,6 +183,11 @@ function render(over) {
     availContext: () => ({ availData: (o.avail || AVAIL), overrides: {} }),
     isOurTeam: (n) => n === 'CE L\'Esquerra',
     matchState: utils.matchState,   // v286, the real one
+    // v287: the real ones — sessions per fixture, and the call-up told vs called.
+    matchParts: utils.matchParts,
+    convToldList: utils.convToldList,
+    convCalledIds: utils.convCalledIds,
+    convStale: utils.convStale,
     seasonStartStr: () => SEASON_START,
     DEFAULT_SESSION_MINS: 90,
     DEFAULT_MATCH_MINS: 120,

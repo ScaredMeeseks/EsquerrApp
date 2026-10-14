@@ -330,9 +330,14 @@
     'match.state_removed':   { ca:'Retirat', es:'Retirado', en:'Withdrawn' },
     'match.note_postponed':  { ca:'Pendent de nova data', es:'Pendiente de nueva fecha', en:'Awaiting a new date' },
     'match.note_suspended':  { ca:'Es reprendrà', es:'Se reanudará', en:'To be resumed' },
+    'match.note_unstarted':  { ca:'No va començar · pendent de nova data', es:'No empezó · pendiente de nueva fecha', en:'Did not start · awaiting a new date' },
+    'pt.state_unstarted':    { ca:'La Federació ha suspès aquest partit abans que comencés. Es jugarà sencer quan en fixi la nova data.', es:'La Federación ha suspendido este partido antes de que empezara. Se jugará entero cuando fije la nueva fecha.', en:'The federation suspended this match before it started. It will be played in full once a new date is set.' },
     'match.postponed_from':  { ca:'Ajornat del {d}', es:'Aplazado del {d}', en:'Postponed from {d}' },
     'match.resumed_from':    { ca:'Represa · suspès el {d}', es:'Reanudación · suspendido el {d}', en:'Resumption · suspended on {d}' },
     'match.resumption_tag':  { ca:'Represa', es:'Reanudación', en:'Resumption' },
+    'match.from_day':        { ca:'del {d}', es:'del {d}', en:'from {d}' },
+    'cal.moved_to':          { ca:'{s} → {d}', es:'{s} → {d}', en:'{s} → {d}' },
+    'cal.stopped_at':        { ca:'Aturat al {m}\'', es:'Parado en el {m}\'', en:'Stopped at {m}\'' },
     'pt.state_postponed_fcf': { ca:'La Federació ha ajornat aquest partit. Quan en fixi la nova data, el partit s\'hi mourà sol i avisarem la plantilla.', es:'La Federación ha aplazado este partido. Cuando fije la nueva fecha, el partido se moverá solo y avisaremos a la plantilla.', en:'The federation has postponed this match. When it sets the new date the match will move there by itself and the squad will be told.' },
     'pt.state_postponed_staff': { ca:'Marcat com a ajornat per l\'staff. No compta com a jugat, i no es demana disponibilitat ni RPE.', es:'Marcado como aplazado por el staff. No cuenta como jugado, y no se pide disponibilidad ni RPE.', en:'Marked as postponed by the staff. It does not count as played, and no availability or RPE is asked for.' },
     'pt.state_suspended':    { ca:'La Federació ha suspès aquest partit. Es reprendrà quan en fixi la data.', es:'La Federación ha suspendido este partido. Se reanudará cuando fije la fecha.', en:'The federation has suspended this match. It will resume once a date is set.' },
@@ -340,6 +345,16 @@
     'pt.state_resumption':   { ca:'Represa del partit suspès el {d}. És el mateix partit: els canvis d\'alineació s\'apunten com a canvis normals.', es:'Reanudación del partido suspendido el {d}. Es el mismo partido: los cambios de alineación se apuntan como cambios normales.', en:'Resumption of the match suspended on {d}. It is the same match: line-up changes are logged as normal substitutions.' },
     'pt.state_rescheduled':  { ca:'Ajornat del {d}. Disponibilitat demanada de nou per a la nova data.', es:'Aplazado del {d}. Disponibilidad pedida de nuevo para la nueva fecha.', en:'Postponed from {d}. Availability asked again for the new date.' },
     'pt.mark_postponed':     { ca:'Marca com a ajornat', es:'Marcar como aplazado', en:'Mark as postponed' },
+    'pt.state_suspended_moved': { ca:'Es va suspendre el {d} abans de començar. Es juga en aquesta data, com un partit normal.', es:'Se suspendió el {d} antes de empezar. Se juega en esta fecha, como un partido normal.', en:'It was suspended on {d} before it started. It is played on this date, as a normal match.' },
+    'pt.stop_warn':          { ca:'Hem posat el minut {m}\', l\'últim de l\'acta. Si el partit es va aturar més tard, corregeix-lo.', es:'Hemos puesto el minuto {m}\', el último del acta. Si el partido se paró más tarde, corrígelo.', en:'We set minute {m}\', the last one in the report. If the match stopped later, correct it.' },
+    'pt.stop_set':           { ca:'Aturat al minut {m}\'. Els minuts fins aquí compten el primer dia; la resta, a la represa.', es:'Parado en el minuto {m}\'. Los minutos hasta aquí cuentan el primer día; el resto, en la reanudación.', en:'Stopped at minute {m}\'. Minutes up to here count on the first day; the rest at the resumption.' },
+    'pt.stop_label':         { ca:'Minut de la suspensió', es:'Minuto de la suspensión', en:'Minute it stopped' },
+    'pt.stop_save':          { ca:'Desa', es:'Guardar', en:'Save' },
+    'pt.stop_bad':           { ca:'Un minut entre 1 i 130.', es:'Un minuto entre 1 y 130.', en:'A minute between 1 and 130.' },
+    'pt.started_unknown':    { ca:'Encara no sabem si el partit va començar. Mentrestant no compta com a jugat.', es:'Aún no sabemos si el partido empezó. Mientras tanto no cuenta como jugado.', en:'We do not know yet whether the match started. Until then it does not count as played.' },
+    'pt.not_started':        { ca:'No va començar: no compta com a partit jugat i no es demana RPE.', es:'No empezó: no cuenta como partido jugado y no se pide RPE.', en:'It did not start: it does not count as played and no RPE is asked.' },
+    'pt.started_yes':        { ca:'Va començar', es:'Empezó', en:'It started' },
+    'pt.started_no':         { ca:'No va començar', es:'No empezó', en:'It did not start' },
     'pt.unmark_postponed':   { ca:'Treu l\'ajornament', es:'Quitar el aplazamiento', en:'Undo postponement' },
     'pt.confirm_postpone':   { ca:'Marcar el partit com a ajornat i avisar la plantilla? Deixarà de comptar com a jugat. Quan sapigueu la nova data, edita el partit.', es:'¿Marcar el partido como aplazado y avisar a la plantilla? Dejará de contar como jugado. Cuando sepáis la nueva fecha, edita el partido.', en:'Mark the match as postponed and tell the squad? It will stop counting as played. When you know the new date, edit the match.' },
     'pt.confirm_unpostpone': { ca:'Treure l\'ajornament? El partit tornarà a comptar a la seva data.', es:'¿Quitar el aplazamiento? El partido volverá a contar en su fecha.', en:'Undo the postponement? The match will count on its date again.' },
@@ -1048,6 +1063,7 @@
     'cv.video_note_ph':  { ca:'Comentari per als jugadors', es:'Comentario para los jugadores', en:'Note for the players' },
     'cv.add':            { ca:'Afegeix', es:'Añadir', en:'Add' },
     'cv.foot_draft':     { ca:'Esborrany · no s\'ha enviat encara', es:'Borrador · todavía no se ha enviado', en:'Draft · not sent yet' },
+    'cv.foot_stale':     { ca:'Enviada per a la data anterior · torna-la a enviar per a la nova', es:'Enviada para la fecha anterior · vuelve a enviarla para la nueva', en:'Sent for the previous date · send it again for the new one' },
     'cv.foot_sent':      { ca:'Enviada a {n} jugadors · citació {t}', es:'Enviada a {n} jugadores · citación {t}', en:'Sent to {n} players · call-up {t}' },
     'cv.foot_changes':   { ca:'Enviada, però hi ha canvis sense desar', es:'Enviada, pero hay cambios sin guardar', en:'Sent, but there are unsaved changes' },
     'cv.save_draft':     { ca:'Desa l\'esborrany', es:'Guardar el borrador', en:'Save draft' },
@@ -3115,7 +3131,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 286;
+  const APP_VERSION = 287;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -4068,22 +4084,28 @@
     var seasonFrom = seasonStartStr(now);
 
     matches.forEach(function(m) {
+      /* Was it a match at all, and when did it START (v287)? matchParts says:
+         nothing for one postponed, withdrawn, or suspended before it started;
+         a started suspended game's first part is on the day it was stopped,
+         so it counts from then — not from a restart still to come. */
+      var parts = matchParts(m);
+      if (!parts.length) return;
+      var first = parts[0];
       // Only past matches
-      if (!m.date || !m.time) return;
-      var matchDate = new Date(m.date + 'T' + m.time + ':00');
+      if (!first.date || !first.time) return;
+      var matchDate = new Date(first.date + 'T' + first.time + ':00');
       if (matchDate > now) return;
-      if (m.date < seasonFrom) return;
+      if (first.date < seasonFrom) return;
       /* A fixture the federation dropped from its calendar (fcf.js marks it,
          never deletes it) was not played: the Calendari strikes it through
          and the reminders skip it. It is not a match to count either. */
       if (m.fcfRemoved) return;
-      /* Postponed (v286) — by the FCF or by staff — was not played either.
-         A SUSPENDED match was, in part: it counts once, as one match. */
+      /* A SUSPENDED match that started (v287) counts once, as one match:
+         its result is "S" until it resumes. */
       var mState = matchState(m);
-      if (mState === 'postponed') return;
 
       var sent = sentData[m.id];
-      var sentPlayers = (sent && Array.isArray(sent.players)) ? sent.players : [];
+      var sentPlayers = convCalledIds(sent);
       var inConvocatoria = sentPlayers.indexOf(String(playerId)) !== -1 || sentPlayers.indexOf(Number(playerId)) !== -1;
       var matchTeam = m.team || '';
       /* Same CATEGORY as well as the same letter (v280). The letter alone
@@ -4148,6 +4170,8 @@
 
       // --- Minutes calculation (supports multiple in/out subs) ---
       var minutes = '—';
+      // A stopped game's two parts, split at its stop minute (v287).
+      var minutesFirst = null, minutesRest = null;
       if (!inConvocatoria) {
         minutes = 'NC';
       } else if (hasStartingXI) {
@@ -4241,6 +4265,18 @@
         // Sum intervals
         minutes = 0;
         intervals.forEach(function(iv) { minutes += iv[1] - iv[0]; });
+        /* Clipped at the stop minute, for the two RPE sessions of a game
+           stopped mid-way (v287). The restart's line-up changes are subs at
+           that minute, so the same intervals hold both parts. */
+        var stopAt = (m.suspendedStarted === true && m.suspendedAt) ? Number(m.suspendedAt.minute) : NaN;
+        if (isFinite(stopAt) && stopAt > 0) {
+          minutesFirst = 0;
+          minutesRest = 0;
+          intervals.forEach(function (iv) {
+            minutesFirst += Math.max(0, Math.min(iv[1], stopAt) - iv[0]);
+            minutesRest += Math.max(0, iv[1] - Math.max(iv[0], stopAt));
+          });
+        }
       }
 
       // Status: Titular / Suplent / NC
@@ -4278,6 +4314,8 @@
         resultLetter: resultLetter,
         isOwnTeam: isOwnTeam,
         minutes: minutes,
+        minutesFirst: minutesFirst,
+        minutesRest: minutesRest,
         status: status,
         teamLetter: m.team || '',
         yellows: yellows,
@@ -5225,7 +5263,11 @@
     currentPage = '';
     try { await Push.removeToken(); } catch (e) { console.warn(e); }
     try { await auth.signOut(); }
-    catch (e) { console.warn('sign-out failed:', e); restore(); }
+    catch (e) { console.warn('sign-out failed:', e); }
+    /* Given back on success too (v287). `#btn-logout` is in index.html, not
+       re-rendered: restored only on a failure, it stayed "Sortint…" and
+       disabled for the next account signed in on this device. */
+    restore();
   }
 
   /** One test notification to this account's own devices (v285). Asks for
@@ -8573,15 +8615,14 @@
        sessions: its first half on `suspendedOn`, and — once the federation
        resumes it on a new date — a second row, "Represa", keyed `_r`. */
     const matchSessions = [];
+    /* matchParts — the server's RPE reminder asks the same rule: nothing for
+       a match not played (postponed, withdrawn, suspended before it started),
+       two rows for a stopped game with its restart (v286/v287). */
     matches.forEach(m => {
-      const st = matchState(m);
-      // Not played: postponed, or withdrawn by the federation (as the server's reminder).
-      if (st === 'postponed' || m.fcfRemoved) return;
-      const first = m.suspendedOn || { date: m.date, time: m.time };
-      matchSessions.push({ m, key: session.id + '_match_' + m.id, date: first.date, time: first.time || '' });
-      if (m.suspendedOn && st === 'resumption') {
-        matchSessions.push({ m, key: session.id + '_match_' + m.id + '_r', date: m.date, time: m.time || '', resumed: true });
-      }
+      matchParts(m).forEach(part => {
+        matchSessions.push({ m, key: session.id + '_match_' + m.id + part.suffix,
+          date: part.date, time: part.time, resumed: part.part === 'rest' });
+      });
     });
     matchSessions
       .filter(x => { const d = matchEndsAt({ date: x.date, time: x.time }); return !!d && now >= d; })
@@ -15202,12 +15243,14 @@
    */
   function ptScoreboardHtml(m, events, hasResult) {
     var sc = hasResult ? calcMatchScore(events) : null;
+    /* The state is the PILL above the row (v287); the score's slot keeps
+       the kick-off, greyed while the fixture is off — never "AJORNAT" twice,
+       never a 0–0. */
     var off = sc ? null : matchOffLabel(m);
     var middle = sc
       ? '<span class="pt-score">' + sc.home + ' – ' + sc.away + '</span>'
-      : off ? '<span class="pt-state' + (off.removed ? ' pt-state-removed' : '') + '">' +
-          sanitize(off.tag) + '</span>'
-      : '<span class="pt-kickoff">' + sanitize(m.time || '—') + '</span>';
+      : '<span class="pt-kickoff' + (off ? ' pt-kickoff-off' : '') + '">' + sanitize(m.time || '—') + '</span>';
+    var pill = matchPillHtml(m);
 
     /* `fcfJornada` is the federation's matchday number and is the only
        competition fact a fixture carries — there is no `competition`
@@ -15220,6 +15263,7 @@
 
     return '<div class="pt-sb-band">' +
       (jornada ? '<div class="pt-sb-eyebrow">' + jornada + '</div>' : '') +
+      (pill ? '<div class="pt-sb-pill">' + pill + '</div>' : '') +
       '<div class="pt-sb-row">' +
         '<span class="pt-sb-team pt-sb-team-l">' + sanitize(m.home) + '</span>' +
         ptCrestHtml(m, 'home') + middle + ptCrestHtml(m, 'away') +
@@ -15254,9 +15298,13 @@
       text = t(byFcf ? 'pt.state_postponed_fcf' : 'pt.state_postponed_staff');
       undo = !byFcf && !!o.canEdit;
     } else if (st === 'suspended') {
-      text = t('pt.state_suspended') + (o.staff ? ' ' + t('pt.state_suspended_staff') : '');
+      text = m.suspendedStarted === true
+        ? t('pt.state_suspended') + (o.staff ? ' ' + t('pt.state_suspended_staff') : '')
+        : t('pt.state_unstarted');
     } else if (st === 'resumption') {
       text = t('pt.state_resumption').replace('{d}', dm(m.suspendedOn.date));
+    } else if (m.suspendedOn && m.suspendedOn.date && m.suspendedOn.date !== m.date) {
+      text = t('pt.state_suspended_moved').replace('{d}', dm(m.suspendedOn.date));
     } else if (matchMovedNote(m)) {
       // Once it has been played, where it came from is all that is left to say.
       text = o.isPast ? matchMovedNote(m)
@@ -15267,6 +15315,47 @@
       '<span>' + sanitize(text) + '</span>' +
       (undo ? '<button class="btn btn-outline btn-small pt-unpostpone" data-match-id="' +
         sanitize(String(m.id)) + '">' + sanitize(t('pt.unmark_postponed')) + '</button>' : '') +
+    '</div>';
+  }
+
+  /**
+   * A suspended game, for the staff who run the calendar (v287): did it
+   * start, and at what minute did it stop.
+   *
+   * The FCF acta answers the first (line-ups or none) and guesses the second
+   * — its last event, since the stop minute is not on the page. A guess is
+   * shown as a WARNING with the field to correct it; a minute the staff gave
+   * is a plain line. The split decides the minutes of each RPE session.
+   * '' for anyone else, and for a game that is not suspended.
+   */
+  function ptStopBandHtml(m, o) {
+    o = o || {};
+    if (!o.canEdit || m.fcfRemoved || !(m.fcfState === 'suspended' || m.suspendedOn)) return '';
+    var id = sanitize(String(m.id));
+    var btn = function (cls, key) {
+      return '<button class="btn btn-outline btn-small ' + cls + '" data-match-id="' + id + '">' +
+        sanitize(t(key)) + '</button>';
+    };
+    if (m.suspendedStarted !== true) {
+      return '<div class="pt-stop-band">' +
+        '<span>' + sanitize(t(m.suspendedStarted === false ? 'pt.not_started' : 'pt.started_unknown')) + '</span>' +
+        '<span class="pt-stop-acts">' + btn('pt-started-yes', 'pt.started_yes') +
+          (m.suspendedStarted === false ? '' : btn('pt-started-no', 'pt.started_no')) + '</span>' +
+      '</div>';
+    }
+    var at = m.suspendedAt || {};
+    var min = Number(at.minute) > 0 ? Number(at.minute) : '';
+    var guess = at.src !== 'staff';
+    return '<div class="pt-stop-band' + (guess ? ' pt-stop-warn' : '') + '">' +
+      '<span>' + sanitize(guess && min
+        ? t('pt.stop_warn').replace('{m}', String(min))
+        : min ? t('pt.stop_set').replace('{m}', String(min)) : t('pt.stop_label')) + '</span>' +
+      '<span class="pt-stop-acts">' +
+        '<label class="pt-stop-f"><span>' + sanitize(t('pt.stop_label')) + '</span>' +
+          '<input type="number" class="pt-stop-min" min="1" max="130" inputmode="numeric" value="' +
+            sanitize(String(min)) + '" data-match-id="' + id + '"></label>' +
+        btn('pt-stop-save', 'pt.stop_save') + btn('pt-started-no', 'pt.started_no') +
+      '</span>' +
     '</div>';
   }
 
@@ -16140,7 +16229,9 @@
     const session = getSession();
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const sentEntry = sentData[m.id];
-    const sentPlayers = sentEntry ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : [];
+    /* TOLD for this day (v287): a call-up sent before the fixture moved to
+       its new date is not one — no "Ets convocat", no list, until re-sent. */
+    const sentPlayers = convToldList(sentEntry, m);
     const convSent = sentPlayers.length > 0;
     const convIncluded = convSent && sentPlayers.some(id => String(id) === String(session.id));
     /* resolveKitPieces owns all three eras of this field, including the
@@ -16234,7 +16325,9 @@
       /* Only the called-up squad is offered. A goal by somebody who was not
          in the convocatòria is a data-entry mistake, not a case to support,
          and the alternative list is the whole club. */
-      const calledUsers = (convSent ? sentPlayers : [])
+      /* Everyone CALLED, a stopped game's first part included (v287): a goal
+         at the restart may be scored by a man called for either half. */
+      const calledUsers = convCalledIds(sentEntry)
         .map(function (id) { return users.find(function (u) { return String(u.id) === String(id); }); })
         .filter(Boolean)
         .sort(function (a, b) { return posRankGlobal(a) - posRankGlobal(b); });
@@ -16371,6 +16464,7 @@
          not 0–0. */
       ptScoreboardHtml(m, events, matchIsOff(m) ? events.length > 0 : (isPast || events.length > 0)) +
       ptStateBandHtml(m, { staff: isStaff, canEdit: canEditFixture, isPast: isPast }) +
+      ptStopBandHtml(m, { canEdit: canEditFixture }) +
 
       /* The player's own answer to "am I in?", kept as its own strip
          directly under the result the way the design has it — it is the
@@ -16594,19 +16688,30 @@
    */
   let _pmMinutesCache = null;
   let _pmMinutesFrame = -1;
-  function playerMatchMinutes(uid, matchId) {
+  /* `part` (v287) is a matchParts() part: 'whole' (or none) is the match,
+     'first' / 'rest' the two halves of a game stopped mid-way, split at its
+     stop minute. With no stop minute known, the first part holds every
+     minute and the restart none — nothing is counted twice. */
+  function playerMatchMinutes(uid, matchId, part) {
     const f = window._renderFrame || 0;
     if (_pmMinutesFrame !== f) { _pmMinutesCache = {}; _pmMinutesFrame = f; }
     if (!_pmMinutesCache[uid]) {
       const byId = {};
       try {
         computePlayerMatchStats(uid).matchRows.forEach((r) => {
-          if (typeof r.minutes === 'number') byId[String(r.matchId)] = r.minutes;
+          if (typeof r.minutes === 'number') byId[String(r.matchId)] = r;
         });
       } catch (e) { /* stats unavailable — fall through to 0 */ }
       _pmMinutesCache[uid] = byId;
     }
-    return _pmMinutesCache[uid][String(matchId)] || 0;
+    return partMinutesOf(_pmMinutesCache[uid][String(matchId)], part) || 0;
+  }
+
+  function partMinutesOf(row, part) {
+    if (!row || typeof row.minutes !== 'number') return null;
+    if (part === 'first') return typeof row.minutesFirst === 'number' ? row.minutesFirst : row.minutes;
+    if (part === 'rest') return typeof row.minutesRest === 'number' ? row.minutesRest : null;
+    return row.minutes;
   }
 
   /**
@@ -16620,9 +16725,9 @@
    * it returns '—' when there is no XI and 'NC' when the player was not
    * called — and only a real number reaches the cache.
    */
-  function playerMatchMinutesKnown(uid, matchId) {
+  function playerMatchMinutesKnown(uid, matchId, part) {
     playerMatchMinutes(uid, matchId);          // fills the memo
-    var v = _pmMinutesCache[uid][String(matchId)];
+    var v = partMinutesOf(_pmMinutesCache[uid][String(matchId)], part);
     return (typeof v === 'number') ? v : null;
   }
 
@@ -16691,29 +16796,29 @@
       }
     });
     matchesList.forEach(m => {
-      /* v286: a postponed match carries no load. A suspended one is ONE match
-         in two sessions — its first half on the day it was stopped
-         (`suspendedOn`, which the federation's new date does not move), the
-         rest on the resumption day, with its own answer (`_r`). */
-      const st = matchState(m);
-      if (st === 'postponed') return;
-      const parts = [{ date: (m.suspendedOn && m.suspendedOn.date) || m.date, key: uid + '_match_' + m.id }];
-      if (m.suspendedOn && st === 'resumption') parts.push({ date: m.date, key: uid + '_match_' + m.id + '_r', resumed: true });
-      parts.forEach(p => {
+      /* matchParts (utils.js) is the one rule for the sessions a fixture is:
+         none for one postponed, withdrawn or suspended before it started; a
+         stopped game's first part on the day it stopped (`suspendedOn`) and
+         its restart, answered under `_r`, on the new date (v286/v287). */
+      matchParts(m).forEach(part => {
+        const p = { date: part.date, key: uid + '_match_' + m.id + part.suffix, resumed: part.part === 'rest' };
         if (!p.date || p.date < seasonStart || p.date > todayStr) return;
         const entry = rpeData[p.key];
         if (entry) {
-          /* Since v282 a player's match RPE carries the LINEUP's minutes, and
-             null when the lineup was not recorded yet. Look them up again here
-             so the load counts once the coach records it. */
-          const em = entry.minutes != null ? entry.minutes : (p.resumed ? null : playerMatchMinutesKnown(uid, m.id));
+          /* The LINE-UP's minutes win whenever there is a line-up (v287). The
+             minutes saved with the RPE are the line-up's at that moment — and
+             a player who answers before the coach logs the changes saved a
+             starter's 90 for a man subbed at 60. They are the fallback now,
+             for a match with no line-up at all. */
+          const live = playerMatchMinutesKnown(uid, m.id, part.part);
+          const em = live != null ? live : entry.minutes;
           sessions.push({ date: p.date, type: 'match', rpe: entry.rpe, minutes: em, matchId: m.id, real: true });
         } else if (p.resumed) {
           sessions.push({ date: p.date, type: 'match', rpe: null, minutes: null, matchId: m.id });
         } else {
           // Minutes come from the events, not the RPE, so a match can be
           // estimated even when the player submitted nothing at all.
-          const mins = playerMatchMinutes(uid, m.id);
+          const mins = playerMatchMinutes(uid, m.id, part.part);
           const est = mins > 0 ? imputeMatchRpe(squad, m.id, mins) : null;
           sessions.push(est == null ?
             { date: p.date, type: 'match', rpe: null, minutes: null, matchId: m.id } :
@@ -17735,7 +17840,8 @@
     (matches || []).forEach(function (m) {
       if (!m.date || !m.time) return;
       if (new Date(m.date + 'T' + m.time + ':00') > now) return;
-      if (m.date < from || m.fcfRemoved || matchState(m) === 'postponed') return;
+      // Not a matchday if it was not a match: matchParts (v287).
+      if (m.date < from || !matchParts(m).length) return;
       if (team && (m.team || '') !== team) return;
       n++;
     });
@@ -17930,21 +18036,17 @@
       });
     });
     matchesList.forEach(m => {
-      /* v286, as computeReadiness: postponed is not played, and a suspended
-         match is two sessions — its first part on the day it was stopped,
-         its restart (`_r`) on the new date. */
-      const st = matchState(m);
-      if (st === 'postponed') return;
-      const parts = [{ date: (m.suspendedOn && m.suspendedOn.date) || m.date, key: uid + '_match_' + m.id }];
-      if (m.suspendedOn && st === 'resumption') parts.push({ date: m.date, key: uid + '_match_' + m.id + '_r' });
+      /* As computeReadiness: matchParts for the sessions, and the line-up's
+         minutes ahead of the ones saved with the RPE (v287). */
       const maKey = uid + '_' + m.id;
       const avail = matchAvailData[maKey] || '';
-      parts.forEach(p => {
-        if (!p.date || p.date < seasonStart || p.date > todayStr) return;
-        const entry = rpeData[p.key];
+      matchParts(m).forEach(part => {
+        if (!part.date || part.date < seasonStart || part.date > todayStr) return;
+        const entry = rpeData[uid + '_match_' + m.id + part.suffix];
+        const live = entry ? playerMatchMinutesKnown(uid, m.id, part.part) : null;
         sessions.push({
-          date: p.date, type: 'match', label: (m.home || '') + ' vs ' + (m.away || ''),
-          rpe: entry ? entry.rpe : null, minutes: entry ? entry.minutes : null,
+          date: part.date, type: 'match', label: (m.home || '') + ' vs ' + (m.away || ''),
+          rpe: entry ? entry.rpe : null, minutes: entry ? (live != null ? live : entry.minutes) : null,
           skipped: avail === 'no_disponible', injured: false
         });
       });
@@ -27611,8 +27713,10 @@
         .filter(m => !curCat || (m.category || '') === curCat)
         .filter(m => !letter || !m.team || m.team === letter)
         .forEach(m => {
-          const sent = sentData[m.id];
-          const called = sent && Array.isArray(sent.players) ? sent.players.length : 0;
+          // Told for THIS day (v287): stale after a move, so the button is back.
+          const told = convToldList(sentData[m.id], m);
+          const sent = told.length ? sentData[m.id] : null;
+          const called = told.length;
           let available = 0; let answered = 0;
           players.forEach(p => {
             const v = matchAvail[p.id + '_' + m.id];
@@ -27624,11 +27728,11 @@
           bits.push(isOurTeam(m.home) ? t('ini.home_leg') : t('ini.away_leg'));
           if (m.fcfJornada) bits.push(t('pt.jornada') + ' ' + sanitize(String(m.fcfJornada)));
           if (m.location) bits.push(sanitize(m.location));
-          // "Ajornat del 11/10" — where a moved fixture came from (v286).
-          if (matchMovedNote(m)) bits.push(sanitize(matchMovedNote(m)));
           rows.push({
             kind: 'match', date: m.date, time: m.time || '',
             off: matchOffLabel(m),
+            // The state pill, beside the kind (v287): AJORNAT, SUSPÈS · del 03/10…
+            pill: matchPillHtml(m),
             label: matchLabel(m), place: sanitize(m.location || ''),
             meta: bits.filter(Boolean).join(' · '),
             home: m.home || '', away: m.away || '',
@@ -27654,8 +27758,7 @@
       if (r.kind === 'match' && r.off) {
         /* Off (v286): nobody to chase and no call-up to send. The tag
            takes the whole slot so the row cannot read as pending. */
-        right = `<div class="ini-ev-right"><div class="ini-ev-txt">
-          <span class="ini-ev-state">${sanitize(r.off.tag)}</span></div></div>`;
+        right = '<div class="ini-ev-right"></div>';
       } else if (r.kind === 'match') {
         if (r.convSent) {
           /* The call-up is out: the squad figure takes the donut's slot so
@@ -27709,7 +27812,7 @@
         ${iniDateStackHtml(r.date)}
         <div class="ini-bar ${barCls}"></div>
         <div class="ini-ev-mid">
-          <div class="ini-ev-t">${titleHtml}<span class="ini-kind">${kindWord}</span></div>
+          <div class="ini-ev-t">${titleHtml}<span class="ini-kind">${kindWord}</span>${r.pill || ''}</div>
           <div class="ini-ev-meta">${meta}${sentTag}</div>
         </div>
         ${right}
@@ -27821,11 +27924,8 @@
         .filter(m => m.date && m.date >= todayISO && !matchIsOff(m))
         .filter(m => !curCat || (m.category || '') === curCat)
         .filter(m => !catLetter || !m.team || m.team === catLetter)
-        .filter(m => {
-          const e = sentData[m.id];
-          const ids = e ? (Array.isArray(e) ? e : (e.players || [])) : [];
-          return !ids.length;
-        }).length;
+        // A call-up for the day before a move is one still to send (v287).
+        .filter(m => !convToldList(sentData[m.id], m).length).length;
 
     /* Season attendance for THIS squad: seasonAttendance() per player, summed.
        ⚠ It used to count every player against every session in scope with a
@@ -27859,7 +27959,7 @@
         .filter(m => !catLetter || !m.team || m.team === catLetter)
         .filter(m => m.date && m.date <= todayISO)
         // A postponed or withdrawn fixture was not a match of the season (v286).
-        .filter(m => !m.fcfRemoved && matchState(m) !== 'postponed').length;
+        .filter(m => matchParts(m).length > 0).length;
     const attended = sYes + sLate;
     const seasonPct = sSlots ? Math.round((attended / sSlots) * 100) : 0;
 
@@ -30575,7 +30675,7 @@
    */
   function calMatchDates(matches, cat, letter) {
     return (matches || []).filter(function (m) {
-      if (!m || !m.date || m.fcfRemoved || matchState(m) === 'postponed') return false;
+      if (!m || !m.date || !matchParts(m).length) return false;
       if (cat && m.category && m.category !== cat) return false;
       if (letter && m.team && m.team !== letter) return false;
       return true;
@@ -30789,11 +30889,64 @@
     if (m.fcfRemoved) return { tag: t('match.state_removed'), note: t('cal.removed'), removed: true };
     var st = matchState(m);
     if (st === 'postponed') return { tag: t('match.state_postponed'), note: t('match.note_postponed') };
-    if (st === 'suspended') return { tag: t('match.state_suspended'), note: t('match.note_suspended') };
+    // Stopped mid-way it will be RESUMED; stopped before it started, simply played later (v287).
+    if (st === 'suspended') {
+      return { tag: t('match.state_suspended'),
+        note: t(m.suspendedStarted === true ? 'match.note_suspended' : 'match.note_unstarted') };
+    }
     return null;
   }
 
   function matchIsOff(m) { return !!matchOffLabel(m); }
+
+  /**
+   * The coloured label above a fixture's result (v287): orange AJORNAT, red
+   * SUSPÈS, grey RETIRAT — kept once the fixture has its new date, saying
+   * where it came from ("AJORNAT · del 11/10", "SUSPÈS · Represa"). Null
+   * for an ordinary fixture. Only a different DAY earns the "del": a
+   * kick-off moved by an hour is not news.
+   */
+  function matchPill(m) {
+    if (!m) return null;
+    var dm = function (iso) { return String(iso || '').slice(8, 10) + '/' + String(iso || '').slice(5, 7); };
+    if (m.fcfRemoved) return { cls: 'removed', text: t('match.state_removed') };
+    var st = matchState(m);
+    if (st === 'postponed') return { cls: 'postponed', text: t('match.state_postponed') };
+    if (st === 'suspended') return { cls: 'suspended', text: t('match.state_suspended') };
+    if (st === 'resumption') {
+      return { cls: 'suspended', text: t('match.state_suspended') + ' · ' + t('match.resumption_tag') };
+    }
+    var p = m.postponedFrom;
+    var s2 = m.suspendedOn;
+    if (s2 && s2.date && s2.date !== m.date) {
+      return { cls: 'suspended', text: t('match.state_suspended') + ' · ' + t('match.from_day').replace('{d}', dm(s2.date)) };
+    }
+    if (p && p.date && p.date !== m.date) {
+      return { cls: 'postponed', text: t('match.state_postponed') + ' · ' + t('match.from_day').replace('{d}', dm(p.date)) };
+    }
+    return null;
+  }
+
+  /** Where a moved fixture still shows on the day it was MEANT to be
+      (v287), or null: a stopped game's first part on `suspendedOn`; for one
+      postponed or suspended before it started, a pointer to the new date. */
+  function calOldDayOf(m) {
+    if (!m || m.fcfRemoved) return null;
+    var st = matchState(m);
+    if (m.suspendedStarted === true && m.suspendedOn && st === 'resumption') {
+      return { date: m.suspendedOn.date, variant: 'first' };
+    }
+    var from = m.suspendedOn || m.postponedFrom;
+    if (from && from.date && m.date && from.date !== m.date && st !== 'postponed') {
+      return { date: from.date, variant: 'ptr' };
+    }
+    return null;
+  }
+
+  function matchPillHtml(m) {
+    var p = matchPill(m);
+    return p ? '<span class="st-pill st-pill-' + p.cls + '">' + sanitize(p.text) + '</span>' : '';
+  }
 
   /** "Ajornat del 11/10" on a postponed fixture that has its new date,
       "Represa · suspès el 03/10" on a suspended one's restart, '' else.
@@ -30811,7 +30964,11 @@
     return '';
   }
 
-  function calMatchBlockHtml(m, ctx) {
+  /* `variant` (v287) draws the fixture on the day it was MEANT to be, once
+     it has moved: 'first' — a game stopped mid-way, its first part, on the
+     day it was played; 'ptr' — a faint pointer to the new date, for one
+     postponed or suspended before it started. See calOldDayOf. */
+  function calMatchBlockHtml(m, ctx, variant) {
     var home = isOurTeam(m.home);
     var rival = home ? m.away : m.home;
     var pos = leaguePosLabel(m.opponentPos, _lang);
@@ -30858,6 +31015,41 @@
         (tail || '') + '</div>';
     };
     var head = headWith('');
+
+    if (variant === 'first') {
+      /* What was played that day: the score AT THE STOP, not the final one —
+         the restart's goals are the restart's day's. */
+      var stopAt = m.suspendedAt ? Number(m.suspendedAt.minute) : NaN;
+      var minOf = function (e) {
+        var p = String(e.minute || '').split('+');
+        return (Number(p[0]) || 0) + (Number(p[1]) || 0) * 0.01;
+      };
+      var firstEvs = getMatchEvents(m.id).filter(function (e) {
+        return !isFinite(stopAt) || minOf(e) <= stopAt;
+      });
+      var fsc = calcMatchScore(firstEvs);
+      var fus = home ? fsc.home : fsc.away;
+      var fthem = home ? fsc.away : fsc.home;
+      return '<div class="cal-b cal-b-match cal-b-first" data-cal-match="' + sanitize(String(m.id)) + '">' +
+        '<div class="cal-b-pill"><span class="st-pill st-pill-suspended">' +
+          sanitize(t('match.state_suspended')) + '</span></div>' +
+        headWith('<span class="cal-b-res">' + fus + ' – ' + fthem + '</span>') +
+        (isFinite(stopAt) ? '<span class="cal-x cal-meta cal-b-note">' +
+          sanitize(t('cal.stopped_at').replace('{m}', String(stopAt))) + '</span>' : '') +
+        '</div>';
+    }
+    if (variant === 'ptr') {
+      var postponed = !!m.postponedFrom && !m.suspendedOn;
+      var to = m.date ? tDayShort(new Date(m.date + 'T12:00:00').getDay()) + ' ' +
+        m.date.slice(8, 10) + '/' + m.date.slice(5, 7) : '—';
+      return '<div class="cal-b cal-b-ptr cal-b-ptr-' + (postponed ? 'postponed' : 'suspended') +
+        '" data-cal-match="' + sanitize(String(m.id)) + '">' +
+        '<span class="cal-b-ptr-l">' + sanitize(t('cal.moved_to')
+          .replace('{s}', t(postponed ? 'match.state_postponed' : 'match.state_suspended'))
+          .replace('{d}', to)) + '</span>' +
+        '<span class="cal-b-ptr-r">' + sanitize(rival) + '</span>' +
+        '</div>';
+    }
     var whereLine = '<span class="cal-x cal-meta">' + sanitize([m.location, m.team ? t('nt.team') + ' ' + m.team : '']
       .filter(Boolean).join(' · ')) + '</span>';
 
@@ -30865,15 +31057,21 @@
        would, and nothing below it is an instruction — no call-up time, no
        kit, no "squad not sent" nagging about a match that is off. */
     var off = matchOffLabel(m);
+    /* The label ABOVE the result (v287), on its own line: the owner's ask,
+       and a word that does not fight the rival's name for the row. */
+    var pill = matchPillHtml(m);
+    var pillLine = pill ? '<div class="cal-b-pill">' + pill + '</div>' : '';
     if (off) {
+      /* A game stopped mid-way has a score so far; one that never started,
+         or is postponed, has none — never a 0–0. */
+      var soFar = getMatchEvents(m.id).length
+        ? '<span class="cal-b-res">' + sanitize(calResultText(m)) + '</span>' : '';
       return '<div class="cal-b cal-b-match cal-b-off' + (off.removed ? ' cal-b-removed' : '') +
         '" data-cal-match="' + sanitize(String(m.id)) + '">' +
-        headWith('<span class="cal-b-state">' + sanitize(off.tag) + '</span>') +
+        pillLine + headWith(soFar) +
         '<span class="cal-x cal-meta cal-b-note">' + sanitize(off.note) + '</span>' +
         whereLine + '</div>';
     }
-    var moved = matchMovedNote(m);
-    var movedLine = moved ? '<span class="cal-x cal-meta cal-b-note">' + sanitize(moved) + '</span>' : '';
 
     if (ctx.isPast(m)) {
       /* A played fixture answers one question. The call-up, the kick-off
@@ -30889,8 +31087,8 @@
       var out = calOutcomeOf(m, ctx);
       return '<div class="cal-b cal-b-match cal-b-' + out +
         '" data-cal-match="' + sanitize(String(m.id)) + '">' +
-        headWith('<span class="cal-b-res">' + sanitize(calResultText(m)) + '</span>') +
-        movedLine + whereLine +
+        pillLine + headWith('<span class="cal-b-res">' + sanitize(calResultText(m)) + '</span>') +
+        whereLine +
         '<span class="cal-x cal-meta">' + sanitize(t('cal.played_line')
           .replace('{n}', String(ctx.calledCount(m)))) + '</span>' +
         '</div>';
@@ -30900,7 +31098,7 @@
     var sent = ctx.convSent(m);
     var kit = sent ? kitIconsHtml(resolveKitPieces(ctx.sentData[m.id], ctx.kits), { shorts: false }) : '';
     return '<div class="cal-b cal-b-match" data-cal-match="' + sanitize(String(m.id)) + '">' +
-      head +
+      pillLine + head +
       '<div class="cal-b-when cal-kick">' +
         (callup ? '<span class="cal-cu">' + sanitize(t('cal.callup_short')) + ' ' +
           (sent ? '<span class="conv-blink-dot"></span>' : '') +
@@ -30910,7 +31108,7 @@
       '</div>' +
       (m.fcfJornada ? '<span class="cal-x cal-comp">' + sanitize(t('cal.league')) +
         ' · ' + sanitize(t('cal.md_n').replace('{n}', m.fcfJornada)) + '</span>' : '') +
-      movedLine + whereLine +
+      whereLine +
       '<span class="cal-x cal-meta">' + sanitize(sent
         ? t('cal.squad_sent').replace('{n}', String(ctx.calledCount(m)))
         : t('cal.squad_not_sent')) + '</span>' +
@@ -31000,15 +31198,14 @@
         var end = sessionEndsAt(row);
         return !!end && end <= now;
       },
+      /* TOLD for the fixture's current day (v287): a call-up sent before it
+         moved reads "Convocatòria pendent" again, with no kit and no dot. */
       convSent: function (m) {
-        var e = sentData[m.id];
-        var list = e ? (Array.isArray(e) ? e : (e.players || [])) : [];
-        return list.length > 0;
+        return convToldList(sentData[m.id], m).length > 0;
       },
+      // How many were CALLED — a stopped game's first part included.
       calledCount: function (m) {
-        var e = sentData[m.id];
-        var list = e ? (Array.isArray(e) ? e : (e.players || [])) : [];
-        return list.length;
+        return convCalledIds(sentData[m.id]).length;
       },
       /* The squad called to a session, and how many of them are coming.
          calledPlayers, not every player in the club: the old donut counted
@@ -31073,6 +31270,14 @@
       else push(s.date, 1, 'train', calTrainingBlockHtml(s, ctx));
     });
     ctx.matches.forEach(function (m) {
+      /* The day it was meant to be (v287): a stopped game's first part, or a
+         pointer to the new date. Ranked LAST and kind 'ptr' for the pointer,
+         so it never takes a cell's colour from a session that day. */
+      var old = calOldDayOf(m);
+      if (old && inGrid(old.date)) {
+        push(old.date, old.variant === 'ptr' ? 4 : 0, old.variant === 'ptr' ? 'ptr' : 'match',
+            calMatchBlockHtml(m, ctx, old.variant));
+      }
       if (!inGrid(m.date)) return;
       /* An off fixture past its date has no outcome to colour the cell
          with — it used to be read as a 0–0 and painted as a draw. */
@@ -31218,8 +31423,11 @@
         const nMatch = blocks.filter(function (b) {
           return b.kind === 'match' || /^(win|draw|loss)$/.test(b.kind);
         }).length;
-        const kind = !blocks.length ? '' :
-          (nMatch > 1 ? 'match' : blocks[0].kind);
+        /* A pointer to a moved fixture (v287) is a note, not a thing on the
+           day: it gives the cell no colour of its own. */
+        const filling = blocks.filter(function (b) { return b.kind !== 'ptr'; });
+        const kind = !filling.length ? '' :
+          (nMatch > 1 ? 'match' : filling[0].kind);
 
         const cls = ['cal-cell'];
         if (kind) cls.push('cal-k-' + kind);
@@ -32001,7 +32209,12 @@
 
     const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
     const sentEntry = convSelectedMatchId && sentData[convSelectedMatchId] ? sentData[convSelectedMatchId] : null;
-    const sentPlayers = sentEntry ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : null;
+    /* Sent for the day before the fixture moved (v287): not sent. The
+       picker offers Envia again, over the same list — the draft in
+       fa_convocatoria survives — and players read it as pending. */
+    const staleSent = !!sentEntry && convStale(sentEntry, selected);
+    const sentPlayers = sentEntry && !staleSent
+      ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : null;
     const isSent = !!sentPlayers;
     const hasChanges = isSent && JSON.stringify(saved) !== JSON.stringify(sentPlayers);
 
@@ -32068,13 +32281,12 @@
        friendly has none — the segment is dropped rather than reading
        "Jornada undefined", the same rule ptScoreboard follows. */
     const mWhen = (m) => {
-      const off = matchOffLabel(m);
+      const pill = matchPillHtml(m);
       return [
         m.date ? tDateShort(m.date) : '', m.time || '',
         ptOurSide(m) === 'home' ? t('mn.at_home') : t('mn.at_away'),
         m.fcfJornada ? t('pt.jornada') + ' ' + sanitize(String(m.fcfJornada)) : ''
-      ].filter(Boolean).join(' · ') +
-        (off ? ' <span class="cv-off">' + sanitize(off.tag) + '</span>' : '');
+      ].filter(Boolean).join(' · ') + (pill ? ' ' + pill : '');
     };
 
     const matchToggle = selected
@@ -32270,6 +32482,7 @@
         ? (hasChanges ? t('cv.foot_changes')
           : t('cv.foot_sent').replace('{n}', String(sentPlayers.length))
               .replace('{t}', sanitize(callupDefault || '—')))
+        : staleSent ? t('cv.foot_stale')
         : t('cv.foot_draft');
     const footer = ro || !convSelectedMatchId ? '' :
       '<div class="cv-foot">' +
@@ -35947,7 +36160,8 @@
       return !done || now < done;
     }).forEach(m => {
       const sentEntry = sentData[m.id];
-      const sentPlayers = sentEntry ? (Array.isArray(sentEntry) ? sentEntry : (sentEntry.players || [])) : [];
+      // Told for THIS day (v287): after a move the pills come back until it is re-sent.
+      const sentPlayers = convToldList(sentEntry, m);
       const convSent = sentPlayers.length > 0;
       const convIncluded = convSent && sentPlayers.some(id => String(id) === String(session.id));
       // Resolved once here rather than carried as two raw fields: the
@@ -35964,10 +36178,9 @@
       if (m.location) bits.push(sanitize(m.location));
       const callupMap = JSON.parse(localStorage.getItem('fa_convocatoria_callup') || '{}');
       if (callupMap[m.id]) bits.push(t('ini.meet_at') + ' ' + sanitize(callupMap[m.id]));
-      if (matchMovedNote(m)) bits.push(sanitize(matchMovedNote(m)));
-      // v286: postponed, suspended or withdrawn — its tag, and no question.
+      // v286: postponed, suspended or withdrawn — its pill (v287), and no question.
       const off = matchOffLabel(m);
-      activities.push({ type: 'match', id: m.id, date: m.date, time: m.time, off,
+      activities.push({ type: 'match', id: m.id, date: m.date, time: m.time, off, pill: matchPillHtml(m),
         home: m.home || '', away: m.away || '',
         // ⚠ See the staff row above: without this the crest cannot reach the badge helper.
         oppBadge: m.opponentBadge || '',
@@ -36087,8 +36300,7 @@
         ${iniDateStackHtml(a.date)}
         <div class="ini-bar ${barCls}"></div>
         <div class="ini-ev-mid">
-          <div class="ini-ev-t">${titleHtml}<span class="ini-kind">${kindWord}</span>${a.off
-            ? `<span class="ini-ev-state">${sanitize(a.off.tag)}</span>` : ''}</div>
+          <div class="ini-ev-t">${titleHtml}<span class="ini-kind">${kindWord}</span>${a.pill || ''}</div>
           <div class="ini-ev-meta">${a.detail}${sentTag}</div>
         </div>
         ${availHtml}${matchAvailHtml}
@@ -36393,6 +36605,30 @@
       btn.addEventListener('click', function () {
         if (!confirm(t('pt.confirm_unpostpone'))) return;
         setMatchPostponedByHand(btn.dataset.matchId, false);
+        renderPage(getSession());
+      });
+    });
+    // A suspended game: did it start, and when did it stop (v287).
+    $$('.pt-stop-save').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const inp = document.querySelector('.pt-stop-min[data-match-id="' + btn.dataset.matchId + '"]');
+        if (!setSuspendedStart(btn.dataset.matchId, true, inp ? inp.value : '')) {
+          if (inp) inp.classList.add('input-error');
+          _showPushToast(t('pt.stop_label'), t('pt.stop_bad'));
+          return;
+        }
+        renderPage(getSession());
+      });
+    });
+    $$('.pt-started-yes').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setSuspendedStart(btn.dataset.matchId, true);
+        renderPage(getSession());
+      });
+    });
+    $$('.pt-started-no').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setSuspendedStart(btn.dataset.matchId, false);
         renderPage(getSession());
       });
     });
@@ -36857,12 +37093,14 @@
        it. */
     const moved = m.date !== was.date || m.time !== was.time;
     const kind = !moved ? '' : wasState === 'postponed' ? 'rescheduled'
-      : wasState === 'suspended' ? 'resumption' : '';
-    if (kind === 'rescheduled') {
+      // A suspended game that never started is simply on a new date (v287).
+      : wasState === 'suspended' ? (m.suspendedStarted === true ? 'resumption' : 'rescheduled') : '';
+    // Each state keeps its own stamp: a suspended game reads "del 03/10" as SUSPÈS.
+    if (kind && wasState === 'postponed') {
       delete m.manualState;
       if (!m.postponedFrom) m.postponedFrom = was;
     }
-    if (kind === 'resumption' && !m.suspendedOn) m.suspendedOn = was;
+    if (kind && wasState === 'suspended' && !m.suspendedOn) m.suspendedOn = was;
     localStorage.setItem('fa_matches', JSON.stringify(matches));
     if (kind) {
       matchClearAvailability(m.id);
@@ -36901,6 +37139,32 @@
     }
     localStorage.setItem('fa_matches', JSON.stringify(matches));
     if (on) matchNoticeToSquad(m, 'postponed');
+    return m;
+  }
+
+  /**
+   * The staff's word on a suspended game (v287): it started — stopping at
+   * `minute` — or it did not. Theirs wins: the FCF probe asks only while
+   * `suspendedStarted` is unknown, and the partial import never replaces a
+   * minute the staff gave. Returns the row, or null for a bad minute.
+   */
+  function setSuspendedStart(id, started, minute) {
+    let matches = [];
+    try { matches = JSON.parse(localStorage.getItem('fa_matches') || '[]'); } catch (e) { matches = []; }
+    if (!Array.isArray(matches)) return null;
+    const m = matches.find(function (x) { return String(x.id) === String(id); });
+    if (!m) return null;
+    if (started) {
+      const keep = m.suspendedAt && Number(m.suspendedAt.minute) > 0 ? Number(m.suspendedAt.minute) : null;
+      const n = minute === undefined ? keep : Math.round(Number(minute));
+      if (n !== null && !(n >= 1 && n <= 130)) return null;
+      m.suspendedStarted = true;
+      if (n !== null) m.suspendedAt = { minute: n, src: 'staff' };
+    } else {
+      m.suspendedStarted = false;
+      delete m.suspendedAt;
+    }
+    localStorage.setItem('fa_matches', JSON.stringify(matches));
     return m;
   }
 
@@ -38274,7 +38538,9 @@
        a re-save or a re-send wiped the coach's line-up. Merging over `prev`
        keeps it. The era-2 keys are deleted rather than left beside the new
        ids so one entry can never claim two different kits. */
-    function convSentEntry(prev, list, videos) {
+    /* `sending` (v287): Envia, not Desa. Only a send says the squad has been
+       told for this fixture's day; a re-saved stale call-up stays stale. */
+    function convSentEntry(prev, list, videos, sending) {
       const uniformData = JSON.parse(localStorage.getItem('fa_convocatoria_uniform') || '{}');
       const d = (convSelectedMatchId && uniformData[convSelectedMatchId]) || {};
       const kits = clubKits();
@@ -38300,7 +38566,22 @@
          with nobody in it", and computePlayerMatchStats tells those apart:
          the first is '—', the second makes every called-up player a
          Suplent. */
-      if (Array.isArray(next.startingXI)) {
+      const mNow = JSON.parse(localStorage.getItem('fa_matches') || '[]')
+        .find((x) => String(x.id) === String(convSelectedMatchId)) || null;
+      /* A stopped game's RESTART call-up (v287). The first part's squad and
+         XI are a record of what happened, kept once, the first time a call-up
+         goes out for the restart; and the XI is not filtered against the
+         restart's list, so a first-part starter left out keeps his minutes. */
+      const restart = !!mNow && matchState(mNow) === 'resumption';
+      if (sending && restart && prev && !prev.firstPart && convStale(prev, mNow)) {
+        next.firstPart = {
+          players: (Array.isArray(prev) ? prev : (prev.players || [])).slice(),
+          startingXI: Array.isArray(prev.startingXI) ? prev.startingXI.slice() : null
+        };
+      }
+      // The kick-off it went out for: convStale reads it (v287).
+      if (sending && mNow) next.sentFor = { date: mNow.date || '', time: mNow.time || '' };
+      if (Array.isArray(next.startingXI) && !restart) {
         const called = new Set((list || []).map(String));
         next.startingXI = next.startingXI.filter((id) => called.has(String(id)));
       }
@@ -38320,7 +38601,7 @@
         const list = getSaved();
         if (convSelectedMatchId && sentData[convSelectedMatchId] && list.length) {
           sentData[convSelectedMatchId] = convSentEntry(
-              sentData[convSelectedMatchId], list, getVideos());
+              sentData[convSelectedMatchId], list, getVideos(), false);
           localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
         }
         const orig = saveBtn.textContent;
@@ -38339,7 +38620,17 @@
         if (!convSelectedMatchId) return;
         const sentData = JSON.parse(localStorage.getItem('fa_convocatoria_sent') || '{}');
         if (sendBtn.dataset.cvUnsend) {
-          delete sentData[convSelectedMatchId];
+          /* A restart's call-up retracted (v287) goes back to the FIRST
+             part's, not to nothing: who played before the stop, and the
+             minutes that hang off that XI, are not the coach's to undo here. */
+          const fp = sentData[convSelectedMatchId] && sentData[convSelectedMatchId].firstPart;
+          if (fp) {
+            const back = { players: fp.players || [] };
+            if (Array.isArray(fp.startingXI)) back.startingXI = fp.startingXI;
+            sentData[convSelectedMatchId] = back;
+          } else {
+            delete sentData[convSelectedMatchId];
+          }
           localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
           renderPage(getSession());
           return;
@@ -38351,7 +38642,7 @@
           .find(m => String(m.id) === String(convSelectedMatchId));
         if (matchIsOff(offMatch) && !confirm(t('conv.confirm_postponed'))) return;
         sentData[convSelectedMatchId] = convSentEntry(
-            sentData[convSelectedMatchId], list, getVideos());
+            sentData[convSelectedMatchId], list, getVideos(), true);
         localStorage.setItem('fa_convocatoria_sent', JSON.stringify(sentData));
 
         // Push notification to called-up players
@@ -41006,8 +41297,15 @@
         const matchPart = key.split('_match_')[1] || '';
         const resumedRow = /_r$/.test(matchPart);
         const matchIdOf = matchPart.replace(/_r$/, '');
+        /* WHICH session of the fixture this row is (v287): matchParts, by the
+           key's suffix — its day and its share of the minutes. */
+        const mObj = tag === 'match'
+          ? JSON.parse(localStorage.getItem('fa_matches') || '[]').find(m => String(m.id) === matchIdOf)
+          : null;
+        const thisPart = mObj ? matchParts(mObj).find(p => p.suffix === (resumedRow ? '_r' : '')) : null;
         if (tag === 'match') {
-          minutes = resumedRow ? null : playerMatchMinutesKnown(getSession().id, matchIdOf);
+          minutes = playerMatchMinutesKnown(getSession().id, matchIdOf,
+              thisPart ? thisPart.part : (resumedRow ? 'rest' : 'whole'));
         } else {
           minutes = parseInt(minInput.value, 10);
           /* The ceiling again at submit, not only on `input`. A value the
@@ -41032,11 +41330,10 @@
             sessionId = '';
           }
         } else {
-          const matches = JSON.parse(localStorage.getItem('fa_matches') || '[]');
-          const mObj = matches.find(m => String(m.id) === matchIdOf);
-          /* The day the session was PLAYED: a suspended match's first half
-             stays on `suspendedOn`; its resumption is on the match's date. */
-          activityDate = !mObj ? '' : (!resumedRow && mObj.suspendedOn ? mObj.suspendedOn.date : mObj.date);
+          /* The day the session was PLAYED, from its part: a stopped game's
+             first part on `suspendedOn`, its restart — and a game that never
+             started, on its new date — on the match's date. */
+          activityDate = thisPart ? thisPart.date : (mObj ? mObj.date : '');
         }
         if (!activityDate) { const n = new Date(); activityDate = n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0'); }
         const rpeData = JSON.parse(localStorage.getItem('fa_player_rpe') || '{}');

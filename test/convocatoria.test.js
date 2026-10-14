@@ -52,8 +52,9 @@ const BLOCK = grab('  /* ---------- Convocatòria, redesigned (v227)',
 /* v286: the REAL off-fixture helpers (matchOffLabel, matchIsOff,
    matchMovedNote) and the matchState they read, declared in the body —
    a postponed fixture renders here exactly as it does live. */
-const OFF_HELPERS = require('../js/utils.js').matchState.toString() + '\n' +
-    grab('  /* ── Postponed, suspended, withdrawn (v286)', '  function calMatchBlockHtml(m, ctx)');
+const OFF_HELPERS = ['matchState', 'matchParts', 'convStale', 'convToldList', 'convCalledIds']
+    .map((f) => require('../js/utils.js')[f].toString()).join('\n') + '\n' +
+    grab('  /* ── Postponed, suspended, withdrawn (v286)', '  function calMatchBlockHtml(m, ctx, variant)');
 const BIND = grab('  // ---------- Convocatòria: drag-and-drop, menus, bands',
     '  // #endregion Matchday, Calendar & Convocatòria');
 
@@ -434,9 +435,9 @@ describe('Convocatòria — the fixture picker and a postponed match (v286)', ()
     STORE.fa_matches = JSON.stringify([OFF, MATCH]);
     const html = build(null).renderConvocatoria();
     const opt = html.slice(html.indexOf('data-cv-match="2"'), html.indexOf('data-cv-match="1"'));
-    assert.ok(opt.includes('<span class="cv-off">match.state_postponed</span>'), opt);
+    assert.ok(opt.includes('<span class="st-pill st-pill-postponed">match.state_postponed</span>'), opt);
     const on = html.slice(html.indexOf('data-cv-match="1"'));
-    assert.ok(!on.slice(0, on.indexOf('</div>')).includes('cv-off'), 'the tag on an ordinary fixture');
+    assert.ok(!on.slice(0, on.indexOf('</div>')).includes('st-pill'), 'the pill on an ordinary fixture');
   });
 
   it('with nothing else ahead, the postponed one is offered rather than nothing', () => {
@@ -444,8 +445,26 @@ describe('Convocatòria — the fixture picker and a postponed match (v286)', ()
     assert.ok(/cv-menu-o-on" data-cv-match="2"/.test(build(null).renderConvocatoria()));
   });
 
-  it('the tag has a rule, square-cornered like the rest of the page', () => {
-    assert.ok(/\.cv-off\s*\{/.test(CVCSS), 'no .cv-off rule in the cv- block');
+  it('a call-up sent before the move is not sent: Envia again, over the same list (v287)', () => {
+    const moved = Object.assign({}, MATCH, {postponedFrom: {date: '2099-10-01', time: '20:00'}});
+    STORE.fa_matches = JSON.stringify([moved]);
+    STORE.fa_convocatoria = JSON.stringify({1: ['p1', 'p2']});
+    STORE.fa_convocatoria_sent = JSON.stringify({1: {players: ['p1', 'p2']}});   // before v287: no sentFor
+    const html = build(1).renderConvocatoria();
+    assert.ok(html.includes('cv.foot_stale'), 'nothing says it went out for the old day');
+    assert.ok(!html.includes('data-cv-unsend'), 'it still offers Desenvia');
+    assert.deepStrictEqual(idsIn(html, 'cv-called'), ['p1', 'p2'], 'the list was not kept');
+    // Sent again for the new day: sent.
+    STORE.fa_convocatoria_sent = JSON.stringify({1: {players: ['p1', 'p2'],
+      sentFor: {date: MATCH.date, time: MATCH.time}}});
+    assert.ok(build(1).renderConvocatoria().includes('data-cv-unsend'));
+  });
+
+  it('the pill is placed by the cv- block and square-cornered (v287)', () => {
+    assert.ok(/\.cv-mt-when \.st-pill\s*\{/.test(CVCSS), 'no rule for the pill in the picker');
+    const all = require('./read-css').readCss();
+    const rule = all.slice(all.indexOf('.st-pill {'), all.indexOf('}', all.indexOf('.st-pill {')));
+    assert.ok(rule.length > 10 && !/border-radius/.test(rule), 'the pill is rounded');
   });
 });
 
@@ -726,6 +745,16 @@ describe('Convocatòria — the binder, wired to a real DOM', () => {
     click(doc, '#cv-vadd');
     assert.deepStrictEqual(JSON.parse(STORE.fa_convocatoria_videos)['1'],
         [{title: 'https://youtu.be/x', url: 'https://youtu.be/x', comment: 'els seus córners'}]);
+  });
+
+  it('retracting a restart\'s call-up goes back to the first part\'s, not to nothing (v287)', () => {
+    STORE.fa_convocatoria = JSON.stringify({1: ['p3']});
+    STORE.fa_convocatoria_sent = JSON.stringify({1: {players: ['p3'], startingXI: ['p1'],
+      sentFor: {date: MATCH.date, time: MATCH.time},
+      firstPart: {players: ['p1', 'p2'], startingXI: ['p1']}}});
+    click(wire().doc, '#btn-conv-send');           // sent and unchanged: it is the unsend
+    assert.deepStrictEqual(JSON.parse(STORE.fa_convocatoria_sent)['1'],
+        {players: ['p1', 'p2'], startingXI: ['p1']}, 'the first part\'s squad was wiped');
   });
 
   it('sends, and then unsends', () => {

@@ -295,15 +295,16 @@ describe('matchPlayerMarks — the quiet cases', () => {
  */
 function loadConvSentEntry(store) {
   const src2 = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
-  const i = src2.indexOf('    function convSentEntry(prev, list, videos) {');
+  const i = src2.indexOf('    function convSentEntry(prev, list, videos, sending) {');
   assert.notStrictEqual(i, -1, 'convSentEntry not found in js/app.js');
   const body = src2.slice(i, src2.indexOf('\n    }', i) + 6);
   const localStorage = {getItem: (k) => (k in store ? store[k] : null)};
   const clubKits = () => [{id: 'k1'}, {id: 'k2'}];
+  const U = require('../js/utils.js');
   // eslint-disable-next-line no-new-func
-  return new Function('localStorage', 'clubKits', 'convSelectedMatchId', `
+  return new Function('localStorage', 'clubKits', 'convSelectedMatchId', 'matchState', 'convStale', `
     ${body}
-    return convSentEntry;`)(localStorage, clubKits, 'm1');
+    return convSentEntry;`)(localStorage, clubKits, 'm1', U.matchState, U.convStale);
 }
 
 describe('convSentEntry — the XI follows the call-up', () => {
@@ -345,6 +346,44 @@ describe('convSentEntry — the XI follows the call-up', () => {
     const next = build(null, ['a', 'b'], []);
     assert.ok(!('startingXI' in next));
     assert.deepStrictEqual(next.players, ['a', 'b']);
+  });
+});
+
+describe('convSentEntry — a call-up is for a day (v287)', () => {
+  const U = require('../js/utils.js');
+  const RESUMED = {id: 'm1', date: '2026-10-25', time: '12:00',
+    suspendedOn: {date: '2026-10-03', time: '18:00'}, suspendedStarted: true};
+  const withMatch = (m) => loadConvSentEntry({fa_matches: JSON.stringify([m])});
+
+  it('a SEND is stamped with the kick-off it went out for; a draft save is not', () => {
+    const m = {id: 'm1', date: '2026-10-17', time: '16:00'};
+    assert.deepStrictEqual(withMatch(m)(null, ['a'], [], true).sentFor, {date: '2026-10-17', time: '16:00'});
+    assert.ok(!('sentFor' in withMatch(m)({players: ['a']}, ['a'], [], false)),
+        'a draft save made a stale call-up current, with no push');
+  });
+
+  it('the first send for a restart keeps the first part squad and XI, once', () => {
+    const build = withMatch(RESUMED);
+    const firstSent = {players: ['a', 'b', 'c'], startingXI: ['a', 'b'],
+      sentFor: {date: '2026-10-03', time: '18:00'}};
+    const next = build(firstSent, ['a', 'c', 'd'], [], true);
+    assert.deepStrictEqual(next.firstPart, {players: ['a', 'b', 'c'], startingXI: ['a', 'b']});
+    // b started the first part and is not called for the restart: still a starter.
+    assert.deepStrictEqual(next.startingXI, ['a', 'b'], 'a first-part starter lost his minutes');
+    assert.deepStrictEqual(U.convCalledIds(next).sort(), ['a', 'b', 'c', 'd']);
+    assert.strictEqual(U.convStale(next, RESUMED), false, 'the restart call-up reads as stale');
+    // A second send does not overwrite the record.
+    const again = build(next, ['a'], [], true);
+    assert.deepStrictEqual(again.firstPart, next.firstPart);
+  });
+
+  it('a restart moved AGAIN: the new call-up still keeps the FIRST part, not the restart', () => {
+    const moved = Object.assign({}, RESUMED, {date: '2026-11-08'});
+    const restartSent = {players: ['a', 'c', 'd'], startingXI: ['a', 'b'],
+      sentFor: {date: '2026-10-25', time: '12:00'},
+      firstPart: {players: ['a', 'b', 'c'], startingXI: ['a', 'b']}};
+    const next = withMatch(moved)(restartSent, ['a', 'e'], [], true);
+    assert.deepStrictEqual(next.firstPart, restartSent.firstPart, 'the first part re-recorded from the restart');
   });
 });
 

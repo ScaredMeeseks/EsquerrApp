@@ -132,8 +132,10 @@ describe('parseFcfActaEvents — real actas', () => {
     assert.deepStrictEqual(cardsOf(a, who(a, 'home', 18)), ['yellow@64', 'yellow@65']);
   });
 
-  it('reads nothing more from an acta that is not closed', () => {
-    assert.deepStrictEqual(F.parseFcfActaEvents(SUSP), {ok: true, closed: false, status: 'SUSPÈS'});
+  it('a PENDENT acta says only that; a SUSPÈS one is read on (v287)', () => {
+    // v287: a SUSPÈS page is read on — see fcf-acta-partial.test.js for what it holds.
+    const s = F.parseFcfActaEvents(SUSP);
+    assert.deepStrictEqual([s.ok, s.closed, s.status, s.started, s.partial], [true, false, 'SUSPÈS', true, true]);
     assert.deepStrictEqual(F.parseFcfActaEvents(PEND), {ok: true, closed: false, status: 'Pendent'});
   });
 

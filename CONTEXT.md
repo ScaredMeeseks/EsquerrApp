@@ -12963,3 +12963,95 @@ Version triple → **v285**.
 **Deploy order:** functions first (sync, watch, reminders, `sendTestPush`), then push.
 
 Version triple → **v286**.
+
+### 2026-10-14 — v287: postponed/suspended, round two; "Sortint…" stuck after switching account
+
+**The owner's feedback on v286:**
+- **Label:** an orange AJORNAT / red SUSPÈS label above the result, kept once the game has its new date.
+- **The restart:** it must show in the right place in the Calendari, and a new convocatòria must be sendable for it.
+- **Suspended:**
+  - Started: count the minutes and ask the RPE.
+  - Not started: it isn't a match.
+  - A player answering before the coach logs the changes should just recalculate.
+- **Bug:** sign out, sign into another account, and "Tancar sessió" sits on "Sortint…".
+
+**What the FCF exposes** (read-only, all 7 SUSPÈS in the linked groups on 13/10):
+- 6 never started: no line-ups at all (3–4 Oct, ours 4119518 included).
+- 1 was stopped mid-way (4119507): line-ups, goals, cards and subs, 8'…79'.
+- **No stop minute anywhere:** no field in the page data, no observations section. The header reads "- - -".
+
+**Sign-out:** `signOutFully` gave `#btn-logout` back only when sign-out FAILED. The button is static in index.html, so the next account inherited it disabled and busy. It is now restored on success too.
+
+**The model** (`matchState`, plus the new `matchParts`, in js/utils.js and copied in functions/fcf.js, held equal):
+- **`suspendedStarted: true|false`.** Unknown counts as not started.
+- **`suspendedAt: {minute, src: 'acta'|'staff'}`.**
+- **A never-started suspended game, once moved,** is `''`: one match on its new date. It is announced as "Nova data", not "Represa", by both the merge and `calUpdateMatch`, and stamped `suspendedOn`, not `postponedFrom`.
+- **`matchParts(m)`** is the one rule for the sessions a fixture is:
+
+  | Fixture | Parts |
+  |---|---|
+  | postponed, withdrawn, or suspended before it started (or not known) | none |
+  | started, waiting for its restart | `first` |
+  | started, with its restart | `first` + `rest` (`_r`) |
+  | ordinary, or never-started on its new date | `whole` |
+
+  Stats, readiness, the coach's player sessions, Accions, the RPE reminder, the Inici season count, `msTeamMatchdays` and `calMatchDates` all read it.
+
+**Server:**
+- **`parseFcfActaEvents` reads a SUSPÈS page on:**
+  - no line-ups → `{started: false}`;
+  - line-ups → the first part, its score from the goals, and `lastMinute`, the latest thing on the page.
+- **`_importActa`:**
+  - On a not-started page it stamps `suspendedStarted: false` (`_stampSuspendedStart`).
+  - On a started page it imports the first part: events, line-up, ledger. It sets `fcfActaPartial` and NOT `fcfActa`, so the automatic import still runs when the acta closes after the restart.
+  - It stamps `suspendedStarted: true` and `suspendedAt` from the acta, never over a staff minute.
+- **`_syncFcfSquad` probes** every suspended fixture whose start is unknown: one acta GET each, ever.
+- **Ownership of the date:**
+  - The kick-off of a fixture that is off follows a CHANGE from the federation, even over a coach's edit made before. This is `mergeFcfFixtures` `released`.
+  - A date typed while off still wins.
+
+**Client:**
+- **Minutes:**
+  - Rows carry `minutesFirst` / `minutesRest`, the on-pitch intervals clipped at the stop minute. Restart line-up changes are subs at that minute.
+  - `playerMatchMinutes(Known)(uid, id, part)`. With no stop minute known, the first part holds every minute and the restart none.
+  - **The line-up's minutes now beat the minutes saved with the RPE** (readiness, the coach's player sessions). The saved ones are the fallback with no line-up. This flips the v282 "keeps minutes saved before v282" test.
+- **The convocatòria is for a day:**
+  - A send stamps `sentFor`; a draft save does not.
+  - **`convStale`** (utils): on a fixture moved off its `postponedFrom` / `suspendedOn` kick-off, only a call-up sent for the CURRENT kick-off is current. An entry from before v287 counts as sent for the old day.
+  - **`convToldList`** is used where the squad is TOLD: Calendari, Partit, both Inici weeks, the pending count, the picker. There it shows Envia again with "Enviada per a la data anterior…", over the same list.
+  - **`convCalledIds`** is used where it matters who was CALLED: stats, and the event form's players.
+  - **A restart's first send** snapshots `firstPart: {players, startingXI}` once. Its XI is not filtered for a resumption, and unsend goes back to the first part.
+- **Pills** (`matchPill` / `matchPillHtml`, `.st-pill`, new token `--pp-orange` #C2410C):
+  - AJORNAT (orange) / SUSPÈS (red) / RETIRAT (grey);
+  - "AJORNAT · del 11/10", "SUSPÈS · del 03/10", "SUSPÈS · Represa".
+  - On the Calendari card (above the name row), the Partit scoreboard (above the score; the slot keeps the time, greyed), the Inici rows and the picker. They replace v286's tag and grey note.
+- **The original day** (`calOldDayOf`, `calMatchBlockHtml(m, ctx, variant)`):
+  - A stopped game's first part stays on its day: SUSPÈS, the score at the stop, "Aturat al 79'".
+  - A postponed or never-started game leaves a faint pointer, "AJORNAT → DG 18/10". It has kind `ptr` and never colours the cell.
+- **Partit, staff who run the calendar:**
+  - `ptStopBandHtml`: the acta's minute is an orange WARNING with a field and Desa (`setSuspendedStart`, 1–130). The staff's minute is a plain line.
+  - "Va començar / No va començar" for when the acta got it wrong.
+  - A never-started game has its own wording (no restart, no line-up changes).
+- **Fixed on the way:** a restart moved a second time kept its old call-up as current, because `suspendedOn` never re-stamps. The mutation run found it.
+
+**Checked:**
+- **Emulators at 390 px, coach then player, one fixture of each kind:**
+  - Calendari pills and old-day blocks.
+  - Every Partit state, and correcting 60' → 86'.
+  - The stale picker: Envia plus the note.
+  - Inici pending 2.
+  - Accions: `502`, `502_r` and `507`; nothing for the never-started game.
+  - Sign out, then into the player account: "Tancar sessió", enabled.
+- **The sync end to end in the emulator:** the real mid-game acta imports its first part onto a matching club. It is not asked again, and a staff minute survives a re-import.
+
+**Tests:**
+- New `fcf-acta-partial.test.js`.
+- `fcf-state` +21.
+- Additions in calendar-render, partit, convocatoria, match-lineup, inici, accions, readiness-engine, login, session, acta-events, `sync-fcf-states` (+3, functions).
+- New fixture `acta-events-suspended-unstarted.html`.
+- Mutations 54/55; the survivor is a guard that is equivalent on real pages.
+- Unit 4146 → **4184**. Functions **120**.
+
+**Deploy order:** functions first (parser, import, probe, reminder), then push.
+
+Version triple → **v287**.

@@ -83,6 +83,9 @@ a:hover { text-decoration: underline; }
   --pp-red-dark: #9E1224;
   --pp-green: #3F6B44;
   --pp-amber: #B07B00;
+  /* AJORNAT (v287): an orange that reads under white text (5.2:1). Not
+     --pp-amber, which is the ochre of a warning, nor --pp-warn. */
+  --pp-orange: #C2410C;
   --pp-tint: #F6F2E9;
   --pp-ok: #5C8F5E;
   --pp-warn: #D39A2F;
@@ -6802,20 +6805,41 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .cal-b-win  .cal-b-res { color: #1F7A44; }
 .cal-b-draw .cal-b-res { color: #7A736B; }
 .cal-b-loss .cal-b-res { color: var(--pp-red); }
-/* v286: a fixture that will not be played on the day it shows. The tag
-   takes the score's place; the rival steps back so the cell does not read
-   as a match day. */
-.cal-b-state {
-  margin-left: auto; flex: 0 0 auto;
-  font-size: .58rem; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; line-height: 1; white-space: nowrap;
-  color: var(--pp-amber); border: 1px solid currentColor;
-  border-radius: 3px; padding: 2px 4px;
-}
+/* v286: a fixture that will not be played on the day it shows; the rival
+   steps back so the cell does not read as a match day. */
 .cal-b-off .cal-b-ttl { color: var(--pp-ink-2); }
 .cal-b-removed .cal-b-ttl { text-decoration: line-through; }
-.cal-b-removed .cal-b-state { color: var(--pp-ink-3); }
-.cal-b-note { color: var(--pp-amber); }
+.cal-b-note { color: var(--pp-ink-2); }
+
+/* ── The state pill (v287) ─────────────────────────────────────────
+   ONE label for one state, everywhere it shows — Calendari, Partit, Inici,
+   the Convocatòria picker: orange AJORNAT, red SUSPÈS, grey RETIRAT, above
+   the result. Filled, white, square-cornered like the rest of the paper. */
+.st-pill {
+  display: inline-block; flex: 0 0 auto;
+  font-size: .6rem; font-weight: 700; letter-spacing: .08em; line-height: 1.2;
+  text-transform: uppercase; white-space: nowrap;
+  color: #fff; padding: 2px 6px;
+}
+.st-pill-postponed { background: var(--pp-orange); }
+.st-pill-suspended { background: var(--pp-red); }
+.st-pill-removed { background: var(--pp-ink-3); text-decoration: line-through; }
+.cal-b-pill { display: flex; min-width: 0; }
+/* The day a moved fixture was MEANT to be (v287): a faint pointer to its new
+   date, in its state's ink. Not a match on that day, so no fill and no
+   stroke of its own. */
+.cal-b-ptr { gap: 1px; opacity: .85; }
+.cal-b-ptr-l {
+  font-size: .62rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-b-ptr-postponed .cal-b-ptr-l { color: var(--pp-orange); }
+.cal-b-ptr-suspended .cal-b-ptr-l { color: var(--pp-red); }
+.cal-b-ptr-r {
+  font-size: .66rem; color: var(--pp-ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cal-b-pill .st-pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .cal-more {
   margin-left: auto; flex: 0 0 auto;
   font-size: .62rem; font-weight: 600;
@@ -7995,14 +8019,11 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 }
 .pt-sb-meta > span:not(:first-child)::before { content: '· '; color: var(--pp-rule-4); }
 .pt-map-link { color: var(--pp-red); }
-/* v286: AJORNAT / SUSPÈS / RETIRAT in the score's slot. A word, not a
-   number, so it is set smaller and in the warning ink. */
-.pt-state {
-  font-size: 22px; font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--pp-amber);
-  line-height: 1; white-space: nowrap;
-}
-.pt-state-removed { color: var(--pp-ink-3); text-decoration: line-through; }
+/* v287: the state pill sits above the score row; the slot keeps the
+   kick-off, greyed while the fixture is off. */
+.pt-sb-pill { display: flex; justify-content: center; padding-bottom: 12px; }
+.pt-sb-pill .st-pill { font-size: 12px; padding: 4px 10px; }
+.pt-kickoff-off { color: var(--pp-ink-3); }
 .pt-state-band {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px 16px; flex-wrap: wrap;
@@ -8011,6 +8032,23 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   border-bottom: 1px solid var(--pp-rule);
 }
 .pt-postpone, .pt-unpostpone { white-space: nowrap; }
+/* v287: a suspended game, for the staff — did it start, when did it stop.
+   A minute guessed from the acta is a WARNING, in the AJORNAT orange. */
+.pt-stop-band {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px 16px; flex-wrap: wrap;
+  padding: 12px 36px; font-size: 14px; color: var(--pp-ink);
+  border-left: 3px solid var(--pp-rule-4); border-bottom: 1px solid var(--pp-rule);
+}
+.pt-stop-warn { border-left-color: var(--pp-orange); background: var(--pp-tint); }
+.pt-stop-warn > span:first-child { color: var(--pp-orange); font-weight: 600; }
+.pt-stop-acts { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pt-stop-f { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--pp-ink-2); }
+.pt-stop-min {
+  width: 64px; height: 32px; padding: 0 8px; font-size: 15px;
+  border: 1px solid var(--pp-input-line); background: #fff; color: var(--pp-ink);
+}
+.pt-started-yes, .pt-started-no, .pt-stop-save { white-space: nowrap; }
 
 /* ── "Ets convocat" ── */
 .pt-you {
@@ -8775,7 +8813,7 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .pt-score { font-size: 34px; }
   .pt-kickoff { font-size: 28px; }
   .pt-you { padding: 10px 16px; }
-  .pt-state-band { padding: 10px 16px; }
+  .pt-state-band, .pt-stop-band { padding: 10px 16px; }
   .pt-band { padding: 22px 16px; }
 }
 
@@ -8880,10 +8918,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    not, so its rule sat 6px above the other five (measured, v275). */
 .cv-ctl-match .cv-menu { display: flex; flex-direction: column; flex: 1; }
 .cv-mt-when { font-size: 12px; color: var(--pp-ink-2); }
-.cv-off {
-  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--pp-amber); border: 1px solid currentColor; padding: 1px 4px;
-}
+/* v287: the picker's state label is the shared .st-pill. */
+.cv-mt-when .st-pill { vertical-align: 1px; }
 .cv-mt-none { font-size: 15px; color: var(--pp-ink-3); }
 .cv-page .cv-mt-row .pt-crest { width: 40px; height: 40px; }
 /* ⚠ NO CIRCLE ANYWHERE IN THIS CONTROL. A real crest is an <img> and was
@@ -9446,13 +9482,8 @@ a.ini-ev-name, .ini-ev-name-link {
 .ini-ev-txt { flex: 0 0 190px; width: 190px; display: flex; flex-direction: column; gap: 3px; }
 .ini-ev-counts { font-size: 12px; color: var(--pp-ink-2); }
 .ini-ev-missing { font-size: 12px; color: var(--pp-red); }
-/* v286: AJORNAT / SUSPÈS on a week row, in the place of the chase or the pills. */
-.ini-ev-state {
-  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--pp-amber); border: 1px solid currentColor; border-radius: 3px;
-  padding: 2px 5px; white-space: nowrap; margin-left: 6px;
-}
-.ini-ev-txt .ini-ev-state { margin-left: 0; align-self: flex-start; }
+/* v287: a week row's state is the shared .st-pill, beside the kind. */
+.ini-ev-t .st-pill { margin-left: 6px; }
 .ini-ev-complete { font-size: 12px; color: var(--pp-ok); }
 .ini-conv-btn {
   min-width: 140px; height: 32px; padding: 0 14px; font-size: 13px;

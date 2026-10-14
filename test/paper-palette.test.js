@@ -28,7 +28,7 @@ const EXPECTED = {
   'pp-rule': '#E3DFD8', 'pp-rule-2': '#EDEAE4', 'pp-rule-3': '#DED9D1',
   'pp-rule-4': '#C9C3BB',
   'pp-red': '#BD162C', 'pp-red-dark': '#9E1224',
-  'pp-green': '#3F6B44', 'pp-amber': '#B07B00', 'pp-tint': '#F6F2E9',
+  'pp-green': '#3F6B44', 'pp-amber': '#B07B00', 'pp-orange': '#C2410C', 'pp-tint': '#F6F2E9',
   'pp-ok': '#5C8F5E', 'pp-warn': '#D39A2F', 'pp-bad': '#C0564C',
   /* The dark edge of each availability colour, plus the two greys and the
      input line that go with them (v230, Inici). Each is one shade from a

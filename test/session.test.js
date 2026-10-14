@@ -99,6 +99,19 @@ describe('v285 — signing out leaves nothing of that account behind', () => {
     assert.strictEqual(b.calls.signOut, 1, 'an offline token delete kept the user signed in');
   });
 
+  it('a sign-out that WORKS gives its button back too — for the next account (v287)', async () => {
+    /* #btn-logout is static in index.html: left busy, the next person to
+       sign in on this device found it stuck on "Sortint…" and disabled. */
+    const dom = new JSDOM('<button id="b">Tancar sessió</button>');
+    const btn = dom.window.document.getElementById('b');
+    const {fns, calls} = session();
+    await fns.signOutFully(btn);
+    assert.strictEqual(calls.signOut, 1);
+    assert.ok(!btn.disabled, 'still disabled');
+    assert.strictEqual(btn.textContent, 'Tancar sessió');
+    assert.strictEqual(btn.dataset.busy, undefined, 'still marked busy');
+  });
+
   it('a sign-out that fails gives its button back', async () => {
     const dom = new JSDOM('<button id="b">Tancar sessió</button>');
     const btn = dom.window.document.getElementById('b');

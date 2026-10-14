@@ -113,6 +113,11 @@ function make(o) {
     kitIconsHtml: () => '<span class="kit-icons">KIT</span>',
     isOurTeam: (n) => n === CLUB.name,
     matchState: U.matchState,   // v286, the real one
+    // v287: the real ones — sessions per fixture, and the call-up told vs called.
+    matchParts: U.matchParts,
+    convToldList: U.convToldList,
+    convCalledIds: U.convCalledIds,
+    convStale: U.convStale,
     calcMatchScore: (evs) => {
       let home = 0; let away = 0;
       (evs || []).forEach((e) => {
@@ -508,18 +513,20 @@ describe('the match block', () => {
   });
 });
 
-describe('postponed, suspended and withdrawn fixtures (v286)', () => {
+describe('postponed, suspended and withdrawn fixtures (v286, v287)', () => {
   /* Before v286 a fixture the FCF postponed went on being a match: past
      its kick-off it was a 0–0, coloured as a draw, with nothing to say it
-     never happened. */
+     never happened. v287: the state is a coloured PILL above the result. */
   const render = (m, extra) => make(Object.assign({matches: [m]}, extra || {}))(null, '2026-03');
+  const pill = (cls, text) => '<div class="cal-b-pill"><span class="st-pill st-pill-' + cls + '">' + text + '</span></div>';
 
-  it('a postponed fixture past its date: the tag, no 0–0, no draw colour', () => {
+  it('a postponed fixture past its date: the orange pill, no 0–0, no draw colour', () => {
     const m = M({id: 9, date: '2026-03-01', fcfState: 'postponed',
       postponedFrom: {date: '2026-03-01', time: '18:00'}});
     const cell = cellOf(render(m), '2026-03-01');
     assert.ok(cell.includes('cal-b-off'), 'not marked off');
-    assert.ok(cell.includes('<span class="cal-b-state">match.state_postponed</span>'));
+    assert.ok(cell.includes(pill('postponed', 'match.state_postponed')), cell);
+    assert.ok(cell.indexOf('cal-b-pill') < cell.indexOf('cal-b-name'), 'the pill is not ABOVE the result');
     assert.ok(cell.includes('match.note_postponed'));
     assert.ok(!cell.includes('0 – 0'), 'a postponed match read as 0–0');
     assert.ok(!/cal-k-(win|draw|loss)/.test(cell), 'coloured with an outcome');
@@ -531,47 +538,114 @@ describe('postponed, suspended and withdrawn fixtures (v286)', () => {
     const m = M({id: 9, date: '2026-03-07', manualState: 'postponed',
       postponedFrom: {date: '2026-03-07', time: '18:00'}});
     const cell = cellOf(render(m, {sent: {9: {players: ['p1']}}}), '2026-03-07');
-    assert.ok(cell.includes('match.state_postponed'));
+    assert.ok(cell.includes('st-pill-postponed'));
     assert.ok(!cell.includes('cal-kick'), 'kick-off for a match that is off');
     assert.ok(!cell.includes('kit-icons'));
     assert.ok(!cell.includes('cal.squad_not_sent') && !cell.includes('cal.squad_sent'));
   });
 
-  it('given its new date, it is a match again — with where it came from', () => {
+  it('given its new date, it is a match again — the pill says where it came from', () => {
     const m = M({id: 9, date: '2026-03-12', time: '20:00', fcfState: 'postponed',
       postponedFrom: {date: '2026-03-07', time: '18:00'}});
     const cell = cellOf(render(m), '2026-03-12');
     assert.ok(!cell.includes('cal-b-off'));
     assert.ok(cell.includes('cal-kick'), 'the new kick-off is shown');
-    assert.ok(cell.includes('match.postponed_from'.replace('{d}', '')),
-        'no "Ajornat del" line');
+    // t() is the identity here: "AJORNAT · del {d}" arrives as its two keys.
+    assert.ok(cell.includes(pill('postponed', 'match.state_postponed · match.from_day')), cell);
   });
 
-  it('moved by an hour on the same day: on again, but no "Ajornat del"', () => {
+  it('moved by an hour on the same day: on again, and no pill', () => {
     const m = M({id: 9, date: '2026-03-07', time: '20:00', fcfState: 'postponed',
       postponedFrom: {date: '2026-03-07', time: '18:00'}});
     const cell = cellOf(render(m), '2026-03-07');
     assert.ok(!cell.includes('cal-b-off'));
-    assert.ok(!cell.includes('match.postponed_from'), 'a same-day move announced as postponed');
+    assert.ok(!cell.includes('st-pill'), 'a same-day move announced as postponed');
   });
 
-  it('suspended: the tag and no result — even with the events of its first half', () => {
-    const m = M({id: 9, date: '2026-03-01', fcfState: 'suspended',
+  it('suspended mid-way: the red pill and the score SO FAR — never a result colour', () => {
+    const m = M({id: 9, date: '2026-03-01', fcfState: 'suspended', suspendedStarted: true,
       suspendedOn: {date: '2026-03-01', time: '18:00'}});
     const cell = cellOf(render(m, {events: {9: [{type: 'goal', side: 'home'}]}}), '2026-03-01');
-    assert.ok(cell.includes('match.state_suspended'));
+    assert.ok(cell.includes(pill('suspended', 'match.state_suspended')));
     assert.ok(cell.includes('match.note_suspended'));
-    assert.ok(!cell.includes('1 – 0'), 'a half-played match shown as a result');
-    assert.ok(!/cal-k-(win|draw|loss)/.test(cell));
+    assert.ok(cell.includes('1 – 0'), 'the first part\'s score is gone');
+    assert.ok(!/cal-k-(win|draw|loss)/.test(cell), 'a half-played game coloured as a result');
   });
 
-  it('its resumption day is the match, played, with "Represa"', () => {
-    const m = M({id: 9, date: '2026-03-01', time: '12:00', fcfState: 'suspended',
+  it('suspended before it started: the pill, and no score at all', () => {
+    const m = M({id: 9, date: '2026-03-01', fcfState: 'suspended', suspendedStarted: false,
+      suspendedOn: {date: '2026-03-01', time: '18:00'}});
+    const cell = cellOf(render(m), '2026-03-01');
+    assert.ok(cell.includes('st-pill-suspended'));
+    assert.ok(cell.includes('match.note_unstarted') && !cell.includes('match.note_suspended'), 'it says it will be resumed');
+    assert.ok(!cell.includes('0 – 0') && !cell.includes('cal-b-res'));
+  });
+
+  it('its restart day is the match, played, under "SUSPÈS · Represa"', () => {
+    const m = M({id: 9, date: '2026-03-01', time: '12:00', fcfState: 'suspended', suspendedStarted: true,
       suspendedOn: {date: '2026-02-22', time: '18:00'}});
     const cell = cellOf(render(m, {events: {9: [{type: 'goal', side: 'home'}]}}), '2026-03-01');
     assert.ok(!cell.includes('cal-b-off'));
     assert.ok(cell.includes('1 – 0'));
-    assert.ok(cell.includes('match.resumed_from'));
+    assert.ok(cell.includes(pill('suspended', 'match.state_suspended · match.resumption_tag')), cell);
+  });
+
+  it('never started, on its new date: one match, under "SUSPÈS · del …"', () => {
+    const m = M({id: 9, date: '2026-03-12', time: '20:00', fcfState: 'suspended', suspendedStarted: false,
+      suspendedOn: {date: '2026-03-07', time: '18:00'}});
+    const cell = cellOf(render(m), '2026-03-12');
+    assert.ok(cell.includes('cal-kick'));
+    assert.ok(cell.includes(pill('suspended', 'match.state_suspended · match.from_day')), cell);
+  });
+
+  describe('the day it was meant to be (v287)', () => {
+    it('a stopped game keeps its first part there: SUSPÈS, the score AT THE STOP, the minute', () => {
+      const m = M({id: 9, date: '2026-03-12', time: '20:00', suspendedStarted: true,
+        suspendedOn: {date: '2026-03-07', time: '18:00'}, suspendedAt: {minute: 60, src: 'acta'}});
+      const ev = {9: [{type: 'goal', side: 'home', minute: '30'}, {type: 'goal', side: 'away', minute: '75'}]};
+      const html = render(m, {events: ev});
+      const first = cellOf(html, '2026-03-07');
+      assert.ok(first.includes('cal-b-first') && first.includes('data-cal-match="9"'));
+      assert.ok(first.includes(pill('suspended', 'match.state_suspended')));
+      assert.ok(first.includes('1 – 0'), 'the restart\'s goal counted on the first day');
+      assert.ok(first.includes('cal.stopped_at'));
+      const restart = cellOf(html, '2026-03-12');
+      assert.ok(restart.includes('match.state_suspended · match.resumption_tag'));
+    });
+
+    it('a postponed one leaves a pointer to its new date, which colours nothing', () => {
+      const m = M({id: 9, date: '2026-03-12', time: '20:00', fcfState: 'postponed',
+        postponedFrom: {date: '2026-03-07', time: '18:00'}});
+      const old = cellOf(render(m), '2026-03-07');
+      assert.ok(old.includes('cal-b-ptr cal-b-ptr-postponed') && old.includes('data-cal-match="9"'));
+      assert.ok(old.includes('cal.moved_to'), old);
+      assert.ok(!/cal-k-(match|win|draw|loss|ptr)/.test(old), 'the pointer filled the cell: ' + old.slice(0, 120));
+    });
+
+    it('…and one suspended before it started, in red', () => {
+      const m = M({id: 9, date: '2026-03-12', time: '20:00', fcfState: 'suspended', suspendedStarted: false,
+        suspendedOn: {date: '2026-03-07', time: '18:00'}});
+      assert.ok(cellOf(render(m), '2026-03-07').includes('cal-b-ptr-suspended'));
+    });
+
+    it('a fixture still on its day, or one moved by an hour, leaves nothing behind', () => {
+      const waiting = M({id: 9, date: '2026-03-07', fcfState: 'postponed',
+        postponedFrom: {date: '2026-03-07', time: '18:00'}});
+      assert.strictEqual((render(waiting).match(/data-cal-match="9"/g) || []).length, 1);
+      const hour = M({id: 9, date: '2026-03-07', time: '20:00', postponedFrom: {date: '2026-03-07', time: '18:00'}});
+      assert.ok(!render(hour).includes('cal-b-ptr'));
+    });
+  });
+
+  it('a call-up sent before the move reads as pending on the new day (v287)', () => {
+    const m = M({id: 9, date: '2026-03-12', time: '20:00', fcfState: 'postponed',
+      postponedFrom: {date: '2026-03-07', time: '18:00'}});
+    const old = cellOf(render(m, {sent: {9: {players: ['p1']}}}), '2026-03-12');
+    assert.ok(old.includes('cal.squad_not_sent'), 'the old day\'s call-up counts as sent');
+    assert.ok(!old.includes('conv-blink-dot'));
+    const fresh = cellOf(render(m, {sent: {9: {players: ['p1'], sentFor: {date: '2026-03-12', time: '20:00'}}}}),
+        '2026-03-12');
+    assert.ok(fresh.includes('cal.squad_sent'), 'a call-up sent for the new day is not counted');
   });
 
   it('the microcycle counts to the next match that is ON', () => {
@@ -586,21 +660,23 @@ describe('postponed, suspended and withdrawn fixtures (v286)', () => {
     assert.ok(both.includes('>M-5<'), 'not measured against Sunday\'s match');
   });
 
-  it('withdrawn by the federation: struck through, and never a result', () => {
+  it('withdrawn by the federation: a grey pill, struck through, and never a result', () => {
     const m = M({id: 9, date: '2026-03-01', fcfRemoved: true});
     const cell = cellOf(render(m), '2026-03-01');
     assert.ok(cell.includes('cal-b-removed'));
-    assert.ok(cell.includes('match.state_removed') && cell.includes('cal.removed'));
+    assert.ok(cell.includes(pill('removed', 'match.state_removed')) && cell.includes('cal.removed'));
     assert.ok(!cell.includes('0 – 0'));
   });
 
-  it('every class it draws has a rule, and the tag is the warning ink', () => {
+  it('every class it draws has a rule; orange and red are palette tokens', () => {
     // The raw sheet: readCss() resolves the tokens to hex, which is not the question.
     const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'css', 'style.css'), 'utf8');
-    ['cal-b-off', 'cal-b-state', 'cal-b-removed', 'cal-b-note'].forEach((c) =>
+    ['cal-b-off', 'cal-b-pill', 'cal-b-removed', 'cal-b-note', 'st-pill'].forEach((c) =>
       assert.ok(new RegExp('\\.' + c + '\\b').test(css), 'no rule for .' + c));
-    const rule = css.slice(css.indexOf('.cal-b-state {'), css.indexOf('}', css.indexOf('.cal-b-state {')));
-    assert.ok(rule.includes('var(--pp-amber)'), 'not a palette token');
+    const rule = (sel) => css.slice(css.indexOf(sel + ' {'), css.indexOf('}', css.indexOf(sel + ' {')));
+    assert.ok(rule('.st-pill-postponed').includes('var(--pp-orange)'), 'AJORNAT is not the orange');
+    assert.ok(rule('.st-pill-suspended').includes('var(--pp-red)'), 'SUSPÈS is not the red');
+    assert.ok(!/border-radius/.test(rule('.st-pill')), 'a rounded pill on the square paper');
   });
 });
 

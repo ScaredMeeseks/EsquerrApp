@@ -99,6 +99,9 @@ function mount(opts) {
     showTbConfirm: () => {},
     ptOpenBoard: () => {},
     _showPushToast: (title, body) => calls.toast.push([title, body]),
+    // v287: the real ones — who was called (the event form's list) and who was told.
+    convCalledIds: require('../js/utils.js').convCalledIds,
+    convToldList: require('../js/utils.js').convToldList,
     firebase: {app: () => ({functions: () => ({httpsCallable: (name) => (data) => {
       calls.callable.push({name, data});
       return Promise.resolve({data: answer});
@@ -127,6 +130,8 @@ function mount(opts) {
     ${BLOCK}
     ${RUNNERS}
     function band(m, isStaff, isPast, convSent, sentPlayers) {
+      // The page's own entry, as renderMatchDetail holds it (v287 reads who was CALLED off it).
+      var sentEntry = {players: sentPlayers};
       ${BAND}
       return eventsHtml;
     }
