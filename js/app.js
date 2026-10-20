@@ -1484,6 +1484,7 @@
     'tactics.loading_3d':    { ca:'Carregant la pissarra 3D…', es:'Cargando la pizarra 3D…', en:'Loading the 3D board…' },
     'tactics.cam_broadcast': { ca:'Realització', es:'Realización', en:'Broadcast' },
     'tactics.cam_top':       { ca:'Zenital', es:'Cenital', en:'Top' },
+    'tactics.cam_follow':    { ca:'Segueix la pilota', es:'Seguir el balón', en:'Follow the ball' },
     'tactics.cam_goal':      { ca:'Porteria', es:'Portería', en:'Goal' },
     'tactics.cam_side':      { ca:'Lateral', es:'Lateral', en:'Side' },
     'tactics.cam_follow':    { ca:'Segueix la pilota', es:'Seguir el balón', en:'Follow ball' },
@@ -3131,7 +3132,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 287;
+  const APP_VERSION = 288;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -8452,6 +8453,8 @@
     if (currentPage === 'my-stats' || currentPage === 'staff-player-stats') bindMyStatsInjuryPopup();
     bindAccions();
     bindNotifications();
+    // Inici redraws itself at the next session end or lock (v288).
+    iniScheduleRefresh();
 
     // Scroll RPE and UA charts to the right (most recent) by default
     content.querySelectorAll('.rpe-chart-scroll').forEach(el => { el.scrollLeft = el.scrollWidth; });
@@ -11412,8 +11415,12 @@
      to whip 172 degrees through the overhead singularity. Losing that
      coverage to delete a button would be a bad trade.
 
-     FOLLOW-BALL is parked (HANDOFF item 19). setFollowBall and
-     isFollowingBall stay; only the button goes. */
+     FOLLOW-BALL is back (v288), as a TOGGLE — the only entry here that
+     holds state. Its lit state is READ from isFollowingBall() whenever
+     the menu opens and after each tap, never flipped blind: a manual orbit
+     or pan clears the follow inside board3d.js, and a button that kept its
+     own idea of the state would say "following" over a camera that is
+     not. */
   function tbCamThumb(kind) {
     /* A pitch outline seen from each camera. Deliberately crude: at
        34px a faithful drawing is mud. */
@@ -11425,12 +11432,33 @@
       /* Zenital: straight down — a plain rectangle with a halfway line. */
       top: '<rect x="4" y="6" width="16" height="12" rx="1"/>' +
            '<path d="M12 6v12"/><circle cx="12" cy="12" r="2.4"/>',
+      /* Follow: the ball on the move, three speed lines behind it. */
+      follow: '<circle cx="15" cy="12" r="4.5"/><path d="M3 9h5M2 12h5M3 15h5"/>',
       /* Centre the view: a crosshair, not a picture of a pitch. */
       reset: '<path d="M12 4v5M12 15v5M4 12h5M15 12h5"/><circle cx="12" cy="12" r="2.5"/>'
     };
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
         'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
         (F[kind] || '') + '</svg>';
+  }
+
+  /** One tap in the camera menu: a preset, the crosshair, or the follow
+      toggle (v288). The board refuses all of them under a draw lock. */
+  function tbCamTap(cam, tb3d) {
+    if (!tb3d) return;
+    if (cam === 'reset') tb3d.resetCamera();
+    else if (cam === 'follow') tb3d.setFollowBall(!tb3d.isFollowingBall());
+    else tb3d.setPreset(cam);
+  }
+
+  /** The follow toggle's lit state, READ from the board (v288): a manual
+      orbit or pan clears the follow inside board3d.js. */
+  function tbSyncFollow(cams, tb3d) {
+    const f = cams && cams.querySelector('.tb-cam-btn[data-cam="follow"]');
+    if (!f || !tb3d) return;
+    const on = !!tb3d.isFollowingBall();
+    f.classList.toggle('active', on);
+    f.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
 
   function tbCamsHtml() {
@@ -11449,6 +11477,7 @@
         one('broadcast', t('tactics.cam_broadcast')) +
         one('goal', t('tactics.cam_goal')) +
         one('top', t('tactics.cam_top')) +
+        one('follow', t('tactics.cam_follow')) +
         one('reset', t('tactics.reset_view')) +
       '</div></div>';
   }
@@ -12580,9 +12609,11 @@
         if (_tb3dCamAbort) _tb3dCamAbort.abort();
         _tb3dCamAbort = new AbortController();
         const sig = _tb3dCamAbort.signal;
+        const syncFollow = () => tbSyncFollow(cams, _tb3d);
         const openCams = (on) => {
           cams.classList.toggle('tb-cams-open', on);
           camsBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+          if (on) syncFollow();
         };
         camsBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -12609,8 +12640,8 @@
         cams.addEventListener('click', (e) => {
           const btn = e.target.closest('.tb-cam-btn');
           if (!btn || !_tb3d) return;
-          if (btn.dataset.cam === 'reset') _tb3d.resetCamera();
-          else _tb3d.setPreset(btn.dataset.cam);
+          tbCamTap(btn.dataset.cam, _tb3d);
+          syncFollow();
           openCams(false);          // "The icons disappear after click."
         }, {signal: sig});
         document.addEventListener('pointerdown', (e) => {
@@ -27957,9 +27988,18 @@
     const seasonMatches = allMatches
         .filter(m => !curCat || (m.category || '') === curCat)
         .filter(m => !catLetter || !m.team || m.team === catLetter)
-        .filter(m => m.date && m.date <= todayISO)
-        // A postponed or withdrawn fixture was not a match of the season (v286).
-        .filter(m => matchParts(m).length > 0).length;
+        /* Counted once it has KICKED OFF, inside the season — the rule the
+           sessions beside it follow (v288). `m.date <= today` counted a match
+           tonight from this morning, and had no season bound at all. Its first
+           part is matchParts': nothing for a fixture that was not a match
+           (postponed, withdrawn, suspended before it started — v286/v287), the
+           day it was stopped for one that was. */
+        .filter(m => {
+          const first = matchParts(m)[0];
+          if (!first || !first.date || first.date < attCtx.seasonStart) return false;
+          const at = new Date(first.date + 'T' + (first.time || '00:00') + ':00');
+          return !isNaN(at.getTime()) && at <= attCtx.now;
+        }).length;
     const attended = sYes + sLate;
     const seasonPct = sSlots ? Math.round((attended / sSlots) * 100) : 0;
 
@@ -36373,6 +36413,74 @@
    *  outstanding even though getEffectiveAnswer() reports them available.
    *  That is the one place the two views are allowed to differ, and it is
    *  the half that tells the truth to the person who can fix it. */
+  /* ── Inici redraws itself (v288) ───────────────────────────────────
+     Both week lists drop a session at its END and lock its answers at
+     `lockHours` before kick-off — but only when the page is drawn, and an
+     app left open on Inici is not redrawn by anything. A session that
+     finished at 21:30 stayed on screen, answerable, until the player
+     touched something. One timeout, aimed at the next moment the lists
+     would change; never a polling interval. */
+  let _iniRefreshTimer = null;
+  let _iniRefreshPending = false;
+  let _iniRefreshWired = false;
+  const INI_REFRESH_PAGES = ['player-home', 'staff-home'];
+
+  /** The next instant either Inici list would change after `nowMs`: a
+      session's lock or end, a match's end, or midnight — so never more
+      than a day away. */
+  function iniNextChangeAt(nowMs, trainings, matches) {
+    let next = null;
+    const take = (d) => {
+      const ms = d ? +d : NaN;
+      if (isFinite(ms) && ms > nowMs && (next === null || ms < next)) next = ms;
+    };
+    (trainings || []).forEach((tr) => { take(trainingLockAt(tr)); take(sessionEndsAt(tr)); });
+    (matches || []).forEach((m) => take(matchEndsAt(m)));
+    const midnight = new Date(nowMs);
+    midnight.setHours(24, 0, 0, 0);
+    take(midnight);
+    return next;
+  }
+
+  /** Something the person is in the middle of: a field, an open menu, a dialog. */
+  function iniBusy() {
+    const a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+    return !!document.querySelector('#custom-modal-overlay, .tb-confirm-overlay, .std-sel-open');
+  }
+
+  function iniRefreshNow() {
+    _iniRefreshTimer = null;
+    if (INI_REFRESH_PAGES.indexOf(currentPage) === -1) return;
+    const s = getSession();
+    if (!s) return;
+    if (document.hidden) { _iniRefreshPending = true; return; }
+    // Never under someone's thumb: look again in a minute.
+    if (iniBusy()) { _iniRefreshTimer = setTimeout(iniRefreshNow, 60000); return; }
+    renderPage(s);
+  }
+
+  /** Called after every render: aim ONE timeout at the next change, or none. */
+  function iniScheduleRefresh() {
+    if (_iniRefreshTimer) { clearTimeout(_iniRefreshTimer); _iniRefreshTimer = null; }
+    _iniRefreshPending = false;
+    if (!_iniRefreshWired) {
+      _iniRefreshWired = true;
+      // Back on the tab: whatever changed while it was hidden.
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden || INI_REFRESH_PAGES.indexOf(currentPage) === -1) return;
+        if (_iniRefreshPending || _iniRefreshTimer === null) iniRefreshNow();
+      });
+    }
+    if (INI_REFRESH_PAGES.indexOf(currentPage) === -1) return;
+    const nowMs = Date.now();
+    const at = iniNextChangeAt(nowMs, getTrainings(), getMatches());
+    if (at === null) return;
+    // A second past the boundary. A device that slept through it catches up
+    // on visibilitychange above.
+    _iniRefreshTimer = setTimeout(iniRefreshNow, at - nowMs + 1000);
+  }
+
   function renderPlayerWeeks() {
     const w0 = renderWeekActivities(0);
     const w1 = renderWeekActivities(1);
@@ -38749,6 +38857,16 @@
    * legacy doc) AND writes the canonical per-record doc — the ack UI
    * tracks the record.
    */
+  /**
+   * The category a player-submitted record belongs to (v288): the squad its
+   * session or match is FOR — so a guest's answer is seen by the squad that
+   * called him — or, failing that, the player's own. firestore.rules lets a
+   * player read the records of their own categories only; staff read all.
+   */
+  function recordCategoryOf(row, session) {
+    return String((row && row.category) || (session && session.category) || 'none');
+  }
+
   function ackSaveRecord(coll, docId, data, legacyKey, legacyValue, el) {
     localStorage.setItem(legacyKey, legacyValue);
     return _ackUi(DB.submit(coll, docId, data), el);
@@ -38918,7 +39036,8 @@
     const key = recordKey(session.id, sess, 'avail');
     availData[key] = 'injured';
     ackSaveRecord('trainingAvail', key,
-      { uid: session.id, sessionId: sess.id, date: date, value: 'injured' },
+      { uid: session.id, sessionId: sess.id, date: date, value: 'injured',
+        category: recordCategoryOf(sess, session) },
       'fa_training_availability', JSON.stringify(availData), null);
 
     const injNotes = JSON.parse(localStorage.getItem('fa_injury_notes') || '{}');
@@ -41362,8 +41481,12 @@
           pageId: tag === 'match' ? matchIdOf : sessionId
         });
         // Re-render only once the server has acknowledged (or the write is queued)
+        // Its squad's category (v288): the match's, or the session's.
+        const recRow = tag === 'match' ? mObj
+          : getTrainings().find(x => String(x.id) === String(sessionId));
         ackSaveRecord('rpe', key,
-          { uid: session.id, rpe, minutes, ua, tag, date: activityDate, sessionId },
+          { uid: session.id, rpe, minutes, ua, tag, date: activityDate, sessionId,
+            category: recordCategoryOf(recRow, session) },
           'fa_player_rpe', JSON.stringify(rpeData), btn).then(() => {
           renderPage(getSession());
           updateActionsBadge();
@@ -41414,7 +41537,8 @@
           page: 'staff-player-stats',
           pageId: session ? session.id : ''
         });
-        ackSaveRecord('rpe', key, { uid: session.id, rpe, minutes, ua, tag, date: dateVal },
+        ackSaveRecord('rpe', key, { uid: session.id, rpe, minutes, ua, tag, date: dateVal,
+          category: recordCategoryOf(null, session) },
           'fa_player_rpe', JSON.stringify(rpeData), xSubmit).then(() => {
           renderPage(session);
         });
@@ -41473,7 +41597,8 @@
           pageId: matchId
         });
         // Re-render only once the server has acknowledged (or the write is queued)
-        ackSaveRecord('matchAvail', key, { uid: session.id, matchId: String(matchId), value: btn.dataset.mavail },
+        ackSaveRecord('matchAvail', key, { uid: session.id, matchId: String(matchId), value: btn.dataset.mavail,
+          category: recordCategoryOf(matchObj, session) },
           'fa_match_availability', JSON.stringify(maData), btn).then(() => {
           renderPage(session);
           updateActionsBadge();
@@ -41550,7 +41675,8 @@
         // Re-render only once the server has acknowledged (or the write is queued)
         // sessionId AND date as fields: the schedulers query on date.
         ackSaveRecord('trainingAvail', key,
-          { uid: session.id, sessionId: sess.id, date: date, value: val },
+          { uid: session.id, sessionId: sess.id, date: date, value: val,
+            category: recordCategoryOf(sess, session) },
           'fa_training_availability', JSON.stringify(availData), btn).then(() => {
           renderPage(getSession());
           updateActionsBadge();

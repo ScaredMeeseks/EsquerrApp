@@ -256,6 +256,7 @@ describe('deleteTeam — down to zero teams, then a different one', function () 
 
   before(async () => {
     await seed();
+    await dataDoc('fa_injuries__cadet').set({category: 'cadet', v: '[]'});
     await db.doc('clubs/' + CLUB).set({maxTeams: 1}, {merge: true});
     await callDelete({category: 'amateur', letter: 'B'});
     await callDelete({category: 'amateur', letter: 'A'});
@@ -291,6 +292,33 @@ describe('deleteTeam — down to zero teams, then a different one', function () 
   it('leaves none of A\'s matches behind', async () => {
     const rows = await blob('fa_matches__amateur');
     assert.ok(!rows || !rows.some((m) => String(m.team) === 'A'));
+  });
+
+  /* v288: with the category gone, nobody can read its shards — the ones the
+     delete emptied are clutter that would reappear, empty, if it were
+     switched on again. The ones still holding history stay. */
+  it('deletes the category\'s shards it EMPTIED', async () => {
+    // A list blob, a map blob, and a per-field document — each storage shape.
+    for (const id of ['fa_users__amateur', 'fa_injuries__amateur', 'fa_convocatoria_sent__amateur',
+      'fa_injury_notes__amateur']) {
+      const d = await db.doc('teams/' + CLUB + '/data/' + id).get();
+      assert.strictEqual(d.exists, false, id + ' was left behind, empty');
+    }
+  });
+
+  it('…and keeps one still holding history: the fixture with no letter', async () => {
+    const rows = await blob('fa_matches__amateur');
+    assert.ok(Array.isArray(rows) && rows.some((m) => m.id === 3), 'a kept fixture went with its shard');
+  });
+
+  it('…and leaves another category\'s empty shard alone', async () => {
+    const d = await dataDoc('fa_injuries__cadet').get();
+    assert.strictEqual(d.exists, true, 'it swept a category that was not deleted');
+  });
+
+  it('records how many it removed', async () => {
+    const m = (await db.doc('clubs/' + CLUB + '/teamDeletions/amateur-A').get()).data();
+    assert.ok(m.emptiedShards >= 2, JSON.stringify(m));
   });
 
   it('then lets the one-team club save a different team — Juvenil C', async () => {

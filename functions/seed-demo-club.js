@@ -1382,18 +1382,19 @@ async function apply(S, docs) {
   step("Records");
   const teamRef = db.collection("teams").doc(S.clubId);
   const stamp = FieldValue.serverTimestamp();
+  // `category` on every record (v288): the rules let a player read their squad's only.
   await commitAll(S.trainingAvail.map((a) => ({
     ref: teamRef.collection("trainingAvail").doc(`${a.uid}_${a.date}`),
-    data: { uid: a.uid, date: a.date, value: a.value, updatedAt: stamp, source: "seed" },
+    data: { uid: a.uid, date: a.date, value: a.value, category: S.cat, updatedAt: stamp, source: "seed" },
   })), "trainingAvail");
   await commitAll(S.matchAvail.map((a) => ({
     ref: teamRef.collection("matchAvail").doc(`${a.uid}_${a.matchId}`),
-    data: { uid: a.uid, matchId: a.matchId, value: a.value, updatedAt: stamp, source: "seed" },
+    data: { uid: a.uid, matchId: a.matchId, value: a.value, category: S.cat, updatedAt: stamp, source: "seed" },
   })), "matchAvail");
   await commitAll(S.rpe.map((r) => ({
     ref: teamRef.collection("rpe").doc(r.key),
     data: { uid: r.uid, rpe: r.rpe, minutes: r.minutes, ua: r.ua, tag: r.tag,
-      date: r.date, updatedAt: stamp, source: "seed" },
+      date: r.date, category: S.cat, updatedAt: stamp, source: "seed" },
   })), "rpe");
 
   /* Schedule dates, written directly rather than waited for.
@@ -1966,19 +1967,20 @@ async function applyTeams(clubId, clubRef, seasons, merged, faces) {
   // 5. Player-submitted records. Keyed per player, so additive by nature.
   step("Records");
   const stamp = FieldValue.serverTimestamp();
-  const all = (f) => seasons.reduce((a, S) => a.concat(f(S)), []);
+  // Each record carries its season's category (v288).
+  const all = (f) => seasons.reduce((a, S) => a.concat(f(S).map((x) => Object.assign({cat: S.cat}, x))), []);
   await commitAll(all((S) => S.trainingAvail).map((a) => ({
     ref: teamRef.collection("trainingAvail").doc(`${a.uid}_${a.date}`),
-    data: { uid: a.uid, date: a.date, value: a.value, updatedAt: stamp, source: "seed" },
+    data: { uid: a.uid, date: a.date, value: a.value, category: a.cat, updatedAt: stamp, source: "seed" },
   })), "trainingAvail");
   await commitAll(all((S) => S.matchAvail).map((a) => ({
     ref: teamRef.collection("matchAvail").doc(`${a.uid}_${a.matchId}`),
-    data: { uid: a.uid, matchId: a.matchId, value: a.value, updatedAt: stamp, source: "seed" },
+    data: { uid: a.uid, matchId: a.matchId, value: a.value, category: a.cat, updatedAt: stamp, source: "seed" },
   })), "matchAvail");
   await commitAll(all((S) => S.rpe).map((r) => ({
     ref: teamRef.collection("rpe").doc(r.key),
     data: { uid: r.uid, rpe: r.rpe, minutes: r.minutes, ua: r.ua, tag: r.tag,
-      date: r.date, updatedAt: stamp, source: "seed" },
+      date: r.date, category: r.cat, updatedAt: stamp, source: "seed" },
   })), "rpe");
 
   /* 6. Schedule dates — a UNION, not a replace. apply() can overwrite

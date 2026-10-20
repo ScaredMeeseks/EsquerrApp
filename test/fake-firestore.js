@@ -166,10 +166,22 @@ function makeApi(store) {
             cb(makeQuerySnap(docs, changes, pending));
           },
         };
-        store.listeners.push(l);
+        /* A test may refuse a query, as the rules do (errCb, no snapshot
+           ever), or hold its first answer back until a promise settles —
+           `store.onQuery({path, filter})` returns 'refuse', a promise, or
+           nothing for the usual. */
+        const verdict = store.onQuery ? store.onQuery({path, filter}) : null;
+        if (verdict === 'refuse') {
+          Promise.resolve().then(() => errCb && errCb(
+              Object.assign(new Error('Missing or insufficient permissions.'), {code: 'permission-denied'})));
+          return () => {};
+        }
         // Firestore fires an initial snapshot; do the same so init()'s
         // `await firstSnaps` resolves even for an empty collection.
-        Promise.resolve().then(() => l.deliver(false, true));
+        Promise.resolve(verdict).then(() => {
+          store.listeners.push(l);
+          l.deliver(false, true);
+        });
         return () => {
           const i = store.listeners.indexOf(l);
           if (i !== -1) store.listeners.splice(i, 1);

@@ -1,6 +1,6 @@
 # HANDOFF — EsquerrApp
 
-_Rolling document, overwritten each session. Last updated: 2026-10-12 (v282 section only; the
+_Rolling document, overwritten each session. Last updated: 2026-10-20 (v288 section; the
 rest below still describes 2026-09-22 and v278-v281 are in CONTEXT.md)._
 
 _The **Parking lot** near the foot of this file is the owner's backlog. It is carried forward
@@ -8,7 +8,21 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 287**
+**Version triple is at 288**
+
+## 2026-10-20 — v288: the small and technical items
+
+Full detail in CONTEXT.md (v288).
+- **Availability and RPE are readable within the squad only.** Every record carries `category`: the squad its session or match is FOR (a guest's answer belongs to the squad that called him), an extra the player's own, else `'none'`. Stamp new write sites with `recordCategoryOf(row, session)`.
+  - **Rules:** `readsRecord` in firestore.rules. A player's listener is TWO queries (`category in scope`, `uid == me`) merged in db.js. A query the rules could refuse for one document fails whole, so a new player-side read of these collections must use one of those two shapes.
+  - Staff still read the whole collection.
+- **Inici redraws itself** at the next lock, session end, match end, or midnight: one timeout per render (`iniScheduleRefresh`). It never redraws a hidden tab, or under a focused field, dialog or open dropdown.
+- **The staff Inici season match count** goes through `matchParts` and kick-off time, like the sessions beside it.
+- **Follow-ball** is back on the 3D camera menu. Its light is read back from the board. The lit style is `.tb-cams-list .tb-cam-btn.active`; the old `.tb-cam-btn.active` plate is overridden in that list.
+- **`deleteTeam`** removes a gone category's emptied shards (`emptiedShards` in the marker).
+- **`backfill-training-teams.js`** is deleted.
+- **Production one-offs** (scratchpad, not the repo): the category backfill, the three `teamId: 'default'` accounts, the one empty shard.
+- **The full functions suite flakes in the main tree:** a different emulator-trigger test each run. Four clean-worktree runs of the same code passed 124/124. Re-run before suspecting a change.
 
 ## 2026-10-14 — v287: postponed/suspended, round two
 
@@ -93,9 +107,9 @@ Full detail in CONTEXT.md (v282). What a next session needs:
 
 | | |
 |---|---|
-| Unit tests | **4184** (v287) — `cd test && npm run test:unit` (~35 s), all passing |
-| Functions tests | **120** (v287), all passing — `npm run test:functions` from PowerShell with Java on PATH, backgrounded with `2>&1 | Out-File <log>` (a foreground run with `*>` stopped at function discovery) |
-| Rules tests | 178 — **not re-run**; `firestore.rules` was not touched |
+| Unit tests | **4210** (v288) — `cd test && npm run test:unit` (~35 s), all passing |
+| Functions tests | **124** (v288), all passing in a clean worktree — `npm run test:functions` from PowerShell with Java on PATH and `$env:FUNCTIONS_DISCOVERY_TIMEOUT = 120`, backgrounded with `2>&1 | Out-File <log>`. Don't touch `functions/` while it runs: the emulator hot-reloads and the trigger tests fail |
+| Rules tests | **198** (v288) — `npm run test:rules` |
 
 **Deploy state.** `main` is current and deployed through **v277 `669b2ba`**. Both v276 and v277
 ran `.\deploy.ps1 functions` BEFORE the push (the new 3D module works with the old frontend, not the
@@ -386,7 +400,8 @@ Three mutants survived the first pass because of it.
 **Mutation-tested, 14 mutants, 0 survivors.** The three that survived the first
 run were all at render sites and all fixed by the two additions above.
 
-35. **`fa_matches` is read raw in 31 places.** *(v252)* `getUsers`,
+35. ✅ **CLOSED 2026-10-19, by the owner's call: no migration.** Nothing is broken and moving the
+    reads changes no behaviour. *(v252)* `getUsers`,
     `getTrainings`, `getInjuries` and `getMatchEvents` all exist; `getMatches`
     did not until v252, which is exactly why reaching for it was a trap and how
     v250 took the app down. The accessor exists now and the new code uses it,
@@ -434,10 +449,14 @@ run were all at render sites and all fixed by the two additions above.
 8. **Play Console** — $25 plus identity verification.
 9. **iOS** — try web push on a home-screen PWA first (iOS 16.4+) before spending the $99.
 10. **Readiness thresholds** — every measurement is against demo data that has since changed.
+    *(2026-10-19: deferred by the owner until more weeks of real RPE. The bands are the standard ACWR
+    ones — 0.8 / 1.3 / 1.5 / 1.7 — not demo numbers; what wants checking is how real squads fall
+    against them, by running the engine over production data, read-only.)*
 11. **Old-APK rules shim** — `clubs/{clubId}` still lets a lead write `fcfLinks`/`schedules` directly,
     bypassing the server-side validation in `setClubCategories`. Delete once a v55+ APK circulates.
-12. Smaller: three stranded accounts on `teamId: 'default'`; availability still club-wide readable;
-    orphaned shards when a category is emptied; `backfill-training-teams.js` has no `preflight()`.
+12. ✅ **Done — v288** (the four smaller items): the three `teamId: 'default'` accounts deleted;
+    availability and RPE readable within the category only; a deleted category's emptied shards
+    removed; `backfill-training-teams.js` deleted (its job was done in August).
 12b. **A failed profile-photo upload poisoned `fa_users`.** ✅ **Fixed — v232.** Both upload paths
     fell back to a `FileReader` data URI of up to 2 MB, which `setSession` persisted into
     `users/{uid}` and the synced `fa_users` blob — a document capped at 1 MB, so one failed upload
@@ -447,10 +466,8 @@ run were all at render sites and all fixed by the two additions above.
     refuses to carry an oversized value into the blob at all — which also REPAIRS one already
     poisoned in production. `setSession` guards the personal document the same way. See CONTEXT.md
     (v232) and `test/profile-pic.test.js`.
-13. **Follow-ball has no button any more.** The CODE is untouched (`setFollowBall`, `isFollowingBall`,
-    the `followBall` flag); only the button is gone. Bringing it back is one entry in `tbCamsHtml()`
-    and one branch in the click handler — but it is the only camera control that holds STATE, so it
-    also needs its lit class read back from the view rather than toggled blind.
+13. ✅ **Done — v288: follow-ball is back** in the camera menu, as a toggle whose light is read back
+    from `isFollowingBall()` on every open and after every tap (`tbCamTap` / `tbSyncFollow`).
 14. **Move hosting off GitHub Pages, so the repo can go private.** *(owner asked 2026-08-25)* The repo
     is public because Pages requires it (a private repo needs GitHub Pro). `firebase.json` has **no
     `hosting` block**, so this is real work. ⚠ **Do not serve `public: "."` without proving the
@@ -544,6 +561,19 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 28. **The 9.15 m corner arc**, drawn outside the pitch. `BG.MARKS` is where the regulation
     distances live; `board-markings-render.test.js` pins the rest.
 29. **Advertising boards around the pitch.**
+
+**Training**
+
+36. **Assign points to the exercises of a training session.** *(owner asked 2026-10-19)* The
+    exercises are the session plan's (`stdPlan`, the ✎ description editor since v282). Not
+    designed yet. Settle first what a point measures and who earns it — a drill's winner (a player
+    or a side) towards a running ranking, or a coach's rating of the exercise — because those are
+    different records: per-player scores want a per-session record like `rpe`, not a field on the
+    plan.
+
+37. **Repeat a training session.** *(owner asked 2026-10-19)* Copy a session — its plan, exercises
+    and material — to another day. Not designed yet: settle first whether it is a one-off copy or a
+    weekly repeat. Nothing like it exists today ("Duplicar" is for board objects only).
 
 **Data**
 

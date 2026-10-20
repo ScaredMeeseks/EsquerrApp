@@ -516,6 +516,54 @@ describe("Claims-only auth (Phase 3b: me() fallback removed)", () => {
   });
 });
 
+describe("Per-record reads stay inside the squad (v288)", () => {
+  const seed = async (coll, id, data) => env.withSecurityRulesDisabled(async (c) => {
+    await c.firestore().doc("teams/teamA/" + coll + "/" + id).set(data);
+  });
+  // beforeEach: the suite clears the emulator between tests.
+  beforeEach(async () => {
+    for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
+      await seed(coll, A2 + "_cad", {uid: A2, value: "injured", category: "cadet"});
+      await seed(coll, A2 + "_juv", {uid: A2, value: "yes", category: "juvenil"});
+      await seed(coll, A2 + "_none", {uid: A2, value: "yes", category: "none"});
+    }
+  });
+  for (const coll of ["trainingAvail", "matchAvail", "rpe"]) {
+    it(coll + ": a teammate of the same squad reads it — 'Lesionat' included", async () => {
+      await assertSucceeds(asA().doc("teams/teamA/" + coll + "/" + A2 + "_cad").get());
+    });
+    it(coll + ": a player of another squad CANNOT", async () => {
+      await assertFails(asA().doc("teams/teamA/" + coll + "/" + A2 + "_juv").get());
+    });
+    it(coll + ": the owner reads it in any squad, staff read every squad", async () => {
+      await assertSucceeds(asA2().doc("teams/teamA/" + coll + "/" + A2 + "_juv").get());
+      await assertSucceeds(asStaffA().doc("teams/teamA/" + coll + "/" + A2 + "_juv").get());
+    });
+    it(coll + ": the unassigned ('none') read as the data shards do", async () => {
+      await assertSucceeds(asA().doc("teams/teamA/" + coll + "/" + A2 + "_none").get());
+    });
+  }
+  it("the listener's two queries pass: the squad's, and one's own", async () => {
+    await assertSucceeds(asA().collection("teams/teamA/trainingAvail")
+        .where("category", "in", ["cadet", "none"]).get());
+    await assertSucceeds(asA().collection("teams/teamA/trainingAvail").where("uid", "==", A).get());
+  });
+  it("…and the whole collection, as before v288, is refused to a player", async () => {
+    await assertFails(asA().collection("teams/teamA/trainingAvail").get());
+  });
+  it("another club's member reads none of it — not even under a squad of the same name", async () => {
+    await assertFails(asB().doc("teams/teamA/trainingAvail/" + A2 + "_cad").get());
+    const asBCadet = () => db(B, {teamId: "teamB", role: "player", email: "b@x.com", cats: ["cadet"]});
+    await assertFails(asBCadet().doc("teams/teamA/trainingAvail/" + A2 + "_cad").get());
+    await assertFails(asBCadet().doc("teams/teamA/trainingAvail/" + A2 + "_none").get());
+  });
+  it("a record with no uid field is still its owner's, by its id", async () => {
+    await seed("trainingAvail", A2 + "_2025-03-01", {value: "yes"});
+    await assertSucceeds(asA2().doc("teams/teamA/trainingAvail/" + A2 + "_2025-03-01").get());
+    await assertFails(asA().doc("teams/teamA/trainingAvail/" + A2 + "_2025-03-01").get());
+  });
+});
+
 describe("Per-record ownership", () => {
   const rec = (uid) => "teams/teamA/trainingAvail/" + uid + "_2026-02-02";
   it("player creates own record (id prefix + uid match)", async () => {
@@ -535,8 +583,14 @@ describe("Per-record ownership", () => {
     await assertSucceeds(asStaffA().doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01")
         .set({uid: A2, date: "2026-01-01", value: "no"}, {merge: true}));
   });
-  it("player CAN read a teammate's record", async () => {
-    await assertSucceeds(asA().doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01").get());
+  /* v288: a record is read within its SQUAD. A2's seeded record predates the
+     stamp (no category), so only A2 and staff see it now. */
+  it("player CANNOT read a teammate's record from before the category stamp", async () => {
+    await assertFails(asA().doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01").get());
+  });
+  it("…but its owner can, and staff can", async () => {
+    await assertSucceeds(asA2().doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01").get());
+    await assertSucceeds(asStaffA().doc("teams/teamA/trainingAvail/" + A2 + "_2026-01-01").get());
   });
   it("player CAN delete own record", async () => {
     await env.withSecurityRulesDisabled(async (c) => {

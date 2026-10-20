@@ -13055,3 +13055,39 @@ Version triple → **v286**.
 **Deploy order:** functions first (parser, import, probe, reminder), then push.
 
 Version triple → **v287**.
+
+### 2026-10-20 — v288: the small and technical items — records readable within the squad, Inici redraws itself, follow-ball, clean-ups
+
+**The owner's calls (2026-10-19):** plan every small or technical item in the parking lot; delete the three stray accounts; delete the old maintenance script; close the match-list migration (#35) with no migration; availability and RPE readable within the same category only; readiness thresholds (#10) deferred. Two roadmap items added: points per exercise (#36) and repeating a training (#37).
+
+**Records readable within the squad.** Every member used to listen to the whole of `trainingAvail`, `matchAvail` and `rpe`, so any player could read any other squad's answers — "Lesionat" included.
+- **Records carry `category`:** the squad the session or match is FOR, so a guest's answer is read by the squad that called him; an extra (on nobody's calendar) takes the player's own; `'none'` when neither is known. `recordCategoryOf(row, session)` in app.js, used at all five `ackSaveRecord` sites, and in `seed-demo-club.js` / `topup-demo-season.js`.
+- **Rules (`readsRecord`):** superuser, staff of the club, the owner (by doc id or by the `uid` field — a LIST query has no id), `category == 'none'`, or `category in token.cats`, always within the same club. Writes unchanged.
+- **Listeners (db.js):** staff keep one listener on the collection. A player gets two queries merged into the one blob: `category in scope` and `uid == me` (answers from before the stamp, and guest answers). Nothing is written until both have answered once (half a blob reads as answers withdrawn); a refused query counts as empty and the other's answers are written at once (`publish()` — the mutation run found that a refusal after the other query had answered left its answers unwritten until their next change).
+- **Backfill (one-off, scratchpad `prod-backfill-category.js`, updateMask `category` only):** 18,525 records — from the session (7,814), the player (7,166, date-keyed legacy), the match (3,545).
+- **Accepted:** the one device on the old Android app stops receiving the squad's answers until it updates. Archived seasons are left as they are.
+
+**Inici redraws itself.** A session that finished at 21:30 stayed listed, answerable, until the player touched something. `iniNextChangeAt(now, trainings, matches)` finds the next lock, session end, match end, or midnight; every render of `player-home` / `staff-home` aims ONE timeout a second past it (`iniScheduleRefresh`, called from `renderPage`). When it fires it redraws only if Inici is still the page, the tab is visible (else on return, via `visibilitychange`) and nothing is in use — a focused field, a dialog, an open dropdown — in which case it looks again in a minute.
+
+**The season match count (staff Inici)** counted `m.date <= today` — a match tonight from the morning, and no season bound. It now counts a fixture once its first part (`matchParts`) has kicked off inside the season, as the sessions beside it.
+
+**Follow-ball** is back in the 3D camera menu as a toggle (`tactics.cam_follow`, ball thumbnail). Its light is READ from `isFollowingBall()` on every open and after every tap, because an orbit or pan clears it inside board3d.js. ⚠ The lit style needed its own `.tb-cams-list .tb-cam-btn.active` rule: the list's `background:none` comes later than the old `.tb-cam-btn.active` plate and wins on order, so the class was set and nothing showed — found only in the browser. The rail's floor went 15rem → 17rem for the extra entry.
+
+**Clean-ups:**
+- **`deleteTeam`,** when the last squad of a category goes (`catGone`), deletes that category's shards it left EMPTY (`isEmptyShard`: `[]`, `{}`, or a per-field document with only `category` / `_migrated`), counted in `emptiedShards`. Shards still holding history stay. One existing empty shard deleted in production (`prod-empty-shards.js`).
+- **The three `teamId: 'default'` accounts** (from before clubs existed; in no club, no tokens) deleted: Auth account, tokens, users doc (`prod-strays.js`).
+- **`functions/backfill-training-teams.js` deleted** — it ran in August; an empty `teams` still means every letter.
+
+**Checked (emulators at 390 px, a lead and a player in two squads):**
+- The lead's blob holds every squad's records; the amateur player's holds his squad's and his own pre-stamp answer, never the juvenil one; the session page shows a teammate's "Lesionat" and no juvenil name. A new answer lands in Firestore with `category: 'amateur'`.
+- Staff Inici: "3 sessions · 1 partits" with a match later tonight and one from last season seeded.
+- A session ending at 20:41 is listed before and gone after, with nobody touching the page.
+- Follow-ball: off → lit (orange ring, `aria-pressed` true) → off; the menu closes on the tap; no horizontal overflow.
+
+**Tests:** new `db-records.test.js` (the two queries, wait-for-both, a refused query); `fake-firestore.js` can refuse a query or hold its first answer (`store.onQuery`). Rules: a describe for the squad reads (+ another club under a same-named squad, a record with no `uid`). Teams: the emptied shards of each storage shape gone, history kept, another category's empty shard kept. Inici: the season count, the redraw (7), the stamps through the real handlers; Accions and Mèdic: the stamps; board3d / board3d-menu: the toggle and its CSS. Mutations: 45/45 unit-level, 14/15 against the emulator (the survivor, the `'cats' in token` guard, is equivalent: without it the rule errors, which is a deny). Unit 4184 → **4210**. Rules **198**. Functions **124**.
+
+⚠ **The full functions suite flakes in the main working tree** (the acta guard's stale-phone test, or a wipe test — a different one each run), while four full runs of the same code in a clean worktree all passed. It is timing against the emulator's trigger backlog, not v288: it also passes with v288's `index.js` and tests in that worktree.
+
+**Release order:** functions (`deleteTeam`), push and wait for Pages, the backfill, then the rules — so no client ever reads under rules its queries do not match — then the stray accounts and the empty shard.
+
+Version triple → **v288**.

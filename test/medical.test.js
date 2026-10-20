@@ -554,7 +554,7 @@ function mountReport(opts) {
     getItem: (k) => (k in store ? store[k] : null),
     setItem: (k, v) => { store[k] = v; },
   };
-  const SESS = { id: 't7', date: '2026-09-02', focus: 'Pressing' };
+  const SESS = Object.assign({ id: 't7', date: '2026-09-02', focus: 'Pressing' }, opts.sess);
 
   const api = {
     document: doc,
@@ -577,6 +577,9 @@ function mountReport(opts) {
       return i;
     },
     recordKey: (uid, sess) => uid + '_' + sess.id,
+    // v288: the REAL rule for which squad a record belongs to.
+    recordCategoryOf: new Function(src.slice(src.indexOf('  function recordCategoryOf(row, session) {'),
+        src.indexOf('  function ackSaveRecord(')) + '\nreturn recordCategoryOf;')(),
     ackSaveRecord: (coll, key, data) => { calls.save.push({ coll, key, data }); },
     ackSave: (k, v) => { calls.acked.push({ k, v }); store[k] = v; },
     addStaffNotification: (n) => calls.notify.push(n),
@@ -625,6 +628,13 @@ describe('El meu autoreport — every field is optional', () => {
     assert.strictEqual(inj.length, 1, 'a blank report created no pending row');
     assert.strictEqual(inj[0].selfReported, true);
     assert.strictEqual(inj[0].confirmedBy, undefined, 'a self-report arrived pre-confirmed');
+  });
+
+  /* v288: "Lesionat" is read by the squad the session is for, and by nobody else. */
+  it('stamps the Lesionat answer with the squad of its session', () => {
+    const m = mountReport({ sess: { category: 'cadet' } });
+    m.click('#md2-skip');
+    assert.strictEqual(m.calls.save[0].data.category, 'cadet');
   });
 
   /* ⚠ THE ITALIC ROW IS THE POINT. A blank report must leave zone, group,

@@ -695,7 +695,7 @@ function plan(state, opts) {
           const docId = `${a.uid}_${id}`;
           if (haveMatchAvail.has(docId)) return;
           out.records.push({coll: "matchAvail", id: docId,
-            data: {uid: a.uid, matchId: id, value: a.value, updatedAt: SERVER_TS, source: "topup"}});
+            data: {uid: a.uid, matchId: id, value: a.value, category: cat, updatedAt: SERVER_TS, source: "topup"}});
           haveMatchAvail.add(docId); S.matchAvail++;
         });
         if (cross) {
@@ -714,7 +714,7 @@ function plan(state, opts) {
           if (haveRpe.has(docId)) return;
           out.records.push({coll: "rpe", id: docId,
             data: {uid: r.uid, rpe: r.rpe, minutes: r.minutes, ua: r.rpe * r.minutes,
-              tag: "match", date: m.date, matchId: id, updatedAt: SERVER_TS, source: "topup"}});
+              tag: "match", date: m.date, matchId: id, category: cat, updatedAt: SERVER_TS, source: "topup"}});
           haveRpe.add(docId); S.matchRpe++;
         });
         convo[id] = b.convo; cChanged = true; S.convocatories++;
@@ -742,7 +742,7 @@ function plan(state, opts) {
         const r = Math.max(4, Math.min(10, traitsOf(uid).fitnessBase + R.rint(-1, 3)));
         out.records.push({coll: "rpe", id: docId,
           data: {uid, rpe: r, minutes, ua: r * minutes, tag: "match", date: m.date,
-            matchId: id, updatedAt: SERVER_TS, source: "topup"}});
+            matchId: id, category: cat, updatedAt: SERVER_TS, source: "topup"}});
         haveRpe.add(docId); S.matchRpe++;
       });
     }
@@ -811,7 +811,7 @@ function plan(state, opts) {
             (r < tr.reliability ? "yes" : (r < tr.reliability + 0.07 ? "late" : "no"));
           out.records.push({coll: "trainingAvail", id: aKey,
             data: {uid, date: t.date, sessionId: t.id || null, value,
-              updatedAt: SERVER_TS, source: "topup"}});
+              category: cat, updatedAt: SERVER_TS, source: "topup"}});
           availNow.set(aKey, {value, date: t.date});
           S.avail++;
         }
@@ -822,7 +822,7 @@ function plan(state, opts) {
         const minutes = value === "late" ? R.rint(55, 80) : R.rint(75, 95);
         out.records.push({coll: "rpe", id: rKey,
           data: {uid, rpe, minutes, ua: rpe * minutes, tag: "training", date: t.date,
-            sessionId: t.id || null, updatedAt: SERVER_TS, source: "topup"}});
+            sessionId: t.id || null, category: cat, updatedAt: SERVER_TS, source: "topup"}});
         haveRpe.add(rKey);
         S.rpe++;
       }

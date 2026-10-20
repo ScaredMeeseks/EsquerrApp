@@ -6137,11 +6137,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
    met on a short window — the centre line is above the bottom of a
    four-button stack once the wrapper is under about 490px tall. The
    floor is the stack's own height plus a gap, and there is a test that
-   adds the stack up from the tokens rather than trusting 15rem.
+   adds the stack up from the tokens rather than trusting the number —
+   17rem since v288, when follow-ball made the stack five.
    2D has no camera list, so nothing pushes play off the centre there,
    which is the whole point of the rule above. */
 .tb-3d-wrap:not(.tb-wrap-2d) .tb-rail {
-  top:max(calc(50% - var(--tb-tile) / 2), 15rem);
+  top:max(calc(50% - var(--tb-tile) / 2), 17rem);
 }
 .tb-rail:hover, .tb-rail:focus-within { opacity:1; }
 .tb-rail .tb-frames-section {
@@ -6249,6 +6250,12 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
 .tb-cams-list .tb-cam-btn svg {
   width:22px; height:22px; transition:transform .15s ease;
 }
+/* FOLLOW-BALL ON (v288), the one toggle in the list: ringed in the rail's
+   "this one" orange. The `.tb-cam-btn.active` plate further up is exactly
+   what this list strips (`background:none` above wins on order), so the
+   lit state needs its own rule, here, after the plain one. */
+.tb-cams-list .tb-cam-btn.active { color:#fb8c00; box-shadow:inset 0 0 0 2px #fb8c00; }
+.tb-cams-list:hover .tb-cam-btn.active { opacity:1; }
 
 /* ── The frames, inside the 3D window ─────────────────────────────
    Over a pitch rather than on a page, so the 2D board's white tiles

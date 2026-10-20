@@ -460,10 +460,78 @@ describe('the camera menu and the frames rail', () => {
   const init = fn('tbMenuInit(hooks)');
   const cams = fn('tbCamsHtml()');
 
-  it('offers three views and a crosshair, and not lateral', () => {
+  it('offers three views, follow-ball and a crosshair, and not lateral', () => {
     const order = (cams.match(/one\('(\w+)'/g) || []).map((m) => m.slice(5, -1));
-    assert.deepStrictEqual(order, ['broadcast', 'goal', 'top', 'reset'],
-        'Realitzacio, Porteria, Zenital, then centre the view');
+    assert.deepStrictEqual(order, ['broadcast', 'goal', 'top', 'follow', 'reset'],
+        'Realitzacio, Porteria, Zenital, follow the ball (v288), then centre the view');
+  });
+
+  describe('follow-ball is a toggle whose light is READ from the board (v288)', () => {
+    const {JSDOM} = require('jsdom');
+    // eslint-disable-next-line no-new-func
+    const api = new Function('t', 'sanitize',
+        app.slice(app.indexOf('  function tbCamThumb(kind) {'), app.indexOf('  /**\n   * Fill the panels with the REAL controls')) +
+        '\nreturn {tbCamsHtml, tbCamTap, tbSyncFollow};')((k) => k, (x) => String(x));
+    const board = () => {
+      const b = {following: false, calls: []};
+      b.isFollowingBall = () => b.following;
+      b.setFollowBall = (on) => { b.calls.push('follow:' + on); b.following = !!on; };
+      b.setPreset = (p) => b.calls.push('preset:' + p);
+      b.resetCamera = () => b.calls.push('reset');
+      return b;
+    };
+    const menu = () => new JSDOM('<body>' + api.tbCamsHtml() + '</body>').window.document;
+    const lit = (doc) => doc.querySelector('[data-cam="follow"]').classList.contains('active');
+
+    it('a tap turns it on, a second tap off', () => {
+      const b = board();
+      api.tbCamTap('follow', b);
+      api.tbCamTap('follow', b);
+      assert.deepStrictEqual(b.calls, ['follow:true', 'follow:false']);
+    });
+
+    it('lit only while the board is following', () => {
+      const b = board(); const doc = menu();
+      api.tbSyncFollow(doc, b);
+      assert.strictEqual(lit(doc), false);
+      api.tbCamTap('follow', b); api.tbSyncFollow(doc, b);
+      assert.strictEqual(lit(doc), true);
+      assert.strictEqual(doc.querySelector('[data-cam="follow"]').getAttribute('aria-pressed'), 'true');
+    });
+
+    it('a manual orbit (which clears it inside the board) leaves it unlit on reopen', () => {
+      const b = board(); const doc = menu();
+      api.tbCamTap('follow', b); api.tbSyncFollow(doc, b);
+      b.following = false;              // what an orbit or pan does in board3d.js
+      api.tbSyncFollow(doc, b);
+      assert.strictEqual(lit(doc), false, 'the button still says "following"');
+    });
+
+    /* ⚠ The class alone proved nothing: the list's own `.tb-cams-list
+       .tb-cam-btn { background:none }` comes later than the old
+       `.tb-cam-btn.active` plate and wins on order, so "following" was
+       invisible in the browser while every test above passed. */
+    it('the lit state is drawn by a rule of the LIST\'s own, after the plain one', () => {
+      const on = rule('.tb-cams-list .tb-cam-btn.active');
+      assert.ok(/color:\s*#fb8c00/.test(on) && /box-shadow:[^;]*#fb8c00/.test(on), 'no ring, no colour: ' + on);
+      assert.ok(cssBare.indexOf('.tb-cams-list .tb-cam-btn.active') > cssBare.indexOf('.tb-cams-list .tb-cam-btn {'),
+          'the lit rule sits before the plain one, which then overrides it');
+      assert.ok(/opacity:\s*1/.test(rule('.tb-cams-list:hover .tb-cam-btn.active')),
+          'hovering the list dims the one entry that says the camera is following');
+    });
+
+    it('the other entries are untouched: a preset, and the crosshair', () => {
+      const b = board();
+      api.tbCamTap('goal', b);
+      api.tbCamTap('reset', b);
+      assert.deepStrictEqual(b.calls, ['preset:goal', 'reset']);
+    });
+
+    it('the menu reads the light every time it opens, and after every tap', () => {
+      const bind = app.slice(app.indexOf('const syncFollow = () => tbSyncFollow(cams, _tb3d);'));
+      assert.ok(/if \(on\) syncFollow\(\);/.test(bind.slice(0, 600)), 'opening does not read the state');
+      assert.ok(/tbCamTap\(btn\.dataset\.cam, _tb3d\);\s*syncFollow\(\);/.test(bind), 'a tap does not read it back');
+    });
   });
 
   it('each view is a drawing, not its name', () => {

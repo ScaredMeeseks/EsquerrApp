@@ -455,7 +455,8 @@ describe('the camera can be moved and recovered', () => {
     // Reset now lives in the camera preset row rather than on its own.
     /* The attribute is templated now (`data-cam="' + cam + '"`), so
        the literal it used to grep for no longer appears anywhere. */
-    assert.ok(/one\('reset'/.test(a) && /_tb3d\.resetCamera\(\)/.test(a),
+    // v288: the menu's taps go through tbCamTap, which calls it on the board it is given.
+    assert.ok(/one\('reset'/.test(a) && /tb3d\.resetCamera\(\)/.test(a),
         'the crosshair entry must exist and must call resetCamera');
   });
 });
@@ -823,15 +824,13 @@ describe('camera presets', () => {
          is one of the two that used to whip 172 degrees through the
          overhead singularity. Deleting a button is not worth losing
          that coverage.
-       - follow-ball is parked (HANDOFF 19); setFollowBall and
-         isFollowingBall are untouched. */
+       - follow-ball came BACK in v288, as a toggle over the same
+         setFollowBall / isFollowingBall. */
     ['broadcast', 'top', 'goal', 'side'].forEach((k) =>
       assert.ok(new RegExp(k + ':').test(s3), 'missing preset ' + k));
-    ['broadcast', 'goal', 'top', 'reset'].forEach((k) =>
-      assert.ok(a.includes("data-cam=\"' + cam + '\"") || a.includes("one('" + k + "'"),
-          'missing camera entry ' + k));
+    ['broadcast', 'goal', 'top', 'follow', 'reset'].forEach((k) =>
+      assert.ok(a.includes("one('" + k + "'"), 'missing camera entry ' + k));
     assert.ok(!/one\('side'/.test(a), 'lateral must not be in the menu');
-    assert.ok(!/one\('follow'/.test(a), 'follow-ball is parked');
     assert.ok(/setFollowBall/.test(s3) && /isFollowingBall/.test(s3),
         'but its code must survive the button');
   });
@@ -863,13 +862,11 @@ describe('camera presets', () => {
     assert.ok((s3.match(/followBall = false/g) || []).length >= 3, 'orbit, pan and preset');
   });
 
-  it('nothing in the camera menu latches — every entry is an action', () => {
-    /* This used to assert the opposite: that Follow latched and read
-       its lit class back from the view rather than toggling blind.
-       Follow is parked (HANDOFF 19) and its button is gone, so the
-       menu now holds only actions — pick a view, or re-centre — and
-       an entry that stayed lit would be claiming a state that does
-       not exist. The list closes on click instead. */
+  it('one entry latches — follow-ball — and its light is read from the view', () => {
+    /* v288: follow-ball is back, as the ONE entry that holds state. Its
+       lit class is read from isFollowingBall() (tbSyncFollow), never
+       toggled blind; every other entry is an action. The list still
+       closes on click. board3d-menu.test.js drives the toggle itself. */
     const i = a.indexOf('const camsBtn =');
     assert.ok(i !== -1, 'the camera menu wiring was not found');
     /* Bounded on the catch that ends the mount, not on a character
@@ -881,9 +878,11 @@ describe('camera presets', () => {
     const end = a.indexOf('} catch (err)', i);
     assert.ok(end !== -1, 'the mount block has no visible end');
     const fn = a.slice(i, end);
-    assert.ok(!/tb-cam-follow/.test(fn), 'no latching entry remains');
-    assert.ok(/setPreset\(btn\.dataset\.cam\)/.test(fn),
-        'and the other entries are plain presets');
+    assert.ok(/tbCamTap\(btn\.dataset\.cam, _tb3d\)/.test(fn), 'the taps go through tbCamTap');
+    const tap = a.slice(a.indexOf('  function tbCamTap(cam, tb3d) {'), a.indexOf('  function tbSyncFollow('));
+    assert.ok(/else tb3d\.setPreset\(cam\)/.test(tap), 'and the other entries are plain presets');
+    assert.ok(/isFollowingBall\(\)/.test(a.slice(a.indexOf('  function tbSyncFollow('))),
+        'the light is read from the view, not toggled blind');
     /* Scoped to the BUTTON handler. A window-wide search for
        openCams(false) also found the outside-click dismissal, so
        deleting the close-on-click passed the test unchanged. */

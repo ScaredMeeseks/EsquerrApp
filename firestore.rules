@@ -27,6 +27,25 @@ service cloud.firestore {
     function owns(docId) {
       return docId.matches(request.auth.uid + '(_.*)?');
     }
+    /* A player-submitted record (availability, RPE) is read within its
+       SQUAD (v288): its `category` is the squad its session or match is
+       for, stamped by the client. Its owner and the club's staff read it
+       wherever it is; anyone else in the club only if it is one of their
+       categories — or 'none', the unassigned, as the data shards allow.
+       A record from before the stamp has no category: only its owner and
+       staff see it. The client asks with exactly these two queries
+       (js/db.js), because a query that could return one refused record is
+       refused whole. */
+    function readsRecord(teamId, docId) {
+      return isSuperUser() || isStaffOf(teamId)
+        || (sameTeam(teamId) && (owns(docId)
+            // The `uid` term, not only owns(docId): a LIST query has no doc
+            // id to match, and the client's own-records query is uid ==.
+            || resource.data.uid == request.auth.uid
+            || resource.data.category == 'none'
+            || ('cats' in request.auth.token
+                && resource.data.category in request.auth.token.cats)));
+    }
     // Phase 5: team data documents are sharded per category, so the id is
     // "{key}__{category}". The allowlists below name the KEY, not the shard.
     function baseKey(docId) {
@@ -133,7 +152,7 @@ service cloud.firestore {
       // Players write ONLY records whose id starts with their uid and
       // whose uid field matches; staff/superuser manage everything.
       match /trainingAvail/{docId} {
-        allow read: if sameTeam(teamId) || isSuperUser();
+        allow read: if readsRecord(teamId, docId);
         allow create, update: if isSuperUser() || isStaffOf(teamId)
           || (sameTeam(teamId) && owns(docId)
               && request.resource.data.uid == request.auth.uid);
@@ -141,7 +160,7 @@ service cloud.firestore {
           || (sameTeam(teamId) && owns(docId));
       }
       match /matchAvail/{docId} {
-        allow read: if sameTeam(teamId) || isSuperUser();
+        allow read: if readsRecord(teamId, docId);
         allow create, update: if isSuperUser() || isStaffOf(teamId)
           || (sameTeam(teamId) && owns(docId)
               && request.resource.data.uid == request.auth.uid);
@@ -149,7 +168,7 @@ service cloud.firestore {
           || (sameTeam(teamId) && owns(docId));
       }
       match /rpe/{docId} {
-        allow read: if sameTeam(teamId) || isSuperUser();
+        allow read: if readsRecord(teamId, docId);
         allow create, update: if isSuperUser() || isStaffOf(teamId)
           || (sameTeam(teamId) && owns(docId)
               && request.resource.data.uid == request.auth.uid);

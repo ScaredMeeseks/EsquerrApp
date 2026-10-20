@@ -202,6 +202,20 @@ function ownsEntryKey(kind, field, uid) {
  * been left anywhere by an earlier move, and the point is to end with all
  * of them in one place. A no-op when the member has no such rows.
  */
+/** A data shard with nothing in it (v288): `[]` / `{}` / unreadable in
+    the blob format, or no entry fields in the per-field one. */
+function isEmptyShard(snap) {
+  if (!snap || !snap.exists) return false;
+  const data = snap.data() || {};
+  if (typeof data.v === "string") {
+    let parsed;
+    try { parsed = JSON.parse(data.v); } catch (e) { return false; }
+    if (Array.isArray(parsed)) return parsed.length === 0;
+    return !!parsed && typeof parsed === "object" && Object.keys(parsed).length === 0;
+  }
+  return Object.keys(data).every((k) => k === "category" || k === "_migrated" || k === "v");
+}
+
 async function reshardMember(teamId, uid, toCat) {
   if (!teamId || !uid) return;
   const dest = toCat || SHARD_NONE;
@@ -5241,6 +5255,26 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
         }
       }
 
+      /* ── A category that is GONE leaves no empty documents (v288) ──
+         With its last squad deleted, nobody's claims include the category
+         any more, so its shards are unreadable to every client — and the
+         ones this delete just emptied are nothing but clutter that would
+         reappear, empty, if the category were switched on again. Only the
+         EMPTY ones go: a shard still holding rows holds history kept on
+         purpose (a fixture with no letter, the category's boards). After
+         the retry pass, so a resurrected row keeps its document. */
+      let emptiedShards = 0;
+      if (catGone) {
+        const fresh = await readDataShards(clubId);
+        for (const list of fresh.values()) {
+          for (const s of list) {
+            if (s.cat !== category || !isEmptyShard(s.snap)) continue;
+            await s.ref.delete();
+            emptiedShards++;
+          }
+        }
+      }
+
       // ── Phase 5: the roster doc (CONSTRAINT B — LAST) ────────
       // Deleting it fires onRosterWritten, which detaches every listed member
       // (roles/category/team cleared, prevCategory/prevTeam stamped, claims
@@ -5253,7 +5287,7 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
         status: resurrected.length ? "done-with-conflict" : "done",
         finishedAt: FieldValue.serverTimestamp(),
         uids: teamUids.length, matches: deletedMatchIds.length,
-        records, catGone, refreshed,
+        records, catGone, refreshed, emptiedShards,
         resurrected: resurrected,
       }, {merge: true});
 
@@ -5263,7 +5297,7 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
       });
       return {
         ok: true, teamKey, uids: teamUids.length,
-        matches: deletedMatchIds.length, records, catGone,
+        matches: deletedMatchIds.length, records, catGone, emptiedShards,
         // Non-empty means a client wrote during the delete and won the race
         // even after a retry. Re-running is safe and cheap.
         resurrected,

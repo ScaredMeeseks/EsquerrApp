@@ -706,36 +706,67 @@ const DB = (function () {
 
     var _recordSeen = {};
     var firstSnaps = [];
+    var _myUid = '';
+    try { _myUid = (auth.currentUser && auth.currentUser.uid) || ''; } catch (e) { /* no auth: no own query */ }
     Object.keys(RECORD_COLLECTIONS).forEach(function (coll) {
       var cfg = RECORD_COLLECTIONS[coll];
       if (cfg.staffOnly && !_isStaff) return;
-      var resolveFirst;
-      firstSnaps.push(new Promise(function (res) { resolveFirst = res; }));
-      var unsub = db.collection('teams').doc(_teamId).collection(coll)
-        .onSnapshot(function (snap) {
+      var col = db.collection('teams').doc(_teamId).collection(coll);
+      /* WHICH records this session may read (v288). Staff: the club's. A
+         player: their own squad's — `category` is the squad the session or
+         match is for, the same scope list the data/ listener reads with —
+         plus their OWN, wherever they live: answers from before the stamp
+         carry no category, and a guest's answer belongs to the squad that
+         called him. Two queries, because the rules refuse any query that
+         could return a record outside them, and "mine or my squad's" is not
+         one query. Both land in the ONE blob every read path already uses. */
+      var queries = _isStaff ? [col] : [
+        col.where('category', 'in', scope.slice(0, 30)),
+        _myUid ? col.where('uid', '==', _myUid) : null
+      ].filter(Boolean);
+      var parts = queries.map(function () { return null; });
+      var publish = function () {
+        // Not until every query has answered once: half a blob reads as
+        // answers withdrawn.
+        if (parts.some(function (p) { return p === null; })) return;
+        var merged = {};
+        parts.forEach(function (p) { Object.assign(merged, p); });
+        // Guard the very first load ONLY: an empty collection we have
+        // never seen populated, with a populated blob, means data hasn't
+        // arrived yet — don't wipe the cache. Once we've seen records, an
+        // empty snapshot is a real "all deleted" and MUST clear the blob
+        // (e.g. a coach's device when the last availability answer is
+        // withdrawn on another device).
+        var existing = _origGetItem(cfg.lsKey);
+        var empty = !Object.keys(merged).length;
+        if (empty && !_recordSeen[coll] && existing && existing !== '{}') return;
+        var val = JSON.stringify(merged);
+        if (existing !== val) {
+          _origSetItem(cfg.lsKey, val);
+          window.dispatchEvent(new CustomEvent('firestore-sync', { detail: { key: cfg.lsKey } }));
+        }
+      };
+      queries.forEach(function (q, qi) {
+        var resolveFirst;
+        firstSnaps.push(new Promise(function (res) { resolveFirst = res; }));
+        var unsub = q.onSnapshot(function (snap) {
           resolveFirst();
           if (snap.metadata.hasPendingWrites) return;
           if (!snap.empty) _recordSeen[coll] = true;
-          // Guard the very first load ONLY: an empty collection we have
-          // never seen populated, with a populated blob, means data hasn't
-          // arrived yet — don't wipe the cache. Once we've seen records, an
-          // empty snapshot is a real "all deleted" and MUST clear the blob
-          // (e.g. a coach's device when the last availability answer is
-          // withdrawn on another device).
-          var existing = _origGetItem(cfg.lsKey);
-          if (snap.empty && !_recordSeen[coll] && existing && existing !== '{}') return;
           var obj = {};
           snap.forEach(function (doc) { obj[doc.id] = cfg.toEntry(doc.data()); });
-          var val = JSON.stringify(obj);
-          if (existing !== val) {
-            _origSetItem(cfg.lsKey, val);
-            window.dispatchEvent(new CustomEvent('firestore-sync', { detail: { key: cfg.lsKey } }));
-          }
+          parts[qi] = obj;
+          publish();
         }, function (err) {
           console.error('[DB] record listener failed for', coll, err);
+          // A refused query must not hold the others' answers back forever —
+          // and the ones already here are written NOW, not at their next change.
+          if (parts[qi] === null) parts[qi] = {};
           resolveFirst();
+          publish();
         });
-      _unsubscribers.push(unsub);
+        _unsubscribers.push(unsub);
+      });
     });
     await Promise.all(firstSnaps);
 

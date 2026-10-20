@@ -26,6 +26,10 @@ const { JSDOM } = require('jsdom');
 const utils = require('../js/utils.js');
 
 const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+// v288: the REAL rule for which squad a saved record belongs to.
+// eslint-disable-next-line no-new-func
+const REAL_RECORD_CATEGORY = new Function(src.slice(src.indexOf('  function recordCategoryOf(row, session) {'),
+    src.indexOf('  function ackSaveRecord(')) + '\nreturn recordCategoryOf;')();
 const utilsSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'utils.js'), 'utf8');
 const css = readCss();
 const bare = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -388,8 +392,10 @@ describe('Accions — the answer strip', () => {
 describe('Accions — saving a match takes the lineup\'s minutes', () => {
   const HANDLER = grab('    // Player actions: RPE submit', '    /* Player actions: log an extra training.');
 
-  function saveRun(kind, lineupMins, minutesTyped) {
-    const dom = new JSDOM('<body>' + load().html + '</body>', { url: 'http://localhost/' });
+  function saveRun(kind, lineupMins, minutesTyped, o) {
+    o = o || {};
+    const trainings = o.trainings || TRAININGS;
+    const dom = new JSDOM('<body>' + load({ trainings }).html + '</body>', { url: 'http://localhost/' });
     const w = dom.window, d = w.document;
     const errors = [];
     w.addEventListener('error', (e) => errors.push(e.error || e.message));
@@ -397,11 +403,12 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
     const asked = [], saved = [], notes = [];
     const api = {
       $$: (sel) => Array.from(d.querySelectorAll(sel)),
-      getSession: () => SESSION,
-      getTrainings: () => TRAININGS,
+      getSession: () => o.session || SESSION,
+      getTrainings: () => trainings,
       localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } },
       playerMatchMinutesKnown: (uid, mid) => { asked.push([uid, mid]); return lineupMins; },
       addStaffNotification: (n) => notes.push(n),
+      recordCategoryOf: REAL_RECORD_CATEGORY,
       ackSaveRecord: (coll, id, data) => { saved.push({ coll, id, data }); return Promise.resolve(); },
       renderPage: () => {}, updateActionsBadge: () => {},
       t: (k) => k, ACTION_MINUTES_MAX: 300,
@@ -427,6 +434,16 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
     assert.strictEqual(data.ua, 7 * 78);
     assert.strictEqual(data.tag, 'match');
     assert.strictEqual(r.notes[0].detail, 'RPE 7 · 78 min');
+  });
+
+  /* v288: the rules let a player read their own squad's records only, so
+     an RPE carries the squad of the session it is FOR. */
+  it('stamps a training RPE with its session\'s squad, then the player\'s', () => {
+    const cadet = TRAININGS.map((tr) => Object.assign({}, tr, { category: 'cadet' }));
+    const own = Object.assign({}, SESSION, { category: 'juvenil' });
+    assert.strictEqual(saveRun('training', null, 90, { trainings: cadet, session: own }).saved[0].data.category, 'cadet',
+        'a guest\'s RPE went to his own squad');
+    assert.strictEqual(saveRun('training', null, 90, { session: own }).saved[0].data.category, 'juvenil');
   });
 
   it('saves null, not a refusal, while the lineup is unrecorded', () => {
@@ -516,6 +533,7 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
           return part === 'rest' ? null : 78;
         },
         addStaffNotification: () => {},
+        recordCategoryOf: REAL_RECORD_CATEGORY,
         ackSaveRecord: (coll, id, data) => { saved.push({ coll, id, data }); return Promise.resolve(); },
         renderPage: () => {}, updateActionsBadge: () => {},
         t: (k) => k, ACTION_MINUTES_MAX: 300,
@@ -531,6 +549,11 @@ describe('Accions — saving a match takes the lineup\'s minutes', () => {
       assert.strictEqual(saved.length, 1, 'nothing saved');
       return { asked, data: saved[0].data, id: saved[0].id };
     }
+
+    it('an RPE is stamped with its match\'s squad, not the player\'s (v288)', () => {
+      const r = save([Object.assign({}, RESUMED, { category: 'juvenil' })], 'p1_match_mr');
+      assert.strictEqual(r.data.category, 'juvenil');
+    });
 
     it('the first part saves on the day it was played, with the lineup\'s minutes', () => {
       const r = save([RESUMED], 'p1_match_mr');
@@ -594,6 +617,39 @@ describe('Accions — the extra-training date', () => {
     const submit = bare.slice(bare.indexOf("document.getElementById('ac-x-submit')"));
     assert.ok(submit.includes("dateVal > localDateStr(new Date())"),
         'the submit accepts a forward-dated extra');
+  });
+
+  /* v288: an extra is on nobody's calendar, so it belongs to the player's
+     own squad — and is read by it. */
+  it('saves an extra under the player\'s own squad', () => {
+    const run = (session) => {
+      const dom = new JSDOM('<body>' + load().html + '</body>', { url: 'http://localhost/' });
+      const w = dom.window; const d = w.document;
+      const errors = []; const saved = [];
+      w.addEventListener('error', (e) => errors.push(e.error || e.message));
+      const store = { fa_player_rpe: '{}' };
+      const api = {
+        document: d, getSession: () => session,
+        localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } },
+        localDateStr: utils.localDateStr, ACTION_MINUTES_MAX: 300, AC_EXTRA_TAGS: ['gym'],
+        extraTagLabel: (x) => x, addStaffNotification: () => {},
+        recordCategoryOf: REAL_RECORD_CATEGORY,
+        ackSaveRecord: (coll, id, data) => { saved.push({ coll, id, data }); return Promise.resolve(); },
+        renderPage: () => {},
+      };
+      // eslint-disable-next-line no-new-func
+      new Function(...Object.keys(api), grab('    /* Player actions: log an extra training.',
+          '    // Activity item navigation (player)'))(...Object.values(api));
+      d.querySelector('.ac-strip[data-ac-key="__extra__"] .ac-cell[data-ac-rpe="6"]').classList.add('ac-cell-on');
+      const go = d.getElementById('ac-x-submit');
+      go.disabled = false;   // the strip's own handler enables it; not under test here
+      go.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+      assert.deepStrictEqual(errors, [], 'the handler threw: ' + errors.join(' | '));
+      assert.strictEqual(saved.length, 1, 'nothing saved');
+      return saved[0].data;
+    };
+    assert.strictEqual(run(Object.assign({}, SESSION, { category: 'cadet' })).category, 'cadet');
+    assert.strictEqual(run(SESSION).category, 'none');
   });
 
   it('greys the forward arrow at the current month', () => {

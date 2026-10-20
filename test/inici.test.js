@@ -158,7 +158,7 @@ function mountHandlers(bodyHtml, opts) {
     grab('    // Training availability buttons\n    $$(\'.avail-btn\')',
         '    // UA/RPE chart tooltips');
 
-  const session = { id: 'u1', name: 'Marc Rovira' };
+  const session = Object.assign({ id: 'u1', name: 'Marc Rovira' }, opts.session);
   const trainings = opts.trainings || [];
   const api = {
     $$: (sel) => Array.prototype.slice.call(doc.querySelectorAll(sel)),
@@ -171,6 +171,9 @@ function mountHandlers(bodyHtml, opts) {
     deriveFitnessStatus: () => {},
     addStaffNotification: (n) => calls.notify.push(n),
     showInjurySelfReport: (wrap, sid) => calls.bodyMap.push({ wrap, sid }),
+    // v288: the REAL rule for which squad a record belongs to.
+    recordCategoryOf: new Function(src.slice(src.indexOf('  function recordCategoryOf(row, session) {'),
+        src.indexOf('  function ackSaveRecord(')) + '\nreturn recordCategoryOf;')(),
     ackSaveRecord: (coll, key, data) => {
       calls.save.push({ coll, key, data });
       return Promise.resolve();
@@ -361,6 +364,34 @@ describe('Inici — the real handlers over the real markup', () => {
     assert.strictEqual(m.calls.save[0].key, 'u1_42');
     assert.strictEqual(m.calls.save[0].data.value, 'disponible');
     assert.strictEqual(m.calls.save[0].data.matchId, '42');
+  });
+
+  /* v288: a record carries the squad its session or match is FOR — the rules
+     let a player read their own squad's records only, so a guest's answer
+     must be stamped with the squad that called him, not his own. */
+  it('stamps each answer with the category of its session or match', () => {
+    const s = mountHandlers(B.iniAvailPillsHtml('t7', SESS, '', false),
+        { trainings: [Object.assign({}, SESS, { category: 'cadet' })] });
+    s.click('[data-avail="yes"]');
+    assert.strictEqual(s.calls.save[0].data.category, 'cadet');
+    const m = mountHandlers(B.iniMatchPillsHtml(42, null),
+        { matches: [{ id: 42, home: 'A', away: 'B', date: '2026-09-05', category: 'juvenil' }] });
+    m.click('[data-mavail="disponible"]');
+    assert.strictEqual(m.calls.save[0].data.category, 'juvenil');
+    // A cadet called up by the juvenil: the juvenil's record, not his own squad's.
+    const g = mountHandlers(B.iniMatchPillsHtml(42, null), { session: { category: 'cadet' },
+        matches: [{ id: 42, home: 'A', away: 'B', date: '2026-09-05', category: 'juvenil' }] });
+    g.click('[data-mavail="disponible"]');
+    assert.strictEqual(g.calls.save[0].data.category, 'juvenil', 'the guest answer went to his own squad');
+    // A match that does not know its squad: the player's.
+    const o = mountHandlers(B.iniMatchPillsHtml(42, null), { session: { category: 'cadet' },
+        matches: [{ id: 42, home: 'A', away: 'B' }] });
+    o.click('[data-mavail="disponible"]');
+    assert.strictEqual(o.calls.save[0].data.category, 'cadet');
+    // Neither knows its squad, nor does the player: 'none', never undefined.
+    const n = mountHandlers(B.iniMatchPillsHtml(42, null), { matches: [{ id: 42, home: 'A', away: 'B' }] });
+    n.click('[data-mavail="disponible"]');
+    assert.strictEqual(n.calls.save[0].data.category, 'none');
   });
 
   it('tapping the chosen match pill clears it', () => {
@@ -1193,6 +1224,32 @@ describe('Inici — the heroes are rendered, not just read', () => {
         (h.match(/ini\.att_of:\S{0,40}/) || [])[0]);
   });
 
+  /* v288: the matches half of that legend counted `m.date <= today` — a match
+     tonight from this morning, and last season's too. */
+  it('counts a match once it has kicked off, inside the season — not before, not last season', () => {
+    const at = (ms) => {
+      const d = new Date(NOW.getTime() + ms);
+      const p = (n) => (n < 10 ? '0' : '') + n;
+      return { date: utils.localDateStr(d), time: p(d.getHours()) + ':' + p(d.getMinutes()) };
+    };
+    const fx = (id, when, extra) => Object.assign({ id, category: 'amateur', team: 'A' }, when, extra);
+    const matches = [
+      fx(1, at(-36e5)),                                    // an hour ago: counted
+      fx(2, at(2 * 60e3)),                                 // in two minutes: not yet
+      fx(3, { date: dayOff(-45), time: '18:00' }),         // before the season (−30)
+      fx(4, at(-2 * 36e5), { fcfState: 'postponed',       // postponed: never a match
+        postponedFrom: at(-2 * 36e5) }),
+    ];
+    const store = { fa_matches: JSON.stringify(matches) };
+    const h = renderStaff({
+      localStorage: { getItem: (k) => (k in store ? store[k] : null) },
+      matchParts: utils.matchParts, matchState: utils.matchState,
+      matchIsOff: () => false, convToldList: utils.convToldList,
+    });
+    const m = (h.match(/ini\.sess_matches:\{"s":\d+,"m":(\d+)\}/) || [])[1];
+    assert.strictEqual(m, '1', 'the season\'s matches: ' + m);
+  });
+
   it('counts sessions for the legend over the same window as the ring', () => {
     const h = renderStaff();
     assert.ok(/ini\.sess_matches:\{"s":10/.test(h),
@@ -1271,5 +1328,121 @@ describe('Inici — the two answer groups and the two heads line up', () => {
     const m = css.match(/\.ini-main > \.ini-sec-head,\s*\.ini-rail > \.ini-block:first-child > \.ini-block-head\s*\{([^}]*)\}/);
     assert.ok(m, 'the shared head rule is gone');
     assert.ok(/height:\s*32px/.test(m[1]) && /padding-bottom:\s*0/.test(m[1]), m[1]);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   v288 — Inici redraws itself at the next session end, lock or midnight.
+   The real helpers, sliced out, over a fake clock and fake timers.
+   ═══════════════════════════════════════════════════════════════════ */
+describe('Inici — the lists redraw themselves (v288)', () => {
+  const CODE = grab('  /* ── Inici redraws itself (v288)', '  function renderPlayerWeeks() {');
+  const T0 = new Date(2026, 9, 19, 18, 0).getTime();   // Monday 19 Oct, 18:00
+  const at = (h, m) => new Date(2026, 9, 19, h, m || 0);
+
+  function load(o) {
+    o = o || {};
+    // VISIBLE: jsdom is a hidden page unless told otherwise, and a hidden
+    // page defers the redraw — every "it redraws" here would test that instead.
+    const dom = new JSDOM('<body>' + (o.body || '') + '</body>', { pretendToBeVisual: true });
+    const timers = [];
+    const env = {
+      currentPage: o.page || 'player-home',
+      renders: 0,
+    };
+    const api = {
+      document: dom.window.document,
+      getSession: () => ({ id: 'p1' }),
+      renderPage: () => { env.renders++; },
+      getTrainings: () => o.trainings || [],
+      getMatches: () => o.matches || [],
+      // Stand-ins that read the fixture's own fields: the arithmetic under test is the choice of instant.
+      trainingLockAt: (t) => t.lock || null,
+      sessionEndsAt: (t) => t.end || null,
+      matchEndsAt: (m) => m.end || null,
+      setTimeout: (fn, ms) => { timers.push({ fn, ms, live: true }); return timers.length; },
+      clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1].live = false; },
+      Date: class extends Date {
+        constructor(...a) { if (a.length) super(...a); else super(T0); }
+        static now() { return T0; }
+      },
+    };
+    // eslint-disable-next-line no-new-func
+    const fns = new Function(...Object.keys(api), 'env', `
+      let currentPage = env.currentPage;
+      ${CODE}
+      return { iniNextChangeAt, iniScheduleRefresh, iniRefreshNow,
+        go: (p) => { currentPage = p; } };`)(...Object.values(api), env);
+    return { fns, env, timers, dom, live: () => timers.filter((x) => x.live) };
+  }
+
+  it('aims at the earliest of a lock, an end, a match end — or midnight', () => {
+    const { fns } = load();
+    const tr = [{ lock: at(17, 0), end: at(21, 30) }, { lock: at(19, 0), end: at(22, 0) }];
+    assert.strictEqual(fns.iniNextChangeAt(T0, tr, [{ end: at(20, 15) }]), +at(19, 0), 'not the next lock');
+    assert.strictEqual(fns.iniNextChangeAt(T0, [], [{ end: at(20, 15) }]), +at(20, 15));
+    assert.strictEqual(fns.iniNextChangeAt(T0, [], []), +new Date(2026, 9, 20, 0, 0), 'not midnight');
+    // A past instant is not the next change; nothing is ever later than midnight.
+    assert.strictEqual(fns.iniNextChangeAt(T0, [{ end: at(9, 0) }, { end: new Date(2026, 11, 1) }], []),
+        +new Date(2026, 9, 20, 0, 0));
+  });
+
+  it('one timeout per render, a second past the boundary — never an interval', () => {
+    const t = load({ trainings: [{ end: at(18, 30) }] });
+    t.fns.iniScheduleRefresh();
+    t.fns.iniScheduleRefresh();
+    assert.strictEqual(t.live().length, 1, 'the previous timer was not cleared');
+    assert.strictEqual(t.live()[0].ms, 30 * 60e3 + 1000);
+  });
+
+  it('redraws when it fires on Inici; not after the person has left it', () => {
+    const t = load({ trainings: [{ end: at(18, 30) }] });
+    t.fns.iniScheduleRefresh();
+    t.live()[0].fn();
+    assert.strictEqual(t.env.renders, 1);
+    const u = load({ trainings: [{ end: at(18, 30) }] });
+    u.fns.iniScheduleRefresh();
+    u.fns.go('calendar');
+    u.live()[0].fn();
+    assert.strictEqual(u.env.renders, 0, 'redrew a page the person had left');
+  });
+
+  it('no timer at all on any other page', () => {
+    const t = load({ page: 'calendar', trainings: [{ end: at(18, 30) }] });
+    t.fns.iniScheduleRefresh();
+    assert.strictEqual(t.live().length, 0);
+  });
+
+  it('never under someone\'s thumb: an open dialog or a field in use waits a minute', () => {
+    const t = load({ trainings: [{ end: at(18, 30) }], body: '<div id="custom-modal-overlay"></div>' });
+    t.fns.iniScheduleRefresh();
+    t.live()[0].fn();
+    assert.strictEqual(t.env.renders, 0, 'redrew under an open dialog');
+    assert.strictEqual(t.live().slice(-1)[0].ms, 60000);
+    const f = load({ trainings: [{ end: at(18, 30) }], body: '<input id="x">' });
+    f.dom.window.document.getElementById('x').focus();
+    f.fns.iniScheduleRefresh();
+    f.live()[0].fn();
+    assert.strictEqual(f.env.renders, 0, 'redrew under a field being typed in');
+  });
+
+  it('a hidden tab redraws on its return, not before', () => {
+    const t = load({ trainings: [{ end: at(18, 30) }] });
+    const doc = t.dom.window.document;
+    let hidden = true;
+    Object.defineProperty(doc, 'hidden', { get: () => hidden, configurable: true });
+    t.fns.iniScheduleRefresh();
+    t.live()[0].fn();
+    assert.strictEqual(t.env.renders, 0, 'redrew a hidden page');
+    hidden = false;
+    doc.dispatchEvent(new t.dom.window.Event('visibilitychange'));
+    assert.strictEqual(t.env.renders, 1, 'nothing on the way back');
+  });
+
+  it('renderPage schedules it after every render', () => {
+    const body = src.slice(src.indexOf('  function renderPage(session) {'));
+    const end = body.indexOf('\n  }\n');
+    assert.ok(/bindNotifications\(\);\s*\/\/[^\n]*\n\s*iniScheduleRefresh\(\);/.test(body.slice(0, end)),
+        'renderPage no longer aims the Inici timer');
   });
 });
