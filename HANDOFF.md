@@ -23,6 +23,16 @@ Full detail in CONTEXT.md (v288).
 - **`backfill-training-teams.js`** is deleted.
 - **Production one-offs** (scratchpad, not the repo): the category backfill, the three `teamId: 'default'` accounts, the one empty shard.
 - **The full functions suite flakes in the main tree:** a different emulator-trigger test each run. Four clean-worktree runs of the same code passed 124/124. Re-run before suspecting a change.
+- **Deployed 2026-10-20, in this order:**
+  1. Functions: 35 updated.
+  2. `fd503c7` pushed; Pages serves `esquerrapp-v288`.
+  3. Backfill: 18,525 records stamped; a re-run finds 0 left.
+  4. Rules released.
+  5. The 3 stray accounts deleted: 0 users docs and 0 of 96 Auth accounts still say `teamId: 'default'`.
+  6. The 1 empty shard deleted.
+- **Live check after the rules (demo club, read-only):**
+  - A demo amateur player reads all 5,556 amateur answers. Of the juvenil squad's 2,721, they read only the 10 stamped amateur or `'none'`.
+  - Every key the player holds is one the coach holds. No permission errors.
 
 ## 2026-10-14 — v287: postponed/suspended, round two
 
