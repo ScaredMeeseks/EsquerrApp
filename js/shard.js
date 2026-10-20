@@ -81,6 +81,10 @@
        shard: SEP splits `key__cat`, _absorbDoc rejects any cat outside
        ORDER, and the custom claims carry categories and nothing else. */
     fa_metric_catalog:         { shape: 'array', by: 'field', field: 'category', id: 'id' },
+    /* Exercise-points periods (v292): the coach's date ranges for the
+       ranking, one squad category's, read by its players (who see the one
+       marked `shown`). Stamped like the catalogue above. */
+    fa_point_periods:          { shape: 'array', by: 'field', field: 'category', id: 'id' },
 
     // Keyed by training DATE, which two categories can share — so the
     // bucket is split by the entry's own stamp, not by its key.

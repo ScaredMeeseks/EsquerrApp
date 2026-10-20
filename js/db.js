@@ -69,6 +69,8 @@ const DB = (function () {
        below, deliberately: a catalogue entry belongs to one squad and a
        measurement belongs to a player for as long as he is at the club. */
     'fa_metric_catalog',
+    // The exercise-points periods (v292), a category's like the catalogue.
+    'fa_point_periods',
   ]);
 
   /* Keys that use per-field Firestore merges instead of blob replacement.

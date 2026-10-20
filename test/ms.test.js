@@ -216,6 +216,9 @@ function render(over) {
        (Both exist in the app — unlike v250's `getMatches`, which is why that
        one was a hole and these are not; see suite-registry.test.js.) */
     safeHttpUrl: utils.safeHttpUrl,
+    /* v292: the exercise-points card is a collaborator here — run for real,
+       over its own fixtures, in exercise-points.test.js. */
+    msPointsCardHtml: () => '',
     clubMonogram: new Function(
         grab('  function clubMonogram(name) {', '  function applyLeagueRows(') +
         '\n return clubMonogram;')(),

@@ -71,6 +71,8 @@ function renderers(opts) {
     localDateStr: U.localDateStr,
     tDateShort: (d) => 'D(' + d + ')',
     renderPage: () => {},
+    // v292: the REAL points reader.
+    exPointsOf: U.exPointsOf, EX_POINTS_MAX: U.EX_POINTS_MAX,
   };
   // eslint-disable-next-line no-new-func
   return new Function(...Object.keys(deps), `

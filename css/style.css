@@ -2871,6 +2871,37 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   font-size:14px; line-height:1; color:var(--pp-bad); opacity:.55;
 }
 .stp-team-x:hover { opacity:1; }
+/* A team's points for the exercise (v292): − n + at the end of its line.
+   The names take the room; the stepper never wraps under them. */
+.stp-team-names { flex:1; min-width:0; line-height:1.45; }
+.stp-pts { display:inline-flex; align-items:center; gap:2px; flex:none; }
+.stp-pts-b {
+  width:24px; height:24px; padding:0; border:1px solid var(--pp-rule); border-radius:0;
+  background:#FFFFFF; color:var(--pp-ink); font-family:inherit; font-size:14px; line-height:1; cursor:pointer;
+}
+.stp-pts-b:hover { border-color:var(--pp-ink); }
+.stp-pts-b:disabled { opacity:.35; cursor:default; }
+.stp-pts-n { min-width:20px; text-align:center; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; }
+.stp-pts-ro { flex:none; font-size:12px; font-weight:600; color:var(--pp-ink-2); }
+/* Plantilla's exercise points (v292), beside Mètriques. */
+.pts-sec-head { cursor:pointer; }
+.pts-sec { padding-bottom:12px; }
+.pts-chips { display:flex; flex-wrap:wrap; gap:6px; padding:4px 0 8px; }
+.pts-eye { font-size:11px; }
+.pts-meta { font-size:12px; color:var(--pp-ink-3); padding-bottom:8px; }
+.pts-table { width:100%; border-collapse:collapse; font-size:13px; }
+.pts-table th {
+  text-align:left; font-weight:500; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--pp-ink-3); padding:6px 4px; border-bottom:1px solid var(--pp-ink);
+}
+.pts-table td { padding:6px 4px; border-bottom:1px solid var(--pp-rule-2); }
+.pts-c-pos { width:28px; color:var(--pp-ink-3); }
+.pts-c-n { width:64px; text-align:right; font-variant-numeric:tabular-nums; }
+.pts-table th.pts-c-n { text-align:right; }
+.pts-v { font-weight:600; }
+.pts-zero td { color:var(--pp-ink-3); }
+.pts-dlg-shown { gap:6px; }
+.pts-dlg-err { margin:0; font-size:12px; color:var(--pp-bad); }
 .stp-dot, .stp-dot-sm {
   border-radius:50%; flex:none; display:inline-block;
   box-shadow:0 0 0 1px rgba(45,41,38,.22);
@@ -10340,6 +10371,12 @@ a.ini-ev-name, .ini-ev-name-link {
   display: block; padding-bottom: 10px; border-bottom: 1px solid var(--pp-ink);
 }
 .ms-empty { margin: 0; padding: 22px 0; font-size: 14px; color: var(--pp-ink-3); }
+/* The player's exercise points (v292), top of the rail. */
+.ms-pts { padding-bottom: 22px; }
+.ms-pts-line { display: flex; align-items: baseline; gap: 8px; padding-top: 12px; }
+.ms-pts-v { font-size: 32px; font-weight: 600; line-height: 1; }
+.ms-pts-u { font-size: 14px; color: var(--pp-ink-2); }
+.ms-pts-pos { margin-left: auto; font-size: 13px; color: var(--pp-ink-2); }
 
 /* ── Partit a partit: the wide table ── */
 .ms-head, .ms-row {

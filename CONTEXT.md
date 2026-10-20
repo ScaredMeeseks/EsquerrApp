@@ -13216,3 +13216,67 @@ Version triple → **v290**.
 **Deploy:** rules, then functions (`archiveSeason`, `deleteTeam`), then push.
 
 Version triple → **v291**.
+
+### 2026-10-21 — v292: exercise points, periods and rankings (roadmap 36)
+
+**The owner's spec:**
+- The coach assigns points to the teams of each exercise, and the app keeps the count of the players who earned them.
+- The coach sets up the periods, and players see that period.
+- Asked: players see their own total and their position (staff see the full table).
+
+**Awarding (staff session page):** every exercise with a team split shows − n + on each team line (0–99).
+- **View-only staff** see "n pts", only once there is one.
+- **Every player in the team earns them.** The split is the exercise's own snapshot (`_stpTeamsList`), so the points follow exactly who was in the team on that drill.
+
+**Where points live: on the session row, BESIDE the plan.** The shape is `exPoints: {[exerciseId]: {[teamKey]: n}}`.
+- **Why not in the plan:** `_stpWrite` saves `stdPlan(tr)`, the NORMALISED plan, back over `row.plan`. A field inside the plan that an older app version does not know would be erased the first time that version edited the plan. A field beside the plan survives, because plan writes only replace `row.plan`.
+- **`exPointsOf(tr)`** is the one reader (whole numbers 1–99; anything else is no points).
+- **Points go with what they belonged to:**
+  - unassigning the exercise's teams (asked first when there are points);
+  - removing the exercise (the confirm says so, beside its notes);
+  - loading another plan over it ("Carregar"; the confirm says so).
+  - Assigning never overwrites a split, so there is no "reassign" case.
+
+**The rules (js/utils.js, pure and shared by both pages):**
+- **`exercisePointsTally(trainings, {category, from, to})`:** sessions only, both ends inclusive. It reads the plan as stdPlan does (a v188 row's lanes, a team without a key by its place). Points for an exercise or team no longer in the plan count for nobody.
+- **`pointsRanking(tally, players)`:** most points first, a tie shares its place ("1, 1, 3"), then by name, the pointless listed too.
+- **`cleanPointPeriods` / `shownPointPeriod`:** dated from ≤ to, in date order, and at most one shown per category.
+
+**Periods: `fa_point_periods`,** a new data key, category-sharded like `fa_metric_catalog`: `[{id, name, from, to, category, shown}]`.
+- **Registered:** shard.js route, db.js synced keys, and the refresh map (manage-roster, my-stats).
+- **Server:** `archiveSeason` archives and resets it (SEASON_KEYS, since it ranks this season's sessions), and `deleteTeam` deletes the category's shard on `catGone`.
+- **Rules:** no change. Staff write any data key; players read their category's.
+
+**Plantilla → "Punts d'exercicis"** sits beside Mètriques, collapsed until asked for, refreshed in place through an always-present wrapper. The page's "click elsewhere closes the rail" handler leaves it alone.
+- **Chips:** Temporada plus each period; 👁 marks what players see.
+- **Below the chips:** the dates, and an Editar. The squad's table follows the letter filter.
+- **"+ Període":**
+  - the dialog takes a name, from, to and "És el que veuen els jugadors";
+  - it refuses dates the wrong way round;
+  - it stamps the category;
+  - showing one un-shows the category's other one and no other category's.
+- **Deleting a period** asks first, and leaves the points where they are.
+- **The code sits after the Mètriques code, not inside it:** metrics.test.js guards that nothing between `plmRailHtml` and `showAddMetric` checks the `manage-roster` right, and the period editor rightly does.
+
+**The player (Les meves estadístiques):** a card at the top of the rail, "Punts d'exercicis · {period}", reading "2 punts · posició 1 de 2".
+- **The period** is the one shown, else the season.
+- **The position** is within his own squad (category and letter).
+- **Absent entirely** while nobody in the squad has a point, so a club not using points sees nothing.
+
+**Checked (emulators, 390 px):**
+- **The lead:** +2 on a team, stored as `exPoints` beside the plan (none inside it).
+- **Plantilla:** the tie shown 1 and 1, the season marked as what players see.
+- **A period added and shown:** the 👁 moved, stored with the category.
+- **The player's card** came over sync: "Octubre · 2 punts · posició 1 de 2".
+- **No horizontal overflow anywhere.**
+
+**Tests:**
+- New `exercise-points.test.js` (31): the rules, the steppers over the real plan panel, Plantilla's section and dialog over jsdom, the card, the wiring.
+- Functions: archive and `deleteTeam` on the periods.
+- Older harnesses got the new collaborators, real or stubbed and named. `t` stubs now FORMAT in the new tests: bare keys had let a position assertion pass on no number at all, which the mutation run caught.
+- Mutations 47/48. The survivor is the stepper's floor at 0, equivalent: the − is disabled at 0 and the reader ignores anything below 1.
+- Unit **4292**, functions **128**.
+
+**Deploy:** functions (`archiveSeason`, `deleteTeam`), then push.
+
+Version triple → **v292**.

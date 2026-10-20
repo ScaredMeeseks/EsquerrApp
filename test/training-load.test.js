@@ -106,6 +106,8 @@ function env(o) {
     _ntResolveClashes: () => 0, _ntMarkAttending: () => {},
     // v291: the private notes, when a test hands some in.
     TN: o.TN,
+    // v292: the REAL points reader.
+    exPointsOf: require('../js/utils.js').exPointsOf,
   };
   // eslint-disable-next-line no-new-func
   const api = new Function(...Object.keys(deps), `
@@ -306,11 +308,12 @@ describe('Carregar entrenament — on the session page', () => {
     const e = env();
     // eslint-disable-next-line no-new-func
     const render = new Function('stdPlan', 'stdBoardResolver', 'stdSessionBoards', 'planMaterial',
-        'resolvePetos', 'blockTimes', '_stpBlockRow', '_stpOverlayHtml', '_stpN', 't', 'sanitize', `
+        'resolvePetos', 'blockTimes', '_stpBlockRow', '_stpOverlayHtml', '_stpN', 't', 'sanitize', 'exPointsOf', `
       ${grab('  function renderStdPlanPanel(tr, ro, squad) {', '  /** The ⤢ Ampliar overlay')}
       return renderStdPlanPanel;`)(e.api.stdPlan, () => () => null, () => [], () => ({ colors: [] }),
         () => [], () => ({ rows: [{ label: '20:00' }, { label: '20:10' }], endLabel: '21:00' }),
-        () => '<div class="blk"></div>', () => '', e.api._stpN, t, e.api.sanitize);
+        () => '<div class="blk"></div>', () => '', e.api._stpN, t, e.api.sanitize,
+        require('../js/utils.js').exPointsOf);
     const d = new JSDOM('<body>' + render(tr, ro, []) + '</body>').window.document;
     return { all: d.querySelectorAll('[data-stp-load]'), cta: d.querySelectorAll('.stp-load-cta') };
   }

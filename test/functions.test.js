@@ -312,6 +312,19 @@ describe('archiveSeason — a label is archived once', function () {
     assert.strictEqual(a.data().ex.e1.n1.text, 'bé');
   });
 
+  // v292: the exercise-points periods are this season's, like its sessions.
+  it('archives the exercise-points periods and empties the live ones', async () => {
+    await db.doc(`teams/${ATEAM}/data/fa_point_periods__amateur`).set({category: 'amateur',
+      v: JSON.stringify([{id: 'pp1', name: 'Oct', from: '2025-10-01', to: '2025-10-31', category: 'amateur'}])});
+    const r = await call();
+    assert.ok(!r.code || r.code === 200, 'expected success, got ' + r.code);
+    const a = await archived('fa_point_periods__amateur').get();
+    assert.ok(a.exists, 'not archived');
+    assert.strictEqual(JSON.parse(a.data().v).length, 1);
+    const live = await db.doc(`teams/${ATEAM}/data/fa_point_periods__amateur`).get();
+    assert.deepStrictEqual(JSON.parse(live.data().v), [], 'the live periods were not reset');
+  });
+
   it('REFUSES the same label again, and leaves the archive intact', async () => {
     await call();
     const r = await call();

@@ -8,7 +8,22 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 291**
+**Version triple is at 292**
+
+## 2026-10-21 — v292: exercise points, periods and rankings (roadmap 36)
+
+Full detail in CONTEXT.md (v292).
+- **Points live on the session row,** `exPoints: {[exId]: {[teamKey]: n}}`. Read them through `exPointsOf(tr)` (js/utils.js), which keeps whole numbers 1–99.
+- **Why not inside `plan`:** `_stpWrite` saves the NORMALISED plan back, so an older app's plan edit would erase any new field in it.
+- **The rules are in js/utils.js:**
+  - `exercisePointsTally` (sessions of a category, dated `from`–`to`, each team member earns the team's points);
+  - `pointsRanking` (ties share a place);
+  - `cleanPointPeriods` / `shownPointPeriod` (at most one shown).
+- **Periods:** a new category-sharded data key, `fa_point_periods`.
+  - Routed in shard.js and synced in db.js.
+  - `archiveSeason` archives it (SEASON_KEYS); `deleteTeam` on `catGone` deletes it.
+- **Points go with their teams:** unassigning (asked first), removing the exercise, or loading another plan over it ("Carregar").
+- **Deploy:** functions, then push. No rule change: staff write any data key, and players read their category's.
 
 ## 2026-10-21 — v291: private notes on each exercise (roadmap 38)
 
@@ -163,8 +178,8 @@ Full detail in CONTEXT.md (v282). What a next session needs:
 
 | | |
 |---|---|
-| Unit tests | **4261** (v291) — `cd test && npm run test:unit` (~35 s), all passing |
-| Functions tests | **126** (v291), all passing (~80 s) — `npm run test:functions` from PowerShell with Java on PATH and `$env:FUNCTIONS_DISCOVERY_TIMEOUT = 120`, backgrounded with `2>&1 | Out-File <log>`. Don't touch `functions/` while it runs: the emulator hot-reloads and the trigger tests fail. Kill a leftover emulator java before starting another run |
+| Unit tests | **4292** (v292) — `cd test && npm run test:unit` (~35 s), all passing |
+| Functions tests | **128** (v292), all passing (~80 s) — `npm run test:functions` from PowerShell with Java on PATH and `$env:FUNCTIONS_DISCOVERY_TIMEOUT = 120`, backgrounded with `2>&1 | Out-File <log>`. Don't touch `functions/` while it runs: the emulator hot-reloads and the trigger tests fail. Kill a leftover emulator java before starting another run |
 | Rules tests | **204** (v291) — `npm run test:rules` |
 
 **Deploy state.** `main` is current and deployed through **v277 `669b2ba`**. Both v276 and v277
@@ -623,14 +638,15 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 **Training**
 
-36. **Points for the teams of each exercise.** *(owner asked 2026-10-19; designed 2026-10-21, planned
-    as v292)*
-    - The coach gives each team of an exercise points (0–99), and every player in that team earns them.
-    - The coach defines periods. Players see their own total and position for the period he shows them.
-    - Stored as `tr.exPoints[exId][teamKey]`, BESIDE `plan`. Old clients rewrite the normalised plan, so
-      points inside it would be erased.
-    - Periods are a new data key, `fa_point_periods`. The ranking is a section on Plantilla; the player's
-      card is on Les meves estadístiques.
+36. ✅ **Done — v292: points for the teams of each exercise.**
+    - **Awarding:** on the staff session page, every exercise with a team split has a − n + per team
+      (0–99), and every player in the team earns those points.
+    - **Storage:** `tr.exPoints[exId][teamKey]`, BESIDE `plan`. Old clients rewrite the normalised plan,
+      so points inside it would be erased.
+    - **Periods:** the coach defines them, and marks the one players see, in Plantilla → "Punts
+      d'exercicis". The squad's table is there too.
+    - **The player** sees his points and his position in his squad on Les meves estadístiques, for that
+      period or, with none shown, the season.
 
 37. ✅ **Done — v290: "Carregar entrenament".** It is on each New Training draft and in the session
     page's plan panel.

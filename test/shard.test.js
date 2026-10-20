@@ -238,6 +238,9 @@ describe('shard.js — round trips', () => {
          proves the router still carries it losslessly if one ever exists. */
       fa_metric_catalog: [{ id: 'm1', category: 'cadet', team: 'A', name: 'CMJ', unit: 'cm' },
                           { id: 'm2', category: '', team: 'A', name: 'X', unit: '' }],
+      // v292: the exercise-points periods, stamped like the catalogue.
+      fa_point_periods: [{ id: 'pp1', category: 'cadet', name: 'Octubre', from: '2026-10-01', to: '2026-10-31', shown: true },
+                         { id: 'pp2', category: 'juvenil', name: '1a volta', from: '2026-09-01', to: '2026-12-20' }],
       fa_injuries: [{ id: 'i1', playerId: 'p1' }, { id: 'i2', playerId: 'p3' }],
       fa_injury_notes: { p1: 'a', p3: 'b' },
       fa_injury_zone: { p1: 3 },

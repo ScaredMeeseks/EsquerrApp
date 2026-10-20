@@ -479,6 +479,123 @@ function isActivity(row) {
   return !!row && row.kind === ACTIVITY_KIND;
 }
 
+/* ── Exercise points (v292, roadmap 36) ─────────────────────────────
+   The coach gives each team of an exercise points; every player in that
+   team earns them. Stored on the session row BESIDE the plan, as
+   `exPoints: {[exerciseId]: {[teamKey]: n}}` — the plan is rewritten whole,
+   normalised, by every app version that edits it, so anything inside it
+   that an older version does not know would be erased by that version. */
+
+const EX_POINTS_MAX = 99;
+
+/** A session's points, cleaned: whole numbers 1–99, nothing else. */
+function exPointsOf(tr) {
+  const raw = (tr && tr.exPoints && typeof tr.exPoints === 'object') ? tr.exPoints : {};
+  const out = {};
+  Object.keys(raw).forEach(function (ex) {
+    const teams = raw[ex];
+    if (!teams || typeof teams !== 'object') return;
+    Object.keys(teams).forEach(function (k) {
+      const n = Math.round(Number(teams[k]));
+      if (!(n >= 1)) return;
+      if (!out[ex]) out[ex] = {};
+      out[ex][k] = Math.min(EX_POINTS_MAX, n);
+    });
+  });
+  return out;
+}
+
+/** The exercises of a raw plan, with their team splits — read the way
+    stdPlan reads them (a v188 row's lanes flattened), but only what the
+    tally needs. */
+function _planExercises(plan) {
+  const blocks = (plan && Array.isArray(plan.blocks)) ? plan.blocks : [];
+  const out = [];
+  blocks.forEach(function (b) {
+    if (!b) return;
+    const items = Array.isArray(b.items) ? b.items
+      : (Array.isArray(b.lanes) ? b.lanes.filter(Array.isArray).reduce(function (a, l) { return a.concat(l); }, []) : []);
+    items.forEach(function (e) {
+      if (!e || !e.id) return;
+      const teams = (Array.isArray(e.teams) ? e.teams : []).filter(function (g) { return g && Array.isArray(g.ids); })
+        .map(function (g, i) { return { key: String(g.key || ('g' + i)), ids: g.ids.map(String).filter(Boolean) }; });
+      out.push({ id: String(e.id), teams: teams });
+    });
+  });
+  return out;
+}
+
+/**
+ * Who earned how many points: `{uid: {pts, ex}}`, `ex` being how many
+ * exercises he scored in. Sessions only (not activities), of `category`
+ * when given, dated `from`–`to` inclusive when given.
+ */
+function exercisePointsTally(trainings, opts) {
+  const o = opts || {};
+  const out = {};
+  (trainings || []).forEach(function (tr) {
+    if (!tr || isActivity(tr) || !tr.date) return;
+    if (o.category && tr.category && tr.category !== o.category) return;
+    if (o.from && tr.date < o.from) return;
+    if (o.to && tr.date > o.to) return;
+    const pts = exPointsOf(tr);
+    _planExercises(tr.plan).forEach(function (e) {
+      const got = pts[e.id];
+      if (!got) return;
+      e.teams.forEach(function (g) {
+        const n = got[g.key];
+        if (!n) return;
+        g.ids.forEach(function (uid) {
+          if (!out[uid]) out[uid] = { pts: 0, ex: 0 };
+          out[uid].pts += n;
+          out[uid].ex += 1;
+        });
+      });
+    });
+  });
+  return out;
+}
+
+/**
+ * The squad's table: every player listed, most points first, a shared
+ * position on a tie ("1, 1, 3"), then by name. `players` is who is in the
+ * squad — a guest's points live in the tally but not in this table.
+ */
+function pointsRanking(tally, players) {
+  const rows = (players || []).map(function (p) {
+    const t = (tally && tally[String(p.id)]) || { pts: 0, ex: 0 };
+    return { uid: String(p.id), name: String(p.name || ''), pts: t.pts, ex: t.ex };
+  }).sort(function (a, b) { return (b.pts - a.pts) || a.name.localeCompare(b.name); });
+  let pos = 0;
+  rows.forEach(function (r, i) {
+    if (i === 0 || r.pts !== rows[i - 1].pts) pos = i + 1;
+    r.pos = pos;
+  });
+  return rows;
+}
+
+/** The coach's periods, cleaned: a name, a from ≤ to, at most ONE shown. */
+function cleanPointPeriods(list) {
+  let shown = false;
+  return (Array.isArray(list) ? list : []).filter(function (p) {
+    return p && p.id && /^\d{4}-\d{2}-\d{2}$/.test(String(p.from || '')) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(String(p.to || '')) && String(p.from) <= String(p.to);
+  }).map(function (p) {
+    const on = !!p.shown && !shown;
+    if (on) shown = true;
+    return { id: String(p.id), name: String(p.name || '').trim().slice(0, 40) || (p.from + ' – ' + p.to),
+      from: String(p.from), to: String(p.to), category: String(p.category || ''), shown: on };
+  }).sort(function (a, b) { return a.from.localeCompare(b.from) || a.to.localeCompare(b.to); });
+}
+
+/** The period players see in a category: the one the coach marked, or null
+    — and then they see the season. */
+function shownPointPeriod(periods, category) {
+  return cleanPointPeriods(periods).filter(function (p) {
+    return p.shown && (!category || !p.category || p.category === category);
+  })[0] || null;
+}
+
 /** The bold line on the card: an activity's title, or a session's focus. */
 function activityTitleOf(row, fallback) {
   if (!row) return fallback || '';
@@ -1987,6 +2104,12 @@ function bodyMapHtml(opts) {
    time (`sanitize` uses `document`, but only when called). */
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    EX_POINTS_MAX,
+    exPointsOf,
+    exercisePointsTally,
+    pointsRanking,
+    cleanPointPeriods,
+    shownPointPeriod,
     matchState,
     matchParts,
     convStale,

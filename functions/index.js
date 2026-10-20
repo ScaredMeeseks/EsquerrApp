@@ -5185,6 +5185,9 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
       if (catGone) {
         const trShard = catShard("fa_training");
         if (trShard) await trShard.ref.delete();
+        // Its exercise-points periods (v292) are its sessions' ranking.
+        const ppShard = catShard("fa_point_periods");
+        if (ppShard) await ppShard.ref.delete();
         /* The staff's private notes on those sessions (v291): stamped with
            the category, and as unreadable as the sessions once it is gone. */
         await deleteByQuery(db.collection("teams").doc(clubId)
@@ -5747,6 +5750,10 @@ const SEASON_KEYS = [
      NAME, `fa_cleanup_orphan_match_boards` in js/app.js, which never ran
      again after its first pass.) */
   "fa_tactic_match_boards",
+  /* The exercise-points periods (v292) rank this season's sessions, which
+     fa_training above archives and empties — kept live, they would rank
+     nothing, under last season's names. */
+  "fa_point_periods",
 ];
 
 // Keys stored as per-field merge (not blob {v: "..."}). Describes the

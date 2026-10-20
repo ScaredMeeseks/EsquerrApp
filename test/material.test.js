@@ -1044,7 +1044,8 @@ function renderers(opts) {
       'hydrateRoBoards', 'scaleRoBoards', 'bindRoBoardAnimations',
       'requestAnimationFrame', 'sessionWindow', 'minsToHHMM',
       'computeReadiness', 'posRankGlobal', 'sessionAU', 'loadBand',
-      'tDateLong', 'activityTitleOf', 'BG', 'renderReadOnlyBoard', `
+      'tDateLong', 'activityTitleOf', 'BG', 'renderReadOnlyBoard',
+      'exPointsOf', 'EX_POINTS_MAX', `
     ${code}
     return { renderStdPlanPanel, renderStdMaterialCard, bindStdPlan,
              bindStdPlanView, renderStdPrintSheet };`)(
@@ -1081,7 +1082,9 @@ function renderers(opts) {
       // The REAL geometry: the reserved height is arithmetic on aspectPct,
       // and a stub returning a round number would test nothing.
       require(path.join(__dirname, '..', 'js', 'board-geom.js')),
-      (b) => '<div class="tb-field-readonly">' + esc(b && b.name) + '</div>');
+      (b) => '<div class="tb-field-readonly">' + esc(b && b.name) + '</div>',
+      // v292: the REAL points reader.
+      U.exPointsOf, U.EX_POINTS_MAX);
 }
 
 describe('the session plan renders', () => {

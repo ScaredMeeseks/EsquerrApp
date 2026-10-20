@@ -632,6 +632,7 @@ describe('renderStaffRoster — it runs', () => {
     plRosterTableHtml: () => '<table>',
     catSpanOf: () => 1,
     plmSectionHtml: () => '<plm>',
+    ptsSectionHtml: () => '<pts>',   // v292, run for real in exercise-points.test.js
     plRailHtml: () => '<rail>',
     /* ⚠ A real module-scope collaborator, declared beside `INI_SEGS` because
        Inici's heroes draw the same ring — so it is stubbed, like every other

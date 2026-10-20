@@ -1200,6 +1200,35 @@
     // "Carregar entrenament" (v290, roadmap 37). {ex} is plan.ex_1 / plan.ex_n.
     'plan.load':         { ca:'Carregar entrenament', es:'Cargar entrenamiento', en:'Load a training' },
     'plan.load_short':   { ca:'Carregar', es:'Cargar', en:'Load' },
+    'plan.load_pts':     { ca:'Els punts dels exercicis actuals s\'esborraran.', es:'Los puntos de los ejercicios actuales se borrarán.', en:'The points of the current exercises will be deleted.' },
+    'plan.del_ex_pts':   { ca:'Té punts assignats, que s\'esborraran amb ell.', es:'Tiene puntos asignados, que se borrarán con él.', en:'It has points, which will be deleted with it.' },
+    // Exercise points (v292, roadmap 36).
+    'pts.pts':           { ca:'{n} pts', es:'{n} pts', en:'{n} pts' },
+    'pts.minus':         { ca:'Un punt menys', es:'Un punto menos', en:'One point less' },
+    'pts.plus':          { ca:'Un punt més', es:'Un punto más', en:'One point more' },
+    'pts.unassign_q':    { ca:'Treure els equips?', es:'¿Quitar los equipos?', en:'Remove the teams?' },
+    'pts.unassign_msg':  { ca:'L\'exercici té punts assignats; s\'esborraran amb els equips.', es:'El ejercicio tiene puntos asignados; se borrarán con los equipos.', en:'The exercise has points; they will be deleted with the teams.' },
+    'pts.section':       { ca:'Punts d\'exercicis', es:'Puntos de ejercicios', en:'Exercise points' },
+    'pts.season':        { ca:'Temporada', es:'Temporada', en:'Season' },
+    'pts.add_period':    { ca:'+ Període', es:'+ Periodo', en:'+ Period' },
+    'pts.edit':          { ca:'Editar', es:'Editar', en:'Edit' },
+    'pts.th_player':     { ca:'Jugador', es:'Jugador', en:'Player' },
+    'pts.th_pts':        { ca:'Punts', es:'Puntos', en:'Points' },
+    'pts.th_ex':         { ca:'Exercicis', es:'Ejercicios', en:'Exercises' },
+    'pts.none':          { ca:'Encara ningú no ha guanyat punts en aquest període.', es:'Aún nadie ha ganado puntos en este periodo.', en:'Nobody has earned points in this period yet.' },
+    'pts.shown':         { ca:'el veuen els jugadors', es:'lo ven los jugadores', en:'players see it' },
+    'pts.today':         { ca:'avui', es:'hoy', en:'today' },
+    'pts.period':        { ca:'Període', es:'Periodo', en:'Period' },
+    'pts.name':          { ca:'Nom (p. ex. Octubre, 1a volta)', es:'Nombre (p. ej. Octubre, 1.ª vuelta)', en:'Name (e.g. October, first half)' },
+    'pts.from':          { ca:'Des de', es:'Desde', en:'From' },
+    'pts.to':            { ca:'Fins a', es:'Hasta', en:'To' },
+    'pts.show_players':  { ca:'És el que veuen els jugadors', es:'Es el que ven los jugadores', en:'This is the one players see' },
+    'pts.bad_dates':     { ca:'Posa dues dates, la final no abans de la inicial.', es:'Pon dos fechas, la final no antes de la inicial.', en:'Give two dates, the end not before the start.' },
+    'pts.delete':        { ca:'Esborrar el període', es:'Borrar el periodo', en:'Delete the period' },
+    'pts.delete_q':      { ca:'Esborrar el període «{name}»? Els punts no s\'esborren.', es:'¿Borrar el periodo «{name}»? Los puntos no se borran.', en:'Delete the period "{name}"? The points stay.' },
+    'pts.unit_1':        { ca:'punt', es:'punto', en:'point' },
+    'pts.unit_n':        { ca:'punts', es:'puntos', en:'points' },
+    'pts.pos':           { ca:'posició {p} de {t}', es:'posición {p} de {t}', en:'position {p} of {t}' },
     'plan.load_notes':   { ca:'Les {notes} dels exercicis actuals s\'esborraran.', es:'Las {notes} de los ejercicios actuales se borrarán.', en:'The {notes} on the current exercises will be deleted.' },
     // Private exercise notes (v291, roadmap 38). {notes} is plan.notes_1 / plan.notes_n.
     'plan.notes_hint':   { ca:'Notes privades de l\'equip tècnic', es:'Notas privadas del cuerpo técnico', en:'Private staff notes' },
@@ -3163,7 +3192,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 291;
+  const APP_VERSION = 292;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -18056,6 +18085,7 @@
               : `<p class="ms-empty">${sanitize(t('ms.no_matches'))}</p>`}
           </div>
           <div class="ms-rail">
+            ${msPointsCardHtml(myUser)}
             <span class="ms-sec-solo">${sanitize(t('ms.estat'))}</span>
             ${buildInjuryHistoryHtml(uid, { forPlayer: true, mapHtml: msBodyMapHtml(injuries) })}
           </div>
@@ -24767,6 +24797,20 @@
   let _stpNoteDraft = {};
   let _stpNotesPending = false;
 
+  /** Take the points of these exercises off a session (v292): their teams
+      went, or they did. Writes only when there was something to take. */
+  function _stpDropPoints(sessionId, exIds) {
+    const tr = getTrainings().find(function (x) { return String(x.id) === String(sessionId); });
+    const all = exPointsOf(tr);
+    if (!(exIds || []).some(function (id) { return all[id]; })) return false;
+    _ntPersistSession(sessionId, function (row) {
+      const next = exPointsOf(row);
+      exIds.forEach(function (id) { delete next[id]; });
+      if (Object.keys(next).length) row.exPoints = next; else delete row.exPoints;
+    });
+    return true;
+  }
+
   /** Who is reading the notes: whose ✎ is whose, and whether × is his for every note. */
   function stpNotesCtx(tr) {
     const me = getSession() || {};
@@ -24852,7 +24896,7 @@
   }
 
   /** Colour dot + first names, one line per team pinned to this exercise. */
-  function _stpTeamLines(ex, squad, ro) {
+  function _stpTeamLines(ex, squad, ro, pts) {
     if (!ex.teams) return '';
     const byId = {};
     (squad || []).forEach(function (p) { byId[String(p.id)] = p; });
@@ -24863,8 +24907,21 @@
       }).filter(Boolean).join(', ');
       if (!names) return '';
       const colour = g.color || STP_PALETTE[i % STP_PALETTE.length];
+      /* The team's points for this exercise (v292, roadmap 36) — every
+         player in it earns them. A stepper for an editor; the figure alone,
+         and only once there is one, for staff who may only read. */
+      const n = (pts && pts[g.key]) || 0;
+      const key = sanitize(ex.id + '|' + g.key);
+      const score = ro
+        ? (n ? '<span class="stp-pts-ro">' + sanitize(t('pts.pts').replace('{n}', n)) + '</span>' : '')
+        : '<span class="stp-pts">' +
+            '<button class="stp-pts-b" data-stp-pt="' + key + '|-1"' + (n ? '' : ' disabled') +
+              ' aria-label="' + sanitize(t('pts.minus')) + '">−</button>' +
+            '<span class="stp-pts-n">' + n + '</span>' +
+            '<button class="stp-pts-b" data-stp-pt="' + key + '|1"' + (n >= EX_POINTS_MAX ? ' disabled' : '') +
+              ' aria-label="' + sanitize(t('pts.plus')) + '">+</button></span>';
       return '<div class="stp-team-line">' + _stpDot(colour, 'stp-dot-sm') +
-        '<span>' + sanitize(names) + '</span></div>';
+        '<span class="stp-team-names">' + sanitize(names) + '</span>' + score + '</div>';
     }).join('');
     if (!lines) return '';
     const drop = ro ? '' :
@@ -25269,7 +25326,7 @@
       '<div class="stp-ex-head">' + head + noteBtn + edit + del + '</div>' +
       '<div class="stp-ex-note">' + sanitize(_stpExNote(ex, resolve)) + '</div>' +
       (ex.desc ? '<div class="stp-ex-desc">' + sanitize(ex.desc) + '</div>' : '') +
-      _stpTeamLines(ex, ctx.squad, ro) +
+      _stpTeamLines(ex, ctx.squad, ro, (ctx.points || {})[ex.id]) +
       (notesOn ? _stpNotesHtml(ex, ctx, ro) : '') +
       panel + '</div>';
   }
@@ -25330,6 +25387,7 @@
     const ctx = {
       plan: plan, squad: squad || [], refById: refById,
       petos: resolvePetos(plan, mat),
+      points: exPointsOf(tr),   // v292
       // The private notes (v291), once TN has its listener up.
       notes: (typeof TN !== 'undefined' && TN.ready() && tr && tr.id != null)
         ? stpNotesCtx(tr) : null
@@ -26303,6 +26361,8 @@
     const row = _ntPersistSession(sessionId, function (r) {
       stdPlan(r).blocks.forEach(function (b) { b.items.forEach(function (e) { replaced.push(e.id); }); });
       r.plan = tpl.plan;
+      // The replaced exercises' points (v292) were theirs.
+      delete r.exPoints;
       if (tpl.focus) r.focus = tpl.focus;
       if (tpl.plannedRpe) r.plannedRpe = tpl.plannedRpe;
     });
@@ -26391,7 +26451,8 @@
         });
         const msg = t('plan.load_confirm').replace('{ex}', _stpN(tpl.exCount, 'plan.ex_1', 'plan.ex_n')) +
           (had ? ' ' + t('plan.load_replace').replace('{ex}', _stpN(had, 'plan.ex_1', 'plan.ex_n')) : '') +
-          (notes ? ' ' + t('plan.load_notes').replace('{notes}', _stpN(notes, 'plan.notes_1', 'plan.notes_n')) : '');
+          (notes ? ' ' + t('plan.load_notes').replace('{notes}', _stpN(notes, 'plan.notes_1', 'plan.notes_n')) : '') +
+          (Object.keys(exPointsOf(target)).length ? ' ' + t('plan.load_pts') : '');
         showModal(t('plan.load_q').replace('{date}', tDateShort(c.tr.date)), msg,
           function () { onLoad(c.tr, tpl); },
           { confirmLabel: t('plan.load_ok'), danger: false });
@@ -26694,19 +26755,23 @@
         const items0 = _stpAt(plan, path);
         const exId = items0 && items0[path[1]] ? items0[path[1]].id : '';
         const go = function () {
+          // Its points (v292) and its private notes (v291) go with it.
+          if (exId) _stpDropPoints(tr.id, [exId]);
           _stpWrite(function (p) {
             const items = _stpAt(p, path);
             if (!items) return false;
             items.splice(path[1], 1);
           });
-          // Its private notes go with it (v291) — by name, never by difference.
+          // The notes by name, never by difference.
           if (exId && typeof TN !== 'undefined') TN.dropExercises(tr, [exId]).catch(function () {});
         };
         const nNotes = (exId && typeof TN !== 'undefined') ? TN.count(tr.id, exId) : 0;
-        if (!nNotes) { go(); return; }
-        showModal(t('plan.del_ex_q'), t('plan.del_ex_notes')
-          .replace('{notes}', _stpN(nNotes, 'plan.notes_1', 'plan.notes_n')), go,
-          { confirmLabel: t('plan.remove') });
+        const hasPts = !!(exId && exPointsOf(tr)[exId]);
+        if (!nNotes && !hasPts) { go(); return; }
+        showModal(t('plan.del_ex_q'), [
+          nNotes ? t('plan.del_ex_notes').replace('{notes}', _stpN(nNotes, 'plan.notes_1', 'plan.notes_n')) : '',
+          hasPts ? t('plan.del_ex_pts') : ''
+        ].filter(Boolean).join(' '), go, { confirmLabel: t('plan.remove') });
       });
     });
 
@@ -26832,15 +26897,43 @@
     });
 
     // Take the teams off one exercise. The only way back from an assignment.
+    // Its points were the teams' (v292): they go too, after asking.
     document.querySelectorAll('[data-stp-unassign]').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
         const id = btn.dataset.stpUnassign;
-        _stpWrite(function (p) {
-          p.blocks.forEach(function (b) {
-            b.items.forEach(function (ex) { if (ex.id === id) ex.teams = null; });
+        const go = function () {
+          _stpDropPoints(tr.id, [id]);
+          _stpWrite(function (p) {
+            p.blocks.forEach(function (b) {
+              b.items.forEach(function (ex) { if (ex.id === id) ex.teams = null; });
+            });
           });
+        };
+        if (!exPointsOf(tr)[id]) { go(); return; }
+        showModal(t('pts.unassign_q'), t('pts.unassign_msg'), go, { confirmLabel: t('plan.remove') });
+      });
+    });
+
+    // Exercise points (v292): ± a team's points, saved beside the plan.
+    document.querySelectorAll('[data-stp-pt]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const parts = String(btn.dataset.stpPt || '').split('|');
+        if (parts.length !== 3) return;
+        const exId = parts[0];
+        const key = parts[1];
+        const step = Number(parts[2]) < 0 ? -1 : 1;
+        _ntPersistSession(tr.id, function (row) {
+          const all = exPointsOf(row);
+          const cur = (all[exId] && all[exId][key]) || 0;
+          const next = Math.max(0, Math.min(EX_POINTS_MAX, cur + step));
+          if (!all[exId]) all[exId] = {};
+          if (next) all[exId][key] = next; else delete all[exId][key];
+          if (!Object.keys(all[exId]).length) delete all[exId];
+          if (Object.keys(all).length) row.exPoints = all; else delete row.exPoints;
         });
+        stdRefreshPlan();
       });
     });
 
@@ -30454,6 +30547,199 @@
    *  same list without re-running plBuildRows and the whole context behind
    *  it. One definition, so a filter change cannot reach one and not the
    *  other. */
+  /* ── Exercise points on Plantilla (v292, roadmap 36) ──
+     The coach's periods and the squad's table. Collapsed until asked for,
+     like Mètriques beside it, and refreshed in place through a wrapper that
+     is always in the DOM. The points live on the sessions (`exPoints`); the
+     periods are fa_point_periods, one category's, read by its players. */
+  let _ptsOpen = false;
+  let _ptsPeriod = null;   // a period id, '' for the season, null for "the one players see"
+
+  function ptsAllPeriods() {
+    try { return JSON.parse(localStorage.getItem('fa_point_periods') || '[]') || []; } catch (e) { return []; }
+  }
+  function ptsPeriods(cat) {
+    return cleanPointPeriods(ptsAllPeriods()).filter(function (pp) {
+      return !cat || !pp.category || pp.category === cat;
+    });
+  }
+  /** A period's dates and name; null is the season so far. */
+  function ptsRangeOf(period) {
+    if (period) return { from: period.from, to: period.to, label: period.name };
+    return { from: seasonStartStr(new Date()), to: '', label: t('pts.season') };
+  }
+
+  function ptsSectionHtml(players) {
+    const cat = getCurrentCategory();
+    const periods = ptsPeriods(cat);
+    const shown = periods.filter(function (pp) { return pp.shown; })[0] || null;
+    const selId = _ptsPeriod === null ? (shown ? shown.id : '') : _ptsPeriod;
+    const sel = periods.filter(function (pp) { return pp.id === selId; })[0] || null;
+    const range = ptsRangeOf(sel);
+    const head = '<div class="pl-section-head pts-sec-head" id="pts-toggle">' +
+      '<span class="pl-eyebrow">' + t('pts.section') + ' ' +
+        '<span class="plm-arrow">' + (_ptsOpen ? '▴' : '▾') + '</span></span>' +
+      (!_ptsOpen ? '<span class="plm-sec-note">' + sanitize(range.label) + '</span>' : '') +
+      '</div>';
+    const wrap = function (inner) { return '<div class="pts-secwrap" id="pts-secwrap">' + head + inner + '</div>'; };
+    if (!_ptsOpen) return wrap('');
+
+    const canEdit = canEditPage('manage-roster');
+    // 👁 marks what players see: the shown period, or the season when none is.
+    const chip = function (id, label, on, seen) {
+      return '<button class="pt-chip pts-chip' + (on ? ' pt-chip-on' : '') + '" data-pts-period="' + sanitize(id) + '">' +
+        sanitize(label) + (seen ? ' <span class="pts-eye" title="' + sanitize(t('pts.shown')) + '">👁</span>' : '') + '</button>';
+    };
+    const chips = chip('', t('pts.season'), !sel, !shown) +
+      periods.map(function (pp) { return chip(pp.id, pp.name, !!sel && sel.id === pp.id, pp.shown); }).join('') +
+      (canEdit ? '<button class="pt-chip pts-add" id="pts-add">' + sanitize(t('pts.add_period')) + '</button>' : '');
+    const meta = '<div class="pts-meta">' +
+      sanitize(tDateShort(range.from) + ' – ' + (range.to ? tDateShort(range.to) : t('pts.today'))) +
+      ((sel ? sel.shown : !shown) ? ' · ' + sanitize(t('pts.shown')) : '') +
+      (sel && canEdit ? ' <button class="stp-a" data-pts-edit="' + sanitize(sel.id) + '">' + sanitize(t('pts.edit')) + '</button>' : '') +
+      '</div>';
+    const rows = pointsRanking(exercisePointsTally(getTrainings(), { category: cat, from: range.from, to: range.to }), players);
+    const table = rows.some(function (r) { return r.pts > 0; })
+      ? '<table class="pts-table"><thead><tr><th class="pts-c-pos">#</th><th>' + sanitize(t('pts.th_player')) +
+          '</th><th class="pts-c-n">' + sanitize(t('pts.th_pts')) + '</th><th class="pts-c-n">' + sanitize(t('pts.th_ex')) +
+          '</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          return '<tr' + (r.pts ? '' : ' class="pts-zero"') + '><td class="pts-c-pos">' + r.pos + '</td><td>' + sanitize(r.name) +
+            '</td><td class="pts-c-n pts-v">' + r.pts + '</td><td class="pts-c-n">' + r.ex + '</td></tr>';
+        }).join('') + '</tbody></table>'
+      : '<p class="plm-empty">' + sanitize(t('pts.none')) + '</p>';
+    return wrap('<div class="pts-sec"><div class="pts-chips">' + chips + '</div>' + meta + table + '</div>');
+  }
+
+  function ptsRefresh() {
+    const w = document.getElementById('pts-secwrap');
+    if (!w) return;
+    w.outerHTML = ptsSectionHtml(plScopedPlayers());
+    bindPtsControls(document.getElementById('pts-secwrap'));
+  }
+
+  function bindPtsControls(root) {
+    if (!root) return;
+    const tog = root.querySelector('#pts-toggle') || (root.id === 'pts-toggle' ? root : null);
+    if (tog) tog.addEventListener('click', function () { _ptsOpen = !_ptsOpen; ptsRefresh(); });
+    root.querySelectorAll('[data-pts-period]').forEach(function (b) {
+      b.addEventListener('click', function () { _ptsPeriod = b.dataset.ptsPeriod; ptsRefresh(); });
+    });
+    const add = root.querySelector('#pts-add');
+    if (add) add.addEventListener('click', function () { ptsOpenPeriodDialog(getCurrentCategory(), null); });
+    root.querySelectorAll('[data-pts-edit]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const pp = ptsPeriods(getCurrentCategory()).filter(function (x) { return x.id === b.dataset.ptsEdit; })[0];
+        if (pp) ptsOpenPeriodDialog(getCurrentCategory(), pp);
+      });
+    });
+  }
+
+  /** Save the category's periods: this one added or replaced, or removed;
+      "shown" made exclusive within the category. Other categories' rows
+      ride along untouched — the blob is the merge of every shard. */
+  function ptsSavePeriod(cat, period, remove) {
+    let all = ptsAllPeriods().filter(function (pp) { return pp && pp.id !== (period && period.id); });
+    if (!remove && period) {
+      if (period.shown) {
+        all = all.map(function (pp) {
+          return (pp.category || '') === (cat || '') && pp.shown ? Object.assign({}, pp, { shown: false }) : pp;
+        });
+      }
+      all.push(Object.assign({}, period, { category: cat }));
+    }
+    return ackSave('fa_point_periods', JSON.stringify(all), null);
+  }
+
+  function ptsOpenPeriodDialog(cat, period) {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+    const pp = period || { id: '', name: '', from: localDateStr(new Date()), to: localDateStr(new Date()), shown: false };
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="stp-dialog">' +
+        '<div class="stp-dialog-head"><span class="std-eyebrow">' + sanitize(t('pts.period')) + '</span>' +
+          '<button class="stp-a stp-a-mute" id="pts-dlg-x">✕</button></div>' +
+        '<div class="stp-dialog-body">' +
+          '<input class="stp-field" id="pts-dlg-name" maxlength="40" placeholder="' + sanitize(t('pts.name')) + '">' +
+          '<label class="stp-dialog-mins">' + sanitize(t('pts.from')) +
+            ' <input class="stp-field" id="pts-dlg-from" type="date"></label>' +
+          '<label class="stp-dialog-mins">' + sanitize(t('pts.to')) +
+            ' <input class="stp-field" id="pts-dlg-to" type="date"></label>' +
+          '<label class="stp-dialog-mins pts-dlg-shown"><input type="checkbox" id="pts-dlg-shown"> ' +
+            sanitize(t('pts.show_players')) + '</label>' +
+          '<p class="pts-dlg-err" id="pts-dlg-err" hidden>' + sanitize(t('pts.bad_dates')) + '</p>' +
+        '</div>' +
+        '<div class="stp-dialog-foot">' +
+          (period ? '<button class="stp-a stp-a-danger" id="pts-dlg-del">' + sanitize(t('pts.delete')) + '</button>' : '<span></span>') +
+          '<div class="stp-dialog-acts">' +
+            '<button class="stp-a stp-a-mute" id="pts-dlg-cancel">' + sanitize(t('common.cancel')) + '</button>' +
+            '<button class="std-btn" id="pts-dlg-ok">' + sanitize(t('plan.save')) + '</button>' +
+          '</div></div></div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+    const close = () => { overlay.classList.remove('visible'); setTimeout(() => overlay.remove(), 200); };
+    const $o = (id) => overlay.querySelector('#' + id);
+    // Values through .value, never the markup: a coach's quotes are text.
+    $o('pts-dlg-name').value = pp.name || '';
+    $o('pts-dlg-from').value = pp.from || '';
+    $o('pts-dlg-to').value = pp.to || '';
+    $o('pts-dlg-shown').checked = !!pp.shown;
+    $o('pts-dlg-x').addEventListener('click', close);
+    $o('pts-dlg-cancel').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    $o('pts-dlg-ok').addEventListener('click', function () {
+      const from = $o('pts-dlg-from').value;
+      const to = $o('pts-dlg-to').value;
+      const ok = /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to) && from <= to;
+      if (!ok) { $o('pts-dlg-err').hidden = false; return; }
+      const next = { id: pp.id || _planId('pp'), name: $o('pts-dlg-name').value.trim().slice(0, 40) || (from + ' – ' + to),
+        from: from, to: to, shown: $o('pts-dlg-shown').checked };
+      close();
+      _ptsPeriod = next.id;
+      ptsSavePeriod(cat, next, false);
+      ptsRefresh();
+    });
+    const del = $o('pts-dlg-del');
+    if (del) {
+      del.addEventListener('click', function () {
+        close();
+        showModal(t('pts.delete'), t('pts.delete_q').replace('{name}', pp.name), function () {
+          if (_ptsPeriod === pp.id) _ptsPeriod = null;
+          ptsSavePeriod(cat, pp, true);
+          ptsRefresh();
+        }, { confirmLabel: t('pts.delete') });
+      });
+    }
+    $o('pts-dlg-name').focus();
+  }
+
+  /** The player's card (v292): his points in the period the coach shows —
+      or the season — and where that puts him in his squad. Nothing at all
+      while nobody in the squad has a point: a club not using points sees no
+      empty card about it. */
+  function msPointsCardHtml(u) {
+    if (!u || !u.category) return '';
+    const period = shownPointPeriod(ptsAllPeriods(), u.category);
+    const range = ptsRangeOf(period);
+    const tally = exercisePointsTally(getTrainings(), { category: u.category, from: range.from, to: range.to });
+    const squad = getUsers().filter(function (pl) {
+      return (pl.roles || []).includes('player') && pl.category === u.category && (!u.team || (pl.team || '') === u.team);
+    });
+    if (!squad.some(function (pl) { return String(pl.id) === String(u.id); })) squad.push(u);
+    const rows = pointsRanking(tally, squad);
+    if (!rows.some(function (r) { return r.pts > 0; })) return '';
+    const me = rows.filter(function (r) { return r.uid === String(u.id); })[0] || { pts: 0, pos: rows.length };
+    return '<div class="ms-pts">' +
+      '<span class="ms-sec-solo">' + sanitize(t('pts.section') + ' · ' + range.label) + '</span>' +
+      '<div class="ms-pts-line"><span class="ms-pts-v ms-num">' + me.pts + '</span>' +
+        '<span class="ms-pts-u">' + sanitize(me.pts === 1 ? t('pts.unit_1') : t('pts.unit_n')) + '</span>' +
+        '<span class="ms-pts-pos">' + sanitize(t('pts.pos').replace('{p}', me.pos).replace('{t}', rows.length)) + '</span>' +
+      '</div></div>';
+  }
+
   function plScopedPlayers() {
     var curCat = getCurrentCategory();
     return getUsers().filter(function (u) { return (u.roles || []).includes('player'); })
@@ -30609,6 +30895,7 @@
            whatever array happened to be in scope. */
         plRosterTableHtml(rows, !sel, catSpanOf(players)) +
         plmSectionHtml(players, catSpanOf(players)) +
+        ptsSectionHtml(players) +
         '</div>' +
       '</div>' +
       (sel ? plRailHtml(sel) : '') +
@@ -30756,12 +31043,15 @@
          WRAPPER, so the head, the body and anything later added between
          them are covered by one clause rather than a growing list. */
       if (e.target.closest && e.target.closest('.plm-secwrap')) return;
+      // Nor in the exercise points (v292), for the same reason.
+      if (e.target.closest && e.target.closest('.pts-secwrap')) return;
       // Releasing a drag outside the chart still ends in a click here.
       if (_plDragMoved) { _plDragMoved = false; return; }
       _plSel = null; hideTip(); renderPage(getSession());
     });
 
     bindPlmControls(page);
+    bindPtsControls(document.getElementById('pts-secwrap'));
 
     /* Drag to scroll in time. The offset is recomputed from the pointer's
        total travel rather than accumulated per move event, so a drag that
@@ -43450,7 +43740,7 @@
       /* Mèdic joined this one at v234: `Sessions perdudes` is DERIVED from
          fa_training at render time rather than stored, so a coach adding a
          session inside an injury's window has to repaint the figure. */
-      fa_training: ['staff-home', 'player-home', 'player-actions', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats', 'staff-player-stats', 'medical', 'medical-detail'],
+      fa_training: ['staff-home', 'player-home', 'player-actions', 'calendar', 'training-detail', 'staff-training-detail', 'my-stats', 'staff-player-stats', 'medical', 'medical-detail', 'manage-roster'],
       fa_matches: ['staff-home', 'player-home', 'player-actions', 'calendar', 'convocatoria', 'match-detail', 'my-stats', 'staff-player-stats'],
       fa_matchday: ['player-home', 'calendar'],
       fa_staff_notifications: ['staff-notifications'],
@@ -43481,6 +43771,8 @@
          collection name. */
       fa_player_metrics: ['manage-roster'],
       fa_metric_catalog: ['manage-roster'],
+      // The exercise-points periods (v292): Plantilla's table, the player's card.
+      fa_point_periods: ['manage-roster', 'my-stats'],
       fa_tactic_saved: ['tactics'],
       fa_tactic_match_boards: ['tactics', 'match-detail', 'convocatoria'],
       fa_tactic_training_boards: ['tactics', 'training-detail', 'staff-training-detail'],
