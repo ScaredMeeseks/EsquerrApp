@@ -297,6 +297,21 @@ describe('archiveSeason — a label is archived once', function () {
     assert.ok((await seasonDoc().get()).exists);
   });
 
+  /* v291: the staff's private exercise notes are archived with the season —
+     fa_training is emptied, so a note left live would point at nothing. */
+  it('archives the private exercise notes and clears them from the live club', async () => {
+    const live = db.doc(`teams/${ATEAM}/trainingNotes/trX`);
+    const arch = db.doc(`teams/${ATEAM}/seasons/${LABEL}/trainingNotes/trX`);
+    await arch.delete();
+    await live.set({category: 'amateur', sessionId: 'trX', ex: {e1: {n1: {text: 'bé'}}}});
+    const r = await call();
+    assert.ok(!r.code || r.code === 200, 'expected success, got ' + r.code);
+    assert.strictEqual((await live.get()).exists, false, 'the note stayed in the live club');
+    const a = await arch.get();
+    assert.ok(a.exists, 'the note was not archived');
+    assert.strictEqual(a.data().ex.e1.n1.text, 'bé');
+  });
+
   it('REFUSES the same label again, and leaves the archive intact', async () => {
     await call();
     const r = await call();

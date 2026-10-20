@@ -257,6 +257,9 @@ describe('deleteTeam — down to zero teams, then a different one', function () 
   before(async () => {
     await seed();
     await dataDoc('fa_injuries__cadet').set({category: 'cadet', v: '[]'});
+    // v291: private exercise notes of the category going, and of one staying.
+    await db.doc('teams/' + CLUB + '/trainingNotes/trAm').set({category: 'amateur', sessionId: 'trAm', ex: {}});
+    await db.doc('teams/' + CLUB + '/trainingNotes/trCad').set({category: 'cadet', sessionId: 'trCad', ex: {}});
     await db.doc('clubs/' + CLUB).set({maxTeams: 1}, {merge: true});
     await callDelete({category: 'amateur', letter: 'B'});
     await callDelete({category: 'amateur', letter: 'A'});
@@ -309,6 +312,13 @@ describe('deleteTeam — down to zero teams, then a different one', function () 
   it('…and keeps one still holding history: the fixture with no letter', async () => {
     const rows = await blob('fa_matches__amateur');
     assert.ok(Array.isArray(rows) && rows.some((m) => m.id === 3), 'a kept fixture went with its shard');
+  });
+
+  it('takes the category\'s private exercise notes with its sessions, and no other category\'s', async () => {
+    assert.strictEqual((await db.doc('teams/' + CLUB + '/trainingNotes/trAm').get()).exists, false,
+        'the notes of a squad that no longer exists stayed');
+    assert.strictEqual((await db.doc('teams/' + CLUB + '/trainingNotes/trCad').get()).exists, true,
+        'another category\'s notes went');
   });
 
   it('…and leaves another category\'s empty shard alone', async () => {

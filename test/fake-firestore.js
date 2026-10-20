@@ -15,6 +15,9 @@
 
 const DELETE = {__op: 'delete'};
 const SERVER_TS = {__op: 'serverTimestamp'};
+class FieldPath {
+  constructor(...segments) { this.segments = segments.map(String); }
+}
 
 function clone(v) {
   return v === undefined ? undefined : JSON.parse(JSON.stringify(v));
@@ -46,15 +49,42 @@ class FakeStore {
   _apply(path, data, opts) {
     const merge = !!(opts && opts.merge);
     const prev = merge ? (this.docs.get(path) || {}) : {};
-    const next = Object.assign({}, prev);
-    for (const k of Object.keys(data)) {
-      const v = data[k];
-      if (v === DELETE) delete next[k];
-      else if (v === SERVER_TS) next[k] = '<ts>';
-      else next[k] = clone(v);
-    }
-    this.docs.set(path, next);
+    /* As Firestore does: a merge goes DOWN into nested maps (an array is a
+       value, replaced whole), and a delete sentinel removes the key it sits
+       on at any depth. A shallow merge here would let two writers' nested
+       maps clobber each other in the fake when they cannot in production —
+       or the reverse, hide a real clobber. */
+    const mergeInto = (base, patch) => {
+      const out = Object.assign({}, base);
+      for (const k of Object.keys(patch)) {
+        const v = patch[k];
+        if (v === DELETE) delete out[k];
+        else if (v === SERVER_TS) out[k] = '<ts>';
+        else if (merge && v && typeof v === 'object' && !Array.isArray(v) && !v.__op &&
+            out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) out[k] = mergeInto(out[k], v);
+        else out[k] = clone(v);
+      }
+      return out;
+    };
+    this.docs.set(path, mergeInto(prev, data));
     this.writes.push({path, type: merge ? 'merge' : 'set'});
+  }
+  /** update(): dotted paths or FieldPath segments, onto an EXISTING doc. */
+  _update(path, pairs) {
+    const doc = clone(this.docs.get(path));
+    for (const [segs, v] of pairs) {
+      let at = doc;
+      for (let i = 0; i < segs.length - 1; i++) {
+        if (!at[segs[i]] || typeof at[segs[i]] !== 'object') at[segs[i]] = {};
+        at = at[segs[i]];
+      }
+      const last = segs[segs.length - 1];
+      if (v === DELETE) delete at[last];
+      else if (v === SERVER_TS) at[last] = '<ts>';
+      else at[last] = clone(v);
+    }
+    this.docs.set(path, doc);
+    this.writes.push({path, type: 'update'});
   }
   _delete(path) {
     this.docs.delete(path);
@@ -96,6 +126,25 @@ function makeApi(store) {
         const err = store._fail(path, 'delete');
         if (err) return Promise.reject(err);
         store._delete(path);
+        store._notify(path, false);
+        return Promise.resolve();
+      },
+      /* update({'a.b': v, ...}) or update(fieldPath, v, fieldPath2, v2, ...).
+         Like Firestore it refuses a document that does not exist. */
+      update(...args) {
+        const err = store._fail(path, 'update');
+        if (err) return Promise.reject(err);
+        if (!store.docs.has(path)) return Promise.reject(Object.assign(new Error('No document to update'), {code: 'not-found'}));
+        const pairs = [];
+        if (args.length === 1 && args[0] && !(args[0] instanceof FieldPath)) {
+          for (const k of Object.keys(args[0])) pairs.push([k.split('.'), args[0][k]]);
+        } else {
+          for (let i = 0; i < args.length; i += 2) {
+            const p = args[i];
+            pairs.push([p instanceof FieldPath ? p.segments : String(p).split('.'), args[i + 1]]);
+          }
+        }
+        store._update(path, pairs);
         store._notify(path, false);
         return Promise.resolve();
       },
@@ -235,6 +284,7 @@ function makeApi(store) {
         delete: () => DELETE,
         serverTimestamp: () => SERVER_TS,
       },
+      FieldPath,
     },
   };
 

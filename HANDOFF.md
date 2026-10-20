@@ -8,7 +8,25 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 290**
+**Version triple is at 291**
+
+## 2026-10-21 — v291: private notes on each exercise (roadmap 38)
+
+Full detail in CONTEXT.md (v291).
+- **`teams/{id}/trainingNotes/{sessionId}`:** `{sessionId, category, ex: {[exId]: {[noteId]: {text, uid, name, at, editedAt}}}}`.
+  - The rule is `matchNotes`' twin: staff of the category, with the category immutable.
+  - **js/training-notes.js (TN)** follows js/match-notes.js. db.js starts and stops it beside MN, and a player opens no listener.
+- **Writes never read-modify-write:**
+  - adds and edits are nested merges;
+  - a delete is one `FieldPath` delete;
+  - `dropExercises` names its ids. It never deletes by "not in my plan", because a colleague's unsynced exercise would lose its notes.
+- **Lifecycle:**
+  - An exercise removed with notes asks first, and its notes go too. So do a replaced plan's ("Carregar").
+  - `deleteTraining` removes the session's doc.
+  - `deleteTeam` (`catGone`) deletes the category's notes.
+  - `archiveSeason` archives them.
+- **`test/fake-firestore.js` now merges as deep as Firestore does,** and has `update(FieldPath…)`.
+- **Deploy:** rules, then functions, then push.
 
 ## 2026-10-21 — v290: "Carregar entrenament" (roadmap 37)
 
@@ -143,9 +161,9 @@ Full detail in CONTEXT.md (v282). What a next session needs:
 
 | | |
 |---|---|
-| Unit tests | **4210** (v288) — `cd test && npm run test:unit` (~35 s), all passing |
-| Functions tests | **124** (v288), all passing, 3 of 3 runs (~80 s) — `npm run test:functions` from PowerShell with Java on PATH and `$env:FUNCTIONS_DISCOVERY_TIMEOUT = 120`, backgrounded with `2>&1 | Out-File <log>`. Don't touch `functions/` while it runs: the emulator hot-reloads and the trigger tests fail. Kill a leftover emulator java before starting another run |
-| Rules tests | **198** (v288) — `npm run test:rules` |
+| Unit tests | **4261** (v291) — `cd test && npm run test:unit` (~35 s), all passing |
+| Functions tests | **126** (v291), all passing (~80 s) — `npm run test:functions` from PowerShell with Java on PATH and `$env:FUNCTIONS_DISCOVERY_TIMEOUT = 120`, backgrounded with `2>&1 | Out-File <log>`. Don't touch `functions/` while it runs: the emulator hot-reloads and the trigger tests fail. Kill a leftover emulator java before starting another run |
+| Rules tests | **204** (v291) — `npm run test:rules` |
 
 **Deploy state.** `main` is current and deployed through **v277 `669b2ba`**. Both v276 and v277
 ran `.\deploy.ps1 functions` BEFORE the push (the new 3D module works with the old frontend, not the
@@ -621,10 +639,13 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
     - The new session keeps its own date, times, place and squad.
     - The boards are linked to the new date, without `linkedTeams`.
 
-38. **Private notes on each exercise.** *(owner asked 2026-10-21; planned as v291)*
-    - Staff-only comments under each exercise of a session, never on a player's device.
-    - Stored in `teams/{id}/trainingNotes/{sessionId}`, a copy of the `matchNotes` pattern.
-    - Archived with the season and deleted with the session.
+38. ✅ **Done — v291: private notes on each exercise.** A 💬 with the count sits on every exercise
+    of the staff session page.
+    - Anyone on the staff reads the notes; editors write.
+    - ✎ edits your own notes; × deletes your own, or any note for the head coach.
+    - Stored in `teams/{id}/trainingNotes/{sessionId}` (js/training-notes.js), a copy of the `matchNotes`
+      pattern, so the notes never reach a player's device.
+    - They go with their exercise and with their session, and are archived with the season.
 
 **Data**
 

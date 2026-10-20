@@ -104,6 +104,8 @@ function env(o) {
     showModal: (title, message, onConfirm, opts) => calls.modal.push({ title, message, onConfirm, opts }),
     document: doc, requestAnimationFrame: (fn) => fn(),
     _ntResolveClashes: () => 0, _ntMarkAttending: () => {},
+    // v291: the private notes, when a test hands some in.
+    TN: o.TN,
   };
   // eslint-disable-next-line no-new-func
   const api = new Function(...Object.keys(deps), `
@@ -268,6 +270,20 @@ describe('Carregar entrenament — the dialog', () => {
     assert.strictEqual(m.opts.danger, false);
     m.onConfirm();
     assert.deepStrictEqual([loaded.length, loaded[0].s.id, loaded[0].tpl.exCount], [1, 'tr_s1', 2]);
+  });
+
+  it('warns that the replaced exercises\' private notes go too (v291)', () => {
+    DICT['plan.load_notes'] = 'NOTES {notes}.';
+    DICT['plan.notes_1'] = '1 nota';
+    DICT['plan.notes_n'] = '{n} notes';
+    const e = env({ TN: { count: (sid, ex) => (sid === 'tr_new' && ex !== 'q3' ? 1 : 0) } });
+    e.api.stpOpenLoadDialog(T(), () => {});
+    e.doc.querySelector('[data-stp-load-i="0"]').click();
+    assert.strictEqual(e.calls.modal[0].message, 'COPIES 2 exercicis. REPLACES 3 exercicis. NOTES 2 notes.');
+    const quiet = env({ TN: { count: () => 0 } });
+    quiet.api.stpOpenLoadDialog(T(), () => {});
+    quiet.doc.querySelector('[data-stp-load-i="0"]').click();
+    assert.strictEqual(quiet.calls.modal[0].message, 'COPIES 2 exercicis. REPLACES 3 exercicis.');
   });
 
   it('says nothing about replacing when there is nothing to replace', () => {

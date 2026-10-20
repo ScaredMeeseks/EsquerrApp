@@ -13158,3 +13158,61 @@ Version triple → **v289**.
 **Deploy:** frontend only.
 
 Version triple → **v290**.
+
+### 2026-10-21 — v291: private notes on each exercise (roadmap 38)
+
+**The owner's call:** comments on a training's exercises, staff only and private.
+
+**Where they live:** `teams/{id}/trainingNotes/{sessionId}`, a twin of `matchNotes`.
+- **Why not on the row:** a session's rows are in `data/fa_training__{cat}`, which every player of the category downloads. A note kept on the row, or under any `data/` key, would land on their phones.
+- **The shape:** one doc per session, `{sessionId, category, ex: {[exId]: {[noteId]: {text ≤500, uid, name, at, editedAt?}}}}`.
+- **The rule** copies `matchNotes`: staff of the club, `category in cats`, the category immutable on update. Players and other clubs are refused.
+
+**js/training-notes.js (TN)** follows js/match-notes.js.
+- **Listener:** staff-only, decided from the claims, on `category in cats`. db.js starts it and cleans it up beside MN, so a player's client opens nothing.
+- **Writes never read and rewrite:**
+  - `add` and `edit` are nested merges (`set(…, {merge:true})`, which Firestore merges deep);
+  - `remove` deletes one `FieldPath('ex', exId, noteId)`;
+  - so two coaches writing at once keep each other's notes.
+- **The cache is written before the write** (as `MN.save`) and rolled back if the write is refused. `training-notes-sync` announces each change.
+- **`dropExercises(tr, ids)` deletes only the ids it is NAMED.** "Everything not in the plan I hold" would delete the notes of an exercise a colleague has just added and this device has not yet synced.
+
+**The page** (staff session page, `_stpExRow` / `_stpNotesHtml`):
+- **Every exercise** gets a 💬 with its count, opening the notes under it: first name, when (local), "· editada", the text as text.
+- **Reading is for all staff** (bound in `bindStdPlanView`). Writing is for editors.
+- **Controls:** ✎ on your own notes; × on your own, or any for the head coach.
+- **Unsent text** is kept per exercise across re-renders.
+- **A colleague's note arriving** redraws the plan, except under a focused note field: then it waits for the blur.
+
+**Lifecycle:**
+- An exercise removed while it has notes asks first ("Té 3 notes, que s'esborraran amb ell"), and its notes go with it.
+- "Carregar entrenament" over a plan says the replaced exercises' notes will be deleted, then deletes them.
+- `deleteTraining` removes the session's doc. It is best effort and outside the `Promise.all`, so a refused notes delete never reads as a failed session delete.
+- `deleteTeam` on `catGone` deletes the category's notes (by query, since a letter going leaves its sessions in place).
+- `archiveSeason` archives the collection beside `matchNotes`.
+
+**The fake Firestore** (`test/fake-firestore.js`) now merges nested maps as deep as Firestore does, and has `update()` with dotted paths or `FieldPath`. A shallow merge would have let the "two coaches" test pass, or fail, for the wrong reason. The other 4200+ tests were unaffected.
+
+**Checked (emulators, 390 px):**
+- **The lead:** 💬 1 on the exercise holding a colleague's note.
+- **Opened:** the colleague's note shows × only.
+- **Added a note** with markup: shown as text.
+- **Edited it:** "· editada".
+- **A colleague's note** written by a second process mid-run arrived live (💬 3).
+- **Removing the exercise** warned "Té 3 notes".
+- **The player's client** held 0 notes and logged no permission error.
+
+**Tests:**
+- New `training-notes.test.js` (25): the real TN over the fake, and the real panel and handlers over jsdom.
+- Rules: 6 cases, including the listener's query shape.
+- Functions: archive and `deleteTeam`.
+- Accions: the load confirm's notes sentence. Delete: the session's notes go, and a refusal does not fail the delete.
+- Mutations:
+  - unit 37/38 (the survivor is the `.catch` on the background session-notes delete, equivalent because that delete is outside the `Promise.all`);
+  - rules 8/8;
+  - functions 3/3.
+- Unit **4261**, rules **204**, functions **126**.
+
+**Deploy:** rules, then functions (`archiveSeason`, `deleteTeam`), then push.
+
+Version triple → **v291**.

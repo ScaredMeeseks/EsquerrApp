@@ -802,6 +802,53 @@ describe("Coach match notes (teams/{t}/matchNotes/{matchId})", () => {
   });
 });
 
+/* v291, roadmap 38: the staff's private notes on a session's exercises —
+   matchNotes' twin, and the same security claim. */
+describe("Private exercise notes (teams/{t}/trainingNotes/{sessionId})", () => {
+  const note = (d, id) => d.doc("teams/teamA/trainingNotes/" + id);
+  const N = (cat, text) => ({sessionId: "x", category: cat,
+    ex: {e1: {n1: {text: text, uid: STAFF_A, name: "S", at: "2026-10-14T19:00:00Z"}}}});
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (c) => {
+      const f = c.firestore();   // once: a second call re-applies settings and throws
+      await f.doc("teams/teamA/trainingNotes/trC").set(N("cadet", "massa llarg"));
+      await f.doc("teams/teamA/trainingNotes/trJ").set(N("juvenil", "juvenil"));
+    });
+  });
+
+  it("a PLAYER of the same club and category reads none of it, alone or by query", async () => {
+    await assertFails(note(asA(), "trC").get());
+    await assertFails(asA().collection("teams/teamA/trainingNotes").where("category", "in", ["cadet"]).get());
+  });
+  it("…and writes none of it", async () => {
+    await assertFails(note(asA(), "trC").set({ex: {e1: {n2: {text: "hi"}}}}, {merge: true}));
+    await assertFails(note(asA(), "trNew").set(N("cadet", "hi")));
+    await assertFails(note(asA(), "trC").delete());
+  });
+  it("a cadet coach reads, adds to and deletes cadet notes — the listener's query included", async () => {
+    await assertSucceeds(note(asStaffA(), "trC").get());
+    await assertSucceeds(asStaffA().collection("teams/teamA/trainingNotes").where("category", "in", ["cadet"]).get());
+    await assertSucceeds(note(asStaffA(), "trC").set({category: "cadet",
+      ex: {e1: {n2: {text: "i jo", uid: STAFF_A}}}}, {merge: true}));
+    await assertSucceeds(note(asStaffA(), "trNew").set(N("cadet", "nou")));
+    await assertSucceeds(note(asStaffA(), "trC").delete());
+  });
+  it("a cadet coach CANNOT read, write or create juvenil's", async () => {
+    await assertFails(note(asStaffA(), "trJ").get());
+    await assertFails(note(asStaffA(), "trJ").set({ex: {e1: {n2: {text: "x"}}}}, {merge: true}));
+    await assertFails(note(asStaffA(), "trJ").delete());
+    await assertFails(note(asStaffA(), "trNew2").set(N("juvenil", "x")));
+  });
+  it("the category is immutable — a note cannot be moved between squads", async () => {
+    await assertFails(note(asStaffA(), "trC").update({category: "juvenil"}));
+  });
+  it("the lead reads every category of the club; another club nothing; no cats claim nothing", async () => {
+    await assertSucceeds(note(asLeadA(), "trJ").get());
+    await assertFails(note(asB(), "trC").get());
+    await assertFails(note(asStaffNoCats(), "trC").get());
+  });
+});
+
 describe("Archived seasons", () => {
   const arch = (d, cat) =>
     d.doc("teams/teamA/seasons/2024-2025/data/fa_injuries__" + cat);

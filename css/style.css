@@ -2826,6 +2826,35 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stp-ex-del:hover { opacity:1; }
 /* No hover on a touch screen, so the × would never appear at all. */
 @media (hover: none) { .stp-ex-del { opacity:.7; } }
+/* 💬 private staff notes (v291). The FIRST of the right-hand controls, so it
+   takes the auto margin and ✎ × follow it — and for view-only staff, who get
+   neither, it still sits on the right. */
+.stp-ex-notes {
+  background:none; border:none; cursor:pointer; padding:0 2px; margin-left:auto;
+  font-family:inherit; font-size:13px; line-height:1; color:var(--pp-ink-3);
+  display:inline-flex; align-items:center; gap:2px;
+}
+.stp-ex-notes:hover, .stp-ex-notes-on { color:var(--pp-ink); }
+.stp-ex-notes-n { font-size:11px; font-weight:600; color:var(--pp-ink-2); }
+.stp-ex-notes + .stp-ex-edit { margin-left:8px; }
+.stp-notes {
+  margin-top:6px; padding:8px 10px; border-left:2px solid var(--pp-rule);
+  background:rgba(0,0,0,.025); display:flex; flex-direction:column; gap:8px;
+}
+.stp-note-h { display:flex; align-items:baseline; gap:6px; font-size:12px; color:var(--pp-ink-2); }
+.stp-note-when { font-size:11px; color:var(--pp-ink-3); }
+.stp-note-a {
+  background:none; border:none; cursor:pointer; padding:0 3px;
+  font-size:13px; line-height:1; color:var(--pp-ink-3);
+}
+.stp-note-h .stp-note-a:first-of-type { margin-left:auto; }
+.stp-note-a:hover { color:var(--pp-ink); }
+.stp-note-del { color:var(--pp-bad); }
+.stp-note-t { font-size:13px; color:var(--pp-ink); white-space:pre-wrap; overflow-wrap:anywhere; }
+.stp-note-none { margin:0; font-size:12px; color:var(--pp-ink-3); }
+.stp-note-new { display:flex; gap:8px; align-items:flex-end; }
+.stp-note-new .stp-field, .stp-note-editing .stp-field { flex:1; font-size:13px; resize:vertical; }
+.stp-note-acts { display:flex; justify-content:flex-end; align-items:center; gap:14px; margin-top:6px; }
 .stp-board { padding-top:8px; display:flex; flex-direction:column; gap:6px; }
 .stp-board-wrap { max-width:100%; }
 .stp-board-acts { display:flex; gap:14px; }

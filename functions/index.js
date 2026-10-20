@@ -5185,6 +5185,10 @@ exports.deleteTeam = onCall({region: "us-central1", timeoutSeconds: 540},
       if (catGone) {
         const trShard = catShard("fa_training");
         if (trShard) await trShard.ref.delete();
+        /* The staff's private notes on those sessions (v291): stamped with
+           the category, and as unreadable as the sessions once it is gone. */
+        await deleteByQuery(db.collection("teams").doc(clubId)
+            .collection("trainingNotes").where("category", "==", category));
       }
       } // end runDataPhase
 
@@ -5918,8 +5922,9 @@ exports.archiveSeason = onRequest(
            would point at a fixture that no longer exists, for ever.
            fcfActa (the acta-import ledgers, v278) for the same reason, and
            it must be gone BEFORE the reset below: guardFcfActa restores an
-           imported match whose events disappear. */
-        for (const coll of ["trainingAvail", "matchAvail", "rpe", "matchNotes", "fcfActa"]) {
+           imported match whose events disappear. trainingNotes (v291) is
+           matchNotes' twin for sessions: fa_training is emptied too. */
+        for (const coll of ["trainingAvail", "matchAvail", "rpe", "matchNotes", "trainingNotes", "fcfActa"]) {
           const collSnap = await db.collection("teams").doc(teamId)
               .collection(coll).get();
           if (collSnap.empty) continue;

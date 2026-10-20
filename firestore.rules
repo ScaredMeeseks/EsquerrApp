@@ -260,6 +260,29 @@ service cloud.firestore {
               && resource.data.category in request.auth.token.cats);
       }
 
+      /* ── Private notes on a session's exercises (v291, roadmap 38) ──
+         matchNotes' twin, for the same reason: a session's rows live in
+         data/fa_training__{cat}, which every PLAYER of the category reads, so
+         notes kept there would land on their phones. One doc per session
+         (js/training-notes.js), `category` duplicated onto it so the check
+         is self-contained, and immutable on update. Staff-only, hard; who
+         among the staff may write is the client's gate, as for matchNotes. */
+      match /trainingNotes/{sessionId} {
+        allow read: if isSuperUser()
+          || (isStaffOf(teamId) && 'cats' in request.auth.token
+              && resource.data.category in request.auth.token.cats);
+        allow create: if isSuperUser()
+          || (isStaffOf(teamId) && 'cats' in request.auth.token
+              && request.resource.data.category in request.auth.token.cats);
+        allow update: if isSuperUser()
+          || (isStaffOf(teamId) && 'cats' in request.auth.token
+              && resource.data.category in request.auth.token.cats
+              && request.resource.data.category == resource.data.category);
+        allow delete: if isSuperUser()
+          || (isStaffOf(teamId) && 'cats' in request.auth.token
+              && resource.data.category in request.auth.token.cats);
+      }
+
       /* The acta-import ledgers (v278): what each imported acta said, which
          guardFcfActa restores from when a stale phone overwrites it. Written
          by the Admin SDK only; no client has a reason to read or write one. */

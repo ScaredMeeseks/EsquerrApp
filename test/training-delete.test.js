@@ -29,7 +29,7 @@ function grab(from, to) {
 }
 
 /** deleteTraining + its helper, over a fake localStorage and a fake DB. */
-function load(store) {
+function load(store, tn) {
   const removed = [];
   const acked = [];
   const ls = {
@@ -42,9 +42,9 @@ function load(store) {
   };
   const code = grab('  function trainingRecordKeys', '  /**\n   * Anything that is neither');
   // eslint-disable-next-line no-new-func
-  const api = new Function('localStorage', 'DB', 'getTrainings',
+  const api = new Function('localStorage', 'DB', 'getTrainings', 'TN',
     code + '\n return {trainingRecordKeys, deleteTraining};')(
-      ls, DB, () => JSON.parse(store.fa_training || '[]'));
+      ls, DB, () => JSON.parse(store.fa_training || '[]'), tn);
   return {api, removed, acked, store,
     trainings: () => JSON.parse(store.fa_training || '[]'),
     avail: () => JSON.parse(store.fa_training_availability || '{}'),
@@ -177,6 +177,16 @@ describe('deleteTraining — the row and what was answered about it', () => {
     const p = h.api.deleteTraining(S1);
     assert.ok(p && typeof p.then === 'function', 'it must be awaitable');
     return p;
+  });
+
+  // v291: the staff's private notes on its exercises go with it.
+  it('takes the session\'s private exercise notes — and a refused one does not fail the delete', () => {
+    const gone = [];
+    const h = load(fixture(), {removeSession: (id) => { gone.push(id); return Promise.resolve(); }});
+    h.api.deleteTraining(S1);
+    assert.deepStrictEqual(gone, [S1]);
+    const refused = load(fixture(), {removeSession: () => Promise.reject(new Error('denied'))});
+    return refused.api.deleteTraining(S1);
   });
 
   it('survives a session nobody ever answered', () => {

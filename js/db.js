@@ -637,6 +637,12 @@ const DB = (function () {
     } catch (e) {
       console.warn('[DB] coach match notes unavailable:', e && e.message);
     }
+    // Their twin for sessions' exercises (v291): staff-only, decided the same way.
+    try {
+      if (typeof TN !== 'undefined' && TN.init) await TN.init(teamId);
+    } catch (e) {
+      console.warn('[DB] training notes unavailable:', e && e.message);
+    }
 
     // ── Reconcile users/ collection → fa_users blob ──────────────
     // Query MUST be team-scoped: security rules reject unscoped user list reads.
@@ -827,6 +833,8 @@ const DB = (function () {
        device must not inherit either. */
     try { if (typeof MN !== 'undefined' && MN.cleanup) MN.cleanup(); }
     catch (e) { console.warn('[DB] MN cleanup failed:', e && e.message); }
+    try { if (typeof TN !== 'undefined' && TN.cleanup) TN.cleanup(); }
+    catch (e) { console.warn('[DB] TN cleanup failed:', e && e.message); }
   }
 
   // ── localStorage monkey-patch ────────────────────────────────

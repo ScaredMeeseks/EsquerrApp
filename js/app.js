@@ -1200,6 +1200,21 @@
     // "Carregar entrenament" (v290, roadmap 37). {ex} is plan.ex_1 / plan.ex_n.
     'plan.load':         { ca:'Carregar entrenament', es:'Cargar entrenamiento', en:'Load a training' },
     'plan.load_short':   { ca:'Carregar', es:'Cargar', en:'Load' },
+    'plan.load_notes':   { ca:'Les {notes} dels exercicis actuals s\'esborraran.', es:'Las {notes} de los ejercicios actuales se borrarán.', en:'The {notes} on the current exercises will be deleted.' },
+    // Private exercise notes (v291, roadmap 38). {notes} is plan.notes_1 / plan.notes_n.
+    'plan.notes_hint':   { ca:'Notes privades de l\'equip tècnic', es:'Notas privadas del cuerpo técnico', en:'Private staff notes' },
+    'plan.notes_1':      { ca:'1 nota', es:'1 nota', en:'1 note' },
+    'plan.notes_n':      { ca:'{n} notes', es:'{n} notas', en:'{n} notes' },
+    'plan.notes_none':   { ca:'Encara no hi ha notes.', es:'Aún no hay notas.', en:'No notes yet.' },
+    'plan.note_ph':      { ca:'Una nota per a l\'equip tècnic — els jugadors no la veuen', es:'Una nota para el cuerpo técnico — los jugadores no la ven', en:'A note for the staff — players never see it' },
+    'plan.note_add':     { ca:'Afegir', es:'Añadir', en:'Add' },
+    'plan.note_edit':    { ca:'Editar la nota', es:'Editar la nota', en:'Edit the note' },
+    'plan.note_del':     { ca:'Esborrar', es:'Borrar', en:'Delete' },
+    'plan.note_del_q':   { ca:'Esborrar aquesta nota?', es:'¿Borrar esta nota?', en:'Delete this note?' },
+    'plan.note_edited':  { ca:'editada', es:'editada', en:'edited' },
+    'plan.note_failed':  { ca:'No s\'ha pogut desar la nota', es:'No se ha podido guardar la nota', en:'The note could not be saved' },
+    'plan.del_ex_q':     { ca:'Treure l\'exercici?', es:'¿Quitar el ejercicio?', en:'Remove the exercise?' },
+    'plan.del_ex_notes': { ca:'Té {notes}, que s\'esborraran amb ell.', es:'Tiene {notes}, que se borrarán con él.', en:'It has {notes}, which will be deleted with it.' },
     'plan.load_hint':    { ca:'Copia el pla d\'un entrenament anterior, sense els jugadors', es:'Copia el plan de un entrenamiento anterior, sin los jugadores', en:'Copy a past session\'s plan, without its players' },
     'plan.load_title':   { ca:'Carregar un entrenament anterior', es:'Cargar un entrenamiento anterior', en:'Load a past training' },
     'plan.load_filter':  { ca:'Cerca per enfocament o exercici', es:'Busca por enfoque o ejercicio', en:'Search by focus or exercise' },
@@ -3148,7 +3163,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 290;
+  const APP_VERSION = 291;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -24743,6 +24758,67 @@
      the session, and persisting it would reopen four boards on every visit. */
   let _stpOpen = {};
   let _stpBig = null;
+  /* Private exercise notes (v291): which exercises have them open, the one
+     note being edited, the unsent text per exercise — so a re-render (a
+     colleague's note arriving) never throws away what is being typed — and
+     whether such a re-render is waiting for the field to lose focus. */
+  let _stpNotesOpen = {};
+  let _stpNoteEdit = null;
+  let _stpNoteDraft = {};
+  let _stpNotesPending = false;
+
+  /** Who is reading the notes: whose ✎ is whose, and whether × is his for every note. */
+  function stpNotesCtx(tr) {
+    const me = getSession() || {};
+    return { sid: String(tr.id), uid: TN.uid() || '', lead: !!(me.isTeamLead || me.isAdmin) };
+  }
+
+  /** "Dt 21 oct 19:42" — when a note was written, in local time. */
+  function stpNoteWhen(iso) {
+    const d = new Date(iso || '');
+    if (isNaN(d.getTime())) return '';
+    return tDateShort(localDateStr(d)) + ' ' +
+      String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  /** One exercise's notes and, for an editor, the field to add one. Never
+      called for a player: the page is staff-only and TN opens nothing for
+      one. ✎ on your own notes; × on your own, or any for the head coach. */
+  function _stpNotesHtml(ex, ctx, ro) {
+    const n = ctx.notes;
+    const rows = TN.notesOf(n.sid, ex.id).map(function (note) {
+      const mine = !!note.uid && note.uid === n.uid;
+      const key = sanitize(ex.id + '|' + note.id);
+      if (!ro && mine && _stpNoteEdit === note.id) {
+        return '<div class="stp-note stp-note-editing">' +
+          '<textarea class="stp-field stp-note-in" data-stp-note-text="' + key + '" maxlength="' + TN.MAX +
+            '" rows="3">' + sanitize(note.text) + '</textarea>' +
+          '<div class="stp-note-acts">' +
+            '<button class="stp-a stp-a-mute" data-stp-note-cancel="1">' + sanitize(t('common.cancel')) + '</button>' +
+            '<button class="std-btn" data-stp-note-save="' + key + '">' + sanitize(t('plan.save')) + '</button>' +
+          '</div></div>';
+      }
+      const acts = ro ? '' :
+        (mine ? '<button class="stp-note-a" data-stp-note-edit="' + key + '" title="' +
+          sanitize(t('plan.note_edit')) + '" aria-label="' + sanitize(t('plan.note_edit')) + '">✎</button>' : '') +
+        ((mine || n.lead) ? '<button class="stp-note-a stp-note-del" data-stp-note-del="' + key + '" title="' +
+          sanitize(t('plan.note_del')) + '" aria-label="' + sanitize(t('plan.note_del')) + '">&times;</button>' : '');
+      return '<div class="stp-note"><div class="stp-note-h"><b>' +
+          sanitize(String(note.name || '').split(' ')[0] || '—') + '</b>' +
+          '<span class="stp-note-when">' + sanitize(stpNoteWhen(note.at) +
+            (note.editedAt ? ' · ' + t('plan.note_edited') : '')) + '</span>' + acts + '</div>' +
+        '<div class="stp-note-t">' + sanitize(note.text) + '</div></div>';
+    }).join('');
+    const form = ro ? '' :
+      '<div class="stp-note-new">' +
+        '<textarea class="stp-field stp-note-in" data-stp-note-new="' + sanitize(ex.id) + '" maxlength="' +
+          TN.MAX + '" rows="2" placeholder="' + sanitize(t('plan.note_ph')) + '">' +
+          sanitize(_stpNoteDraft[ex.id] || '') + '</textarea>' +
+        '<button class="std-btn" data-stp-note-add="' + sanitize(ex.id) + '">' + sanitize(t('plan.note_add')) + '</button>' +
+      '</div>';
+    return '<div class="stp-notes">' +
+      (rows || '<p class="stp-note-none">' + sanitize(t('plan.notes_none')) + '</p>') + form + '</div>';
+  }
 
   /** "12 cons", "1 pilota" — the noun agrees with the number. */
   function _stpN(n, oneKey, manyKey) {
@@ -25178,11 +25254,23 @@
        teams put on a free-text exercise rendered nowhere at all, and with no
        × there was no way to take them off again either. An assignment is a
        fact about the exercise, not about its drawing. */
+    /* Private notes (v291, roadmap 38): 💬 with the count, opening under
+       the exercise. Read by every member of staff; written by editors. */
+    const nNotes = ctx.notes ? TN.count(ctx.notes.sid, ex.id) : 0;
+    const notesOn = !!(ctx.notes && _stpNotesOpen[ex.id]);
+    const noteBtn = ctx.notes
+      ? '<button class="stp-ex-notes' + (notesOn ? ' stp-ex-notes-on' : '') + '" data-stp-notes="' +
+        sanitize(ex.id) + '" aria-expanded="' + notesOn + '" title="' + sanitize(t('plan.notes_hint')) +
+        '" aria-label="' + sanitize(t('plan.notes_hint')) + '">💬' +
+        (nNotes ? '<span class="stp-ex-notes-n">' + nNotes + '</span>' : '') + '</button>'
+      : '';
+
     return '<div class="stp-ex" data-stp-ex="' + path + '">' +
-      '<div class="stp-ex-head">' + head + edit + del + '</div>' +
+      '<div class="stp-ex-head">' + head + noteBtn + edit + del + '</div>' +
       '<div class="stp-ex-note">' + sanitize(_stpExNote(ex, resolve)) + '</div>' +
       (ex.desc ? '<div class="stp-ex-desc">' + sanitize(ex.desc) + '</div>' : '') +
       _stpTeamLines(ex, ctx.squad, ro) +
+      (notesOn ? _stpNotesHtml(ex, ctx, ro) : '') +
       panel + '</div>';
   }
 
@@ -25241,7 +25329,10 @@
     const mat = planMaterial(plan, resolve);
     const ctx = {
       plan: plan, squad: squad || [], refById: refById,
-      petos: resolvePetos(plan, mat)
+      petos: resolvePetos(plan, mat),
+      // The private notes (v291), once TN has its listener up.
+      notes: (typeof TN !== 'undefined' && TN.ready() && tr && tr.id != null)
+        ? stpNotesCtx(tr) : null
     };
     const times = blockTimes(tr, plan);
     let exCount = 0;
@@ -26208,12 +26299,16 @@
   /** Load a template into a saved session: the plan replaced, the focus and
       planned RPE taken when the old session had them, its boards linked. */
   function stpLoadIntoSession(sessionId, src, tpl) {
+    let replaced = [];
     const row = _ntPersistSession(sessionId, function (r) {
+      stdPlan(r).blocks.forEach(function (b) { b.items.forEach(function (e) { replaced.push(e.id); }); });
       r.plan = tpl.plan;
       if (tpl.focus) r.focus = tpl.focus;
       if (tpl.plannedRpe) r.plannedRpe = tpl.plannedRpe;
     });
     if (row) stpLinkBoards(src, row, tpl.boardIds);
+    // The replaced exercises' private notes go with them (v291).
+    if (row && replaced.length && typeof TN !== 'undefined') TN.dropExercises(row, replaced).catch(function () {});
     return row;
   }
 
@@ -26287,9 +26382,16 @@
         close();
         const tpl = stpTemplateOf(c.tr);
         let had = 0;
-        stdPlan(target).blocks.forEach(function (b) { had += b.items.length; });
+        let notes = 0;
+        stdPlan(target).blocks.forEach(function (b) {
+          had += b.items.length;
+          if (typeof TN !== 'undefined' && target && target.id != null) {
+            b.items.forEach(function (e) { notes += TN.count(target.id, e.id); });
+          }
+        });
         const msg = t('plan.load_confirm').replace('{ex}', _stpN(tpl.exCount, 'plan.ex_1', 'plan.ex_n')) +
-          (had ? ' ' + t('plan.load_replace').replace('{ex}', _stpN(had, 'plan.ex_1', 'plan.ex_n')) : '');
+          (had ? ' ' + t('plan.load_replace').replace('{ex}', _stpN(had, 'plan.ex_1', 'plan.ex_n')) : '') +
+          (notes ? ' ' + t('plan.load_notes').replace('{notes}', _stpN(notes, 'plan.notes_1', 'plan.notes_n')) : '');
         showModal(t('plan.load_q').replace('{date}', tDateShort(c.tr.date)), msg,
           function () { onLoad(c.tr, tpl); },
           { confirmLabel: t('plan.load_ok'), danger: false });
@@ -26589,11 +26691,94 @@
         e.stopPropagation();
         const path = _stpPath(btn.dataset.stpDel);
         if (!path) return;
-        _stpWrite(function (p) {
-          const items = _stpAt(p, path);
-          if (!items) return false;
-          items.splice(path[1], 1);
-        });
+        const items0 = _stpAt(plan, path);
+        const exId = items0 && items0[path[1]] ? items0[path[1]].id : '';
+        const go = function () {
+          _stpWrite(function (p) {
+            const items = _stpAt(p, path);
+            if (!items) return false;
+            items.splice(path[1], 1);
+          });
+          // Its private notes go with it (v291) — by name, never by difference.
+          if (exId && typeof TN !== 'undefined') TN.dropExercises(tr, [exId]).catch(function () {});
+        };
+        const nNotes = (exId && typeof TN !== 'undefined') ? TN.count(tr.id, exId) : 0;
+        if (!nNotes) { go(); return; }
+        showModal(t('plan.del_ex_q'), t('plan.del_ex_notes')
+          .replace('{notes}', _stpN(nNotes, 'plan.notes_1', 'plan.notes_n')), go,
+          { confirmLabel: t('plan.remove') });
+      });
+    });
+
+    /* ── Private exercise notes (v291) ── Editors only from here: the
+       view-only staff read them through bindStdPlanView's 💬. */
+    const noteFailed = function (err) {
+      console.warn('[TN] write refused:', err && err.message);
+      _showPushToast(t('plan.note_failed'), '');
+      stdRefreshPlan();
+    };
+    const noteKey = function (raw) {
+      const i = String(raw || '').indexOf('|');
+      return i === -1 ? null : { ex: raw.slice(0, i), note: raw.slice(i + 1) };
+    };
+    document.querySelectorAll('[data-stp-note-new]').forEach(function (el) {
+      el.addEventListener('input', function () { _stpNoteDraft[el.dataset.stpNoteNew] = el.value; });
+    });
+    document.querySelectorAll('.stp-note-in').forEach(function (el) {
+      /* A colleague's note that arrived while this field was in use: shown
+         once it is let go, not under the coach's thumb. */
+      el.addEventListener('blur', function () {
+        setTimeout(function () {
+          const a = document.activeElement;
+          if (!_stpNotesPending || (a && a.classList && a.classList.contains('stp-note-in'))) return;
+          _stpNotesPending = false;
+          stdRefreshPlan();
+        }, 0);
+      });
+    });
+    document.querySelectorAll('[data-stp-note-add]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const exId = btn.dataset.stpNoteAdd;
+        const field = btn.parentNode && btn.parentNode.querySelector('[data-stp-note-new]');
+        const text = TN.clean(field ? field.value : '');
+        if (!text) return;
+        delete _stpNoteDraft[exId];
+        TN.add(tr, exId, text, (getSession() || {}).name).catch(noteFailed);
+        stdRefreshPlan();
+      });
+    });
+    document.querySelectorAll('[data-stp-note-edit]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const k = noteKey(btn.dataset.stpNoteEdit);
+        if (!k) return;
+        _stpNoteEdit = k.note;
+        stdRefreshPlan();
+        const f = document.querySelector('.stp-note-editing textarea');
+        if (f) f.focus();
+      });
+    });
+    document.querySelectorAll('[data-stp-note-cancel]').forEach(function (btn) {
+      btn.addEventListener('click', function () { _stpNoteEdit = null; stdRefreshPlan(); });
+    });
+    document.querySelectorAll('[data-stp-note-save]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const k = noteKey(btn.dataset.stpNoteSave);
+        const box = btn.closest('.stp-note-editing');
+        const field = box && box.querySelector('textarea');
+        if (!k || !field) return;
+        _stpNoteEdit = null;
+        TN.edit(tr, k.ex, k.note, field.value).catch(noteFailed);
+        stdRefreshPlan();
+      });
+    });
+    document.querySelectorAll('[data-stp-note-del]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const k = noteKey(btn.dataset.stpNoteDel);
+        if (!k) return;
+        showModal(t('plan.note_del_q'), '', function () {
+          TN.remove(tr, k.ex, k.note).catch(noteFailed);
+          stdRefreshPlan();
+        }, { confirmLabel: t('plan.note_del') });
       });
     });
 
@@ -26778,6 +26963,15 @@
    * screen. Nothing in this function writes to the session.
    */
   function bindStdPlanView() {
+    // The notes open for anyone on the page — reading them is not editing.
+    document.querySelectorAll('[data-stp-notes]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = btn.dataset.stpNotes;
+        _stpNotesOpen[id] = !_stpNotesOpen[id];
+        stdRefreshPlan();
+      });
+    });
     document.querySelectorAll('[data-stp-toggle]').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -37728,6 +37922,10 @@
        `trainingDates` from this write, which is what stops the availability
        and RPE reminders firing for a session that no longer exists — there is
        no per-session job to cancel. */
+    /* The staff's private notes on it (v291) go too — best effort and
+       outside the Promise.all: a refused notes delete must not read as a
+       session that failed to delete. */
+    if (typeof TN !== 'undefined' && TN.removeSession) TN.removeSession(id).catch(function () {});
     return Promise.all(
       availKeys.map(function (k) { return DB.removeRecord('trainingAvail', k); })
         .concat(rpeKeys.map(function (k) { return DB.removeRecord('rpe', k); }))
@@ -43302,6 +43500,18 @@
        re-render mid-sentence would throw away what is being typed. The
        Calendari has no editing state, and its leg banners are exactly what
        a colleague's answer changes, so it does re-render. */
+    /* A colleague's exercise note (v291). Only the session page shows them,
+       and under a coach typing one the refresh waits for the field's blur
+       (bindStdPlan) — a re-render would take the half-written note away. */
+    window.addEventListener('training-notes-sync', (e) => {
+      if (currentPage !== 'staff-training-detail') return;
+      const sid = e.detail && e.detail.sessionId;
+      if (sid && String(sid) !== String(detailTrainingId)) return;
+      const a = document.activeElement;
+      if (a && a.classList && a.classList.contains('stp-note-in')) { _stpNotesPending = true; return; }
+      stdRefreshPlan();
+    });
+
     window.addEventListener('match-notes-sync', () => {
       if (currentPage !== 'matchday') return;
       clearTimeout(_syncDebounce);
