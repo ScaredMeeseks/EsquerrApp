@@ -26,7 +26,9 @@ Full detail in CONTEXT.md (v291).
   - `deleteTeam` (`catGone`) deletes the category's notes.
   - `archiveSeason` archives them.
 - **`test/fake-firestore.js` now merges as deep as Firestore does,** and has `update(FieldPath…)`.
-- **Deploy:** rules, then functions, then push.
+- **Deployed 2026-10-21:** rules, functions (35 updated), then `8d63dc5` pushed; Pages serves `esquerrapp-v291`.
+  - Live check: the demo coach's notes listener came up (💬 on every exercise, no `[TN]` warning).
+  - A demo player's client opened none.
 
 ## 2026-10-21 — v290: "Carregar entrenament" (roadmap 37)
 
