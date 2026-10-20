@@ -23,7 +23,9 @@ Full detail in CONTEXT.md (v292).
   - Routed in shard.js and synced in db.js.
   - `archiveSeason` archives it (SEASON_KEYS); `deleteTeam` on `catGone` deletes it.
 - **Points go with their teams:** unassigning (asked first), removing the exercise, or loading another plan over it ("Carregar").
-- **Deploy:** functions, then push. No rule change: staff write any data key, and players read their category's.
+- **Deployed 2026-10-21:** functions (35 updated), then `28f3204` pushed; Pages serves `esquerrapp-v292`.
+  - No rule change: staff write any data key, and players read their category's.
+  - Live check, read-only: on the demo club Plantilla's section opens ("nobody has points yet"), and a player's stats page renders with no card. No errors.
 
 ## 2026-10-21 — v291: private notes on each exercise (roadmap 38)
 
