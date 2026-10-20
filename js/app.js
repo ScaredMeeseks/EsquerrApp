@@ -1197,6 +1197,22 @@
     'plan.blk_n':        { ca:'{n} blocs', es:'{n} bloques', en:'{n} blocks' },
     'plan.ex_1':         { ca:'1 exercici', es:'1 ejercicio', en:'1 exercise' },
     'plan.ex_n':         { ca:'{n} exercicis', es:'{n} ejercicios', en:'{n} exercises' },
+    // "Carregar entrenament" (v290, roadmap 37). {ex} is plan.ex_1 / plan.ex_n.
+    'plan.load':         { ca:'Carregar entrenament', es:'Cargar entrenamiento', en:'Load a training' },
+    'plan.load_short':   { ca:'Carregar', es:'Cargar', en:'Load' },
+    'plan.load_hint':    { ca:'Copia el pla d\'un entrenament anterior, sense els jugadors', es:'Copia el plan de un entrenamiento anterior, sin los jugadores', en:'Copy a past session\'s plan, without its players' },
+    'plan.load_title':   { ca:'Carregar un entrenament anterior', es:'Cargar un entrenamiento anterior', en:'Load a past training' },
+    'plan.load_filter':  { ca:'Cerca per enfocament o exercici', es:'Busca por enfoque o ejercicio', en:'Search by focus or exercise' },
+    'plan.load_none':    { ca:'Encara no hi ha cap entrenament anterior amb exercicis.', es:'Aún no hay ningún entrenamiento anterior con ejercicios.', en:'No past training has any exercises yet.' },
+    'plan.load_nohit':   { ca:'Cap entrenament coincideix amb la cerca.', es:'Ningún entrenamiento coincide con la búsqueda.', en:'No training matches the search.' },
+    'plan.load_q':       { ca:'Carregar l\'entrenament del {date}?', es:'¿Cargar el entrenamiento del {date}?', en:'Load the training of {date}?' },
+    'plan.load_confirm': { ca:'Es copiaran l\'enfocament, l\'RPE previst, {ex} (pissarres, descripcions i durades), el material i els petos. Els jugadors no: ni convocats, ni equips, ni encarregats del material.', es:'Se copiarán el enfoque, el RPE previsto, {ex} (pizarras, descripciones y duraciones), el material y los petos. Los jugadores no: ni convocados, ni equipos, ni encargados del material.', en:'The focus, the planned RPE, {ex} (boards, descriptions and durations), the material and the bibs will be copied. Not the players: no squad, no teams, no material carriers.' },
+    'plan.load_replace': { ca:'Substituirà el pla actual ({ex}).', es:'Sustituirá el plan actual ({ex}).', en:'It replaces the current plan ({ex}).' },
+    'plan.load_ok':      { ca:'Carregar', es:'Cargar', en:'Load' },
+    'plan.loaded':       { ca:'Entrenament carregat', es:'Entrenamiento cargado', en:'Training loaded' },
+    'plan.loaded_body':  { ca:'{ex} del {date}', es:'{ex} del {date}', en:'{ex} from {date}' },
+    'plan.loaded_from':  { ca:'Pla carregat del {date} · {ex}', es:'Plan cargado del {date} · {ex}', en:'Plan loaded from {date} · {ex}' },
+    'plan.load_undo':    { ca:'Treure el pla carregat', es:'Quitar el plan cargado', en:'Remove the loaded plan' },
     'plan.n_cone':       { ca:'1 con', es:'1 cono', en:'1 cone' },
     'plan.n_cones':      { ca:'{n} cons', es:'{n} conos', en:'{n} cones' },
     'plan.n_disc':       { ca:'1 platet', es:'1 platillo', en:'1 disc' },
@@ -3132,7 +3148,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 289;
+  const APP_VERSION = 290;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -25235,6 +25251,12 @@
       return _stpBlockRow(blk, bi, times.rows[bi], ro, resolve, ctx);
     }).join('');
 
+    /* Load a past session's plan (v290, roadmap 37). In the header once
+       there is a plan to replace, and under "no exercises yet" while there
+       is not — never both. */
+    const loadBtn = (cls, key) => '<button class="' + cls + '" data-stp-load="1" title="' +
+      sanitize(t('plan.load_hint')) + '">📥 ' + sanitize(t(key)) + '</button>';
+
     /* One footer button. "+ Bloc alhora" is gone: a parallel block is made by
        adding a second exercise to a block, not by choosing a different kind
        of block up front. */
@@ -25249,6 +25271,9 @@
           '<span class="std-sec-note">' +
             _stpN(plan.blocks.length, 'plan.blk_1', 'plan.blk_n') + ' · ' +
             _stpN(exCount, 'plan.ex_1', 'plan.ex_n') + '</span>' +
+          // The short label here: beside the count and Imprimir, the long one
+          // wraps every word onto its own line at phone width.
+          (plan.blocks.length && !ro ? loadBtn('stp-a', 'plan.load_short') : '') +
           (plan.blocks.length
             ? '<button class="stp-a" id="stp-print" title="' +
               sanitize(t('plan.print_hint')) + '">🖨 ' +
@@ -25256,7 +25281,8 @@
         '</span>' +
       '</div>' +
       (plan.blocks.length ? '<div class="stp-flow">' + rows + '</div>'
-                          : '<p class="stp-empty">' + sanitize(t('plan.empty')) + '</p>') +
+                          : '<p class="stp-empty">' + sanitize(t('plan.empty')) + '</p>' +
+                            (ro ? '' : loadBtn('stp-a stp-load-cta', 'plan.load'))) +
       '<div class="stp-foot">' + foot +
         '<span class="stp-ends">' + sanitize(t('plan.ends')) + ' ' +
           sanitize(times.endLabel) + '</span>' +
@@ -26081,6 +26107,196 @@
     textEl.focus();
   }
 
+  /* ── "Carregar entrenament" (v290, roadmap 37) ──
+     A coach setting up a session loads a past one's plan instead of
+     rebuilding it. Everything that describes the SESSION comes across;
+     nothing that names a PLAYER does — not the exercise teams, not who
+     carries the material, not the generator's split — because who trains
+     next time is that day's question. The new session keeps its own date,
+     times, place and squad: they are the slot being filled, not the plan. */
+
+  /** What loading copies. Fresh ids throughout, so nothing keyed by an
+      exercise id — an open board, and from v291/v292 notes and points —
+      follows it from the old session. */
+  function stpTemplateOf(tr) {
+    const plan = stdPlan(tr);
+    const boardIds = [];
+    const blocks = plan.blocks.map(function (b) {
+      return {
+        id: _planId('blk'), mins: b.mins, label: b.label,
+        items: b.items.map(function (e) {
+          if (e.boardId && boardIds.indexOf(e.boardId) === -1) boardIds.push(e.boardId);
+          return { id: _planId('ex'), boardId: e.boardId, title: e.title, desc: e.desc, tag: e.tag };
+        })
+      };
+    });
+    const rpe = Number(tr && tr.plannedRpe);
+    return {
+      focus: String((tr && tr.focus) || '').trim(),
+      plannedRpe: rpe >= 1 && rpe <= 10 ? Math.round(rpe) : null,
+      plan: {
+        blocks: blocks,
+        extra: plan.extra.map(function (x) { return { id: _planId('mx'), label: x.label, qty: x.qty }; }),
+        // HOW MANY carry the material is the session's; WHO carries it is not.
+        duty: { n: plan.duty.n, ids: [] },
+        petos: plan.petos === null ? null : plan.petos.slice()
+      },
+      boardIds: boardIds,
+      exCount: blocks.reduce(function (n, b) { return n + b.items.length; }, 0)
+    };
+  }
+
+  /** The sessions there are to load from: this category's, already held
+      (today or earlier), with at least one exercise, newest first. */
+  function stpLoadCandidates(target) {
+    const cat = (target && target.category) || '';
+    const today = localDateStr(new Date());
+    return getTrainings().filter(function (tr) {
+      return tr && tr.date && tr.date <= today && !isActivity(tr) &&
+        String(tr.id) !== String(target && target.id) &&
+        (!cat || !tr.category || tr.category === cat);
+    }).map(function (tr) {
+      const resolve = stdBoardResolver(tr);
+      const names = [];
+      stdPlan(tr).blocks.forEach(function (b) {
+        b.items.forEach(function (e) {
+          const board = e.boardId ? resolve(e.boardId) : null;
+          names.push((board && board.name) || e.title || t('plan.untitled'));
+        });
+      });
+      return { tr: tr, names: names };
+    }).filter(function (c) { return c.names.length; })
+      .sort(function (a, b) {
+        return ((b.tr.date || '') + (b.tr.time || '')).localeCompare((a.tr.date || '') + (a.tr.time || ''));
+      });
+  }
+
+  /**
+   * Link the boards a loaded plan uses to the session it was loaded into.
+   *
+   * fa_tactic_training_boards is keyed by DATE, and an exercise's board only
+   * draws inline (and only counts its cones and bibs) through a ref in its
+   * own session's bucket — so a copied boardId with no ref would keep its
+   * name and lose its drawing. The ref is copied from the source session,
+   * stamped with the new session's category, and WITHOUT `linkedTeams`: that
+   * is the split of the old day's players.
+   */
+  function stpLinkBoards(src, dst, boardIds) {
+    if (!dst || !dst.date || !(boardIds || []).length) return 0;
+    const cat = dst.category || '';
+    const all = JSON.parse(localStorage.getItem('fa_tactic_training_boards') || '{}');
+    const bucket = Array.isArray(all[dst.date]) ? all[dst.date] : [];
+    let added = 0;
+    stdSessionBoards(src).forEach(function (ref) {
+      if (!ref || !ref.boardId || boardIds.indexOf(ref.boardId) === -1) return;
+      const have = bucket.some(function (b) {
+        return b && b.boardId === ref.boardId && (!b.category || !cat || b.category === cat);
+      });
+      if (have) return;
+      const copy = Object.assign({}, ref, cat ? { category: cat } : {});
+      delete copy.linkedTeams;
+      bucket.push(copy);
+      added++;
+    });
+    if (added) {
+      all[dst.date] = bucket;
+      localStorage.setItem('fa_tactic_training_boards', JSON.stringify(all));
+    }
+    return added;
+  }
+
+  /** Load a template into a saved session: the plan replaced, the focus and
+      planned RPE taken when the old session had them, its boards linked. */
+  function stpLoadIntoSession(sessionId, src, tpl) {
+    const row = _ntPersistSession(sessionId, function (r) {
+      r.plan = tpl.plan;
+      if (tpl.focus) r.focus = tpl.focus;
+      if (tpl.plannedRpe) r.plannedRpe = tpl.plannedRpe;
+    });
+    if (row) stpLinkBoards(src, row, tpl.boardIds);
+    return row;
+  }
+
+  /**
+   * The list of past sessions, then a confirm that says what comes across.
+   * `target` is the session or draft being filled; `onLoad(src, tpl)` runs
+   * only once the coach has accepted.
+   */
+  function stpOpenLoadDialog(target, onLoad) {
+    const existing = document.getElementById('custom-modal-overlay');
+    if (existing) existing.remove();
+    const list = stpLoadCandidates(target);
+    // Accent-blind, so "rondo" finds "Rondó".
+    const fold = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const thisYear = String(new Date().getFullYear());
+    const rows = list.map(function (c, i) {
+      const tr = c.tr;
+      const when = tDateShort(tr.date) + (String(tr.date).slice(0, 4) !== thisYear ? ' ' + String(tr.date).slice(0, 4) : '');
+      return '<button class="stp-pick-row stp-load-row" data-stp-load-i="' + i + '" data-q="' +
+          sanitize(fold([tr.focus].concat(c.names).join(' '))) + '">' +
+        '<span class="stp-load-top"><span class="stp-load-when">' + sanitize(when) + '</span>' +
+          '<span class="stp-pick-name">' + sanitize(tr.focus || t('cal.training')) + '</span>' +
+          '<span class="stp-load-n">' + sanitize(_stpN(c.names.length, 'plan.ex_1', 'plan.ex_n')) + '</span></span>' +
+        '<span class="stp-load-ex">' + sanitize(c.names.join(' · ')) + '</span>' +
+      '</button>';
+    }).join('');
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="stp-dialog">' +
+        '<div class="stp-dialog-head">' +
+          '<span class="std-eyebrow">' + sanitize(t('plan.load_title')) + '</span>' +
+          '<button class="stp-a stp-a-mute" id="stp-load-x">✕</button>' +
+        '</div>' +
+        '<div class="stp-dialog-body">' +
+          (rows
+            ? '<input class="stp-field" id="stp-load-q" type="search" placeholder="' +
+                sanitize(t('plan.load_filter')) + '">' +
+              '<div class="stp-pick-list stp-load-list">' + rows + '</div>' +
+              '<p class="stm-muted" id="stp-load-nohit" hidden>' + sanitize(t('plan.load_nohit')) + '</p>'
+            : '<p class="stm-muted">' + sanitize(t('plan.load_none')) + '</p>') +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+    const close = () => {
+      overlay.classList.remove('visible');
+      setTimeout(() => overlay.remove(), 200);
+    };
+    overlay.querySelector('#stp-load-x').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    const q = overlay.querySelector('#stp-load-q');
+    if (q) {
+      q.addEventListener('input', function () {
+        const want = fold(q.value.trim());
+        let shown = 0;
+        overlay.querySelectorAll('[data-stp-load-i]').forEach(function (row) {
+          const on = !want || row.dataset.q.indexOf(want) !== -1;
+          row.classList.toggle('stp-load-off', !on);
+          if (on) shown++;
+        });
+        overlay.querySelector('#stp-load-nohit').hidden = shown > 0;
+      });
+      q.focus();
+    }
+    overlay.querySelectorAll('[data-stp-load-i]').forEach(function (row) {
+      row.addEventListener('click', function () {
+        const c = list[Number(row.dataset.stpLoadI)];
+        if (!c) return;
+        close();
+        const tpl = stpTemplateOf(c.tr);
+        let had = 0;
+        stdPlan(target).blocks.forEach(function (b) { had += b.items.length; });
+        const msg = t('plan.load_confirm').replace('{ex}', _stpN(tpl.exCount, 'plan.ex_1', 'plan.ex_n')) +
+          (had ? ' ' + t('plan.load_replace').replace('{ex}', _stpN(had, 'plan.ex_1', 'plan.ex_n')) : '');
+        showModal(t('plan.load_q').replace('{date}', tDateShort(c.tr.date)), msg,
+          function () { onLoad(c.tr, tpl); },
+          { confirmLabel: t('plan.load_ok'), danger: false });
+      });
+    });
+  }
+
   /** "+ Altre material" — a label and a quantity. */
   function stdOpenExtraDialog(onAdd) {
     const existing = document.getElementById('custom-modal-overlay');
@@ -26377,6 +26593,19 @@
           const items = _stpAt(p, path);
           if (!items) return false;
           items.splice(path[1], 1);
+        });
+      });
+    });
+
+    // Load a past session's plan into this one (v290). A full render after,
+    // not stdRefreshPlan: the focus and the planned RPE sit in the hero.
+    document.querySelectorAll('[data-stp-load]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        stpOpenLoadDialog(tr, function (src, tpl) {
+          if (!stpLoadIntoSession(tr.id, src, tpl)) return;
+          _showPushToast(t('plan.loaded'), t('plan.loaded_body')
+            .replace('{ex}', _stpN(tpl.exCount, 'plan.ex_1', 'plan.ex_n')).replace('{date}', tDateShort(src.date)));
+          renderPage(getSession());
         });
       });
     });
@@ -26920,6 +27149,7 @@
           ${calField(t('training.th_link'),
             `<input class="pt-dlg-in nt-f" data-nt-f="mapLink" data-nt-i="${i}" value="${sanitize(d.mapLink)}" placeholder="${t('training.maplink_ph')}">`)}
         </div>
+        ${_ntTplLine(d, i)}
         ${ptHead(t('nt.called') + ' · ' + squad.length)}
         <div class="conv-list nt-squad">${rows || `<div class="pt-empty">${t('nt.nobody')}</div>`}</div>
         ${picker}
@@ -26945,6 +27175,22 @@
           <button class="pt-dlg-cancel" id="nt-cancel">${t('common.cancel')}</button>
         </div>
       </div>`;
+  }
+
+  /* "Carregar entrenament" on a draft (v290, roadmap 37). The draft holds
+     the loaded plan until Save. `_tplFrom` / `_tplDate` say where it came
+     from — for the line below and for the board links Save makes — and
+     `_tplPrev` is what ✕ puts back. _ntCommit strips all three: they are
+     the page's bookkeeping, not the session's. */
+  function _ntTplLine(d, i) {
+    if (d._tplFrom) {
+      let n = 0;
+      stdPlan(d).blocks.forEach(b => { n += b.items.length; });
+      return `<div class="nt-tpl"><span class="nt-tpl-t">📥 ${sanitize(t('plan.loaded_from')
+        .replace('{date}', tDateShort(d._tplDate || '')).replace('{ex}', _stpN(n, 'plan.ex_1', 'plan.ex_n')))}</span>` +
+        `<button class="conv-remove" data-nt-tpl-x="${i}" title="${sanitize(t('plan.load_undo'))}">&times;</button></div>`;
+    }
+    return `<button class="nt-add-btn nt-tpl-btn" data-nt-tpl="${i}" title="${sanitize(t('plan.load_hint'))}">📥 ${sanitize(t('plan.load'))}</button>`;
   }
 
   /* The two option lists the draft fields need, as stdSelect options. The
@@ -27177,6 +27423,35 @@
         _ntOpenPicker(_ntDrafts[Number(btn.dataset.ntOpen)]));
     });
 
+    // Load a past session's plan into a draft (v290).
+    $$('[data-nt-tpl]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const d = (_ntDrafts || [])[Number(btn.dataset.ntTpl)];
+        if (!d) return;
+        stpOpenLoadDialog(d, function (src, tpl) {
+          // What ✕ restores: the draft as it was before the FIRST load.
+          if (!d._tplFrom) d._tplPrev = { focus: d.focus || '', plannedRpe: d.plannedRpe };
+          d.plan = tpl.plan;
+          if (tpl.focus) d.focus = tpl.focus;
+          if (tpl.plannedRpe) d.plannedRpe = tpl.plannedRpe;
+          d._tplFrom = String(src.id);
+          d._tplDate = src.date || '';
+          rerender();
+        });
+      });
+    });
+    $$('[data-nt-tpl-x]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const d = (_ntDrafts || [])[Number(btn.dataset.ntTplX)];
+        if (!d) return;
+        const prev = d._tplPrev || {};
+        d.focus = prev.focus || '';
+        if (prev.plannedRpe == null) delete d.plannedRpe; else d.plannedRpe = prev.plannedRpe;
+        delete d.plan; delete d._tplFrom; delete d._tplDate; delete d._tplPrev;
+        rerender();
+      });
+    });
+
     const cancel = $('#nt-cancel');
     if (cancel) {
       cancel.addEventListener('click', () => {
@@ -27275,9 +27550,20 @@
     const training = getTrainings();
     let moved = 0;
     list.forEach(d => { moved += _ntResolveClashes(d, training); });
+    // A plan loaded into a draft (v290): its boards are linked once the
+    // session exists, and the page's bookkeeping does not ride into the row.
+    const loaded = [];
+    list.forEach(d => {
+      if (d._tplFrom) loaded.push({ from: d._tplFrom, d: d });
+      delete d._tplFrom; delete d._tplDate; delete d._tplPrev;
+    });
     list.forEach(d => training.push(d));
     training.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     localStorage.setItem('fa_training', JSON.stringify(training));
+    loaded.forEach(l => {
+      const src = training.find(x => String(x.id) === String(l.from));
+      if (src) stpLinkBoards(src, l.d, stpTemplateOf(l.d).boardIds);
+    });
     // Only now: an abandoned draft must not leave overrides pointing at a
     // session that never existed.
     list.forEach(d => _ntMarkAttending(d, (d.guests || []).map(String), true));

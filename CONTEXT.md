@@ -13118,3 +13118,43 @@ Version triple → **v288**.
 **Deploy:** frontend only.
 
 Version triple → **v289**.
+
+### 2026-10-21 — v290: "Carregar entrenament" (roadmap 37)
+
+**The owner's spec:** setting up a training, a button "Carregar entrenament" opens a list of past trainings, each with its date and the names of its exercises. Clicking one asks the coach to accept, and then loads it all but the players involved.
+
+**Where:** on each New Training draft, and in the plan panel of the staff session page, for editors only.
+- **The session page** shows the short "📥 Carregar" in the header beside Imprimir once there is a plan; the full label wrapped at 390 px. It shows the full label under "Encara no hi ha exercicis" while there is none, never both.
+- **The placeholder path matters:** a session made from a calendar placeholder never passes through New Training, so the session page is where its plan gets built.
+
+**The list (`stpLoadCandidates`):** this category's sessions held today or earlier, with at least one exercise, newest first. Activities and the session being filled are excluded. Each row shows the date (with the year when it is not this year), the focus, the count, and the exercise names (board name, else title). The filter is accent-blind ("rondo" finds "Rondó").
+
+**The confirm** (`showModal`, not a danger button) names what comes across and what does not, and says how big a plan it replaces.
+
+**The copy (`stpTemplateOf`):**
+- **Copied:** blocks (duration, label), items (`boardId`, title, description, tag), `extra`, `petos` (null stays null, meaning "derive from the boards"), `duty.n`, the focus and the planned RPE.
+- **Fresh ids everywhere,** so nothing keyed by an exercise id (an open board; from v291/v292 notes and points) follows.
+- **Not copied:**
+  - the exercise `teams`;
+  - `duty.ids`;
+  - the generator's `teams`;
+  - and from the row, the date, times, place, letters, guests and exclusions.
+- **Loading into a session** replaces the plan, and takes the focus and RPE only when the source has them.
+
+**Boards:**
+- **Why links are needed:** `fa_tactic_training_boards` is keyed by DATE. An exercise's board draws inline, and counts its cones and bibs, only through a ref in its own session's bucket, so a copied `boardId` alone keeps the name and loses the drawing.
+- **What `stpLinkBoards` copies:** the source date's refs for the plan's boards, stamped with the target's category (an unstamped ref included), without `linkedTeams` (the old day's split), never twice.
+- **For a draft,** the links are made in `_ntCommit` once the session exists, from the `_tplFrom` it strips.
+
+**Checked (emulators, 390 px, lead):**
+- **The list:** the two past sessions with their exercise names.
+- **The confirm text.**
+- **A draft:** the "Pla carregat del Dl 19 Oct · 3 exercicis" line, Save, then the stored row: 3 exercises, the focus, RPE 7, 0 player ids, no `_tpl*` keys.
+- **An empty session page:** one button (the empty-state one), 3 exercises loaded, 0 team lines, the header button after.
+- **No horizontal overflow.**
+
+**Tests:** new `training-load.test.js` (22), over the real functions: the template, the candidates, the board links, both handlers and the commit. Mutations 43/43. Unit **4234**.
+
+**Deploy:** frontend only.
+
+Version triple → **v290**.

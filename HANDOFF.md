@@ -8,7 +8,19 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 289**
+**Version triple is at 290**
+
+## 2026-10-21 — v290: "Carregar entrenament" (roadmap 37)
+
+Full detail in CONTEXT.md (v290).
+- **`stpTemplateOf(tr)` is THE copy:** fresh ids throughout, and no player. Exercise teams, `duty.ids`
+  and the generator's split are dropped; `duty.n` is kept.
+- **Board links:** `stpLinkBoards` copies the source date's refs for the plan's boards onto the new
+  date, stamped with the new category and without `linkedTeams`. An exercise's board draws only
+  through its own date's ref.
+- **On a draft,** `_tplFrom`, `_tplDate` and `_tplPrev` are page bookkeeping. `_ntCommit` strips them
+  and links the boards once the session exists.
+- **Deploy:** frontend only, push.
 
 ## 2026-10-21 — v289: the planned RPE hidden from players (roadmap 22); players' "+" on Calendari
 
@@ -591,16 +603,28 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 
 **Training**
 
-36. **Assign points to the exercises of a training session.** *(owner asked 2026-10-19)* The
-    exercises are the session plan's (`stdPlan`, the ✎ description editor since v282). Not
-    designed yet. Settle first what a point measures and who earns it — a drill's winner (a player
-    or a side) towards a running ranking, or a coach's rating of the exercise — because those are
-    different records: per-player scores want a per-session record like `rpe`, not a field on the
-    plan.
+36. **Points for the teams of each exercise.** *(owner asked 2026-10-19; designed 2026-10-21, planned
+    as v292)*
+    - The coach gives each team of an exercise points (0–99), and every player in that team earns them.
+    - The coach defines periods. Players see their own total and position for the period he shows them.
+    - Stored as `tr.exPoints[exId][teamKey]`, BESIDE `plan`. Old clients rewrite the normalised plan, so
+      points inside it would be erased.
+    - Periods are a new data key, `fa_point_periods`. The ranking is a section on Plantilla; the player's
+      card is on Les meves estadístiques.
 
-37. **Repeat a training session.** *(owner asked 2026-10-19)* Copy a session — its plan, exercises
-    and material — to another day. Not designed yet: settle first whether it is a one-off copy or a
-    weekly repeat. Nothing like it exists today ("Duplicar" is for board objects only).
+37. ✅ **Done — v290: "Carregar entrenament".** It is on each New Training draft and in the session
+    page's plan panel.
+    - It lists this category's past sessions with exercises: date, focus, exercise names and count,
+      with an accent-blind filter.
+    - A confirm says what comes across, then it loads everything but the players: the focus, planned
+      RPE, exercises with boards, descriptions and durations, the material and the bibs.
+    - The new session keeps its own date, times, place and squad.
+    - The boards are linked to the new date, without `linkedTeams`.
+
+38. **Private notes on each exercise.** *(owner asked 2026-10-21; planned as v291)*
+    - Staff-only comments under each exercise of a session, never on a player's device.
+    - Stored in `teams/{id}/trainingNotes/{sessionId}`, a copy of the `matchNotes` pattern.
+    - Archived with the season and deleted with the session.
 
 **Data**
 
