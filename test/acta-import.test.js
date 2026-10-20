@@ -16,6 +16,7 @@ const path = require('path');
 const admin = require('firebase-admin');
 const {parseFcfActaEvents} = require('../functions/fcf');
 const {fcfPersonName} = require('../functions/acta');
+const {drainTriggers} = require('./drain-triggers');
 
 const PROJECT = 'demo-esquerrapp';
 const CLUB = 'actaClub';
@@ -104,6 +105,9 @@ describe('the acta import', function () {
     ];
     await Promise.all(users.map(([id, name, roles, category]) =>
       db.doc('users/' + id).set({teamId: CLUB, name, roles, category, team: 'A'})));
+    // This suite runs LAST: the triggers of every suite before it are still
+    // queued, and the guard tests below wait on triggers of their own.
+    await drainTriggers();
   });
   after(() => {
     global.fetch = realFetch;
@@ -244,6 +248,8 @@ describe('the acta import', function () {
   it('puts the acta back when a stale phone writes over it, keeping what the coach added', async () => {
     await seed([row(MID)], {[MID]: []});
     await call('importFcfActa', {matchId: MID});
+    // Behind nothing: the guard's event for the write below is the one waited on.
+    await drainTriggers();
     // What a phone that never saw the import holds: the old match, plus a
     // post the coach logged at the pitch.
     await data('fa_match_events').set({v: JSON.stringify({[MID]: [

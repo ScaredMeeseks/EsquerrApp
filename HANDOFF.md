@@ -22,7 +22,11 @@ Full detail in CONTEXT.md (v288).
 - **`deleteTeam`** removes a gone category's emptied shards (`emptiedShards` in the marker).
 - **`backfill-training-teams.js`** is deleted.
 - **Production one-offs** (scratchpad, not the repo): the category backfill, the three `teamId: 'default'` accounts, the one empty shard.
-- **The full functions suite flakes in the main tree:** a different emulator-trigger test each run. Four clean-worktree runs of the same code passed 124/124. Re-run before suspecting a change.
+- **The functions-suite flake is fixed (2026-10-21):** 3 of 3 full runs in the main tree passed 124/124.
+  - **Cause:** about 600 trigger events per run are handled one at a time. The acta guard test, which runs last, got its event 33 s after its write, past its 25 s wait. The wipe script was failing under the same load.
+  - **Fix:** `test/drain-triggers.js`. `drainTriggers()` waits until the emulator has handled everything queued so far. It is called at the start of the acta suite, before its stale-phone write, and before each wipe run.
+  - **Also:** `test:functions` now runs the Auth emulator. The triggers' `setCustomUserClaims` used to call the real Identity Toolkit with your CLI login (about 10 calls a run).
+  - **New trigger test:** call `drainTriggers()` before the write you wait on.
 - **Deployed 2026-10-20, in this order:**
   1. Functions: 35 updated.
   2. `fd503c7` pushed; Pages serves `esquerrapp-v288`.
@@ -118,7 +122,7 @@ Full detail in CONTEXT.md (v282). What a next session needs:
 | | |
 |---|---|
 | Unit tests | **4210** (v288) — `cd test && npm run test:unit` (~35 s), all passing |
-| Functions tests | **124** (v288), all passing in a clean worktree — `npm run test:functions` from PowerShell with Java on PATH and `$env:FUNCTIONS_DISCOVERY_TIMEOUT = 120`, backgrounded with `2>&1 | Out-File <log>`. Don't touch `functions/` while it runs: the emulator hot-reloads and the trigger tests fail |
+| Functions tests | **124** (v288), all passing, 3 of 3 runs (~80 s) — `npm run test:functions` from PowerShell with Java on PATH and `$env:FUNCTIONS_DISCOVERY_TIMEOUT = 120`, backgrounded with `2>&1 | Out-File <log>`. Don't touch `functions/` while it runs: the emulator hot-reloads and the trigger tests fail. Kill a leftover emulator java before starting another run |
 | Rules tests | **198** (v288) — `npm run test:rules` |
 
 **Deploy state.** `main` is current and deployed through **v277 `669b2ba`**. Both v276 and v277
@@ -433,7 +437,8 @@ run were all at render sites and all fixed by the two additions above.
    result is already on the device if that decision is ever taken.~~ ✅ **v278**: a closed acta's
    goals, cards and substitutions are imported AS EVENTS (functions/acta.js, ~45 min after the
    match), so the scoreline still comes from the one list. See CONTEXT.md v278.
-3. **Neither week strip re-renders on a timer.** Pre-existing.
+3. ✅ **Done — v288:** both Inici week lists redraw themselves at the next lock, session end, match
+   end or midnight (`iniScheduleRefresh`).
 4. **The cross-category call-up — mostly NOT open, and the wording here was misleading for a
    long time.** It **works today** for anyone whose remit covers both squads: a coach with
    `staffCategories: ['amateur','juvenil']` on "Totes", or any lead or admin, sees both squads in

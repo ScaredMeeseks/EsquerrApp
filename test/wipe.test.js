@@ -18,6 +18,7 @@
 const assert = require('assert');
 const path = require('path');
 const {execFileSync} = require('child_process');
+const {drainTriggers} = require('./drain-triggers');
 const admin = require('firebase-admin');
 
 // Must match the projectId in functions/wipe-team-data.js.
@@ -32,12 +33,24 @@ const db = app.firestore();
 /** Run the real script. NODE_PATH lets it find firebase-admin even when
  *  functions/node_modules has not been installed on this machine. */
 function runWipe(args) {
-  return execFileSync(process.execPath, [SCRIPT].concat(args), {
-    encoding: 'utf8',
-    env: Object.assign({}, process.env, {
-      NODE_PATH: path.join(__dirname, 'node_modules'),
-    }),
-  });
+  try {
+    return execFileSync(process.execPath, [SCRIPT].concat(args), {
+      encoding: 'utf8',
+      env: Object.assign({}, process.env, {
+        NODE_PATH: path.join(__dirname, 'node_modules'),
+      }),
+    });
+  } catch (e) {
+    /* execFileSync's own message is "Command failed: <cmd>" plus stderr, and
+       on Windows the script's console.error before process.exit(1) can be
+       lost — so a failure here used to say nothing at all. Say what it can. */
+    const tail = (s) => String(s || '').trim().split('\n').slice(-12).join('\n');
+    // The same error, so callers still read e.stdout / e.stderr / e.status.
+    e.message = 'wipe-team-data.js ' + args.join(' ') + ' exited ' +
+        (e.status !== null ? 'with ' + e.status : 'on signal ' + e.signal) +
+        '\n--- stdout (tail):\n' + tail(e.stdout) + '\n--- stderr (tail):\n' + tail(e.stderr);
+    throw e;
+  }
 }
 
 const count = async (ref) => (await ref.count().get()).data().count;
@@ -128,6 +141,13 @@ describe('wipe-team-data.js', function () {
     baseline = await state(TEAM_A);
     assert.strictEqual(baseline.data, 5, 'seeded 5 data docs');
   });
+
+  /* No trigger fires in this suite's project (`esquerrapp`, the script's
+     own id). But it shares the one emulator with the suites before it, whose
+     trigger tail — hundreds of events — was still running when the script
+     started, and the script failed under that load: exit 1 with its error
+     line lost, a different case each run. Start each run on a quiet emulator. */
+  beforeEach(async () => { await drainTriggers(); });
 
   it('changes nothing on a dry run, and says what it found', async () => {
     const out = runWipe([]);
