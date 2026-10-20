@@ -75,7 +75,20 @@ function make(o) {
     fa_match_events: JSON.stringify(o.events || {}),
     fa_player_rpe: JSON.stringify(o.rpe || {}),
   };
-  const canEdit = o.role !== 'player' && o.role !== 'fitness';
+  /* As the REAL staffAccess() answers (v289): a session with no staff
+     sub-role gets 'edit' for every page — a PLAYER included. Only a sub-role
+     table says otherwise: the fitness coach views the calendar, and a
+     delegate runs it but may not open New Training. The old stub returned
+     false for a player, which is exactly the assumption the app got wrong,
+     so it passed over players being given every "+" on the page. */
+  const canEditPage = () => o.role !== 'fitness';
+  const canViewPage = (id) => !(id === 'training-new' && (o.role === 'fitness' || o.role === 'delegate'));
+  let _session = null;
+  const isStaffViewer = (s) => ((s && s.roles) || []).indexOf('staff') !== -1;
+  // The REAL gates, sliced from the app.
+  const gates = new Function('canEditPage', 'canViewPage', 'isStaffViewer', 'getSession',
+      grab('  function canAddTraining() {', '  /**\n   * Which training page') +
+      '\nreturn {canAddTraining, canEditCalendar};')(canEditPage, canViewPage, isStaffViewer, () => _session);
   const code = grab('  // ── The blocks inside a day ─', '  // #endregion Calendar');
 
   const stubs = {
@@ -87,13 +100,14 @@ function make(o) {
     t: (k) => k,
     sanitize,
     CATEGORY_LABELS: U.CATEGORY_LABELS,
-    canEditPage: () => canEdit,
+    canEditPage,
+    canEditCalendar: gates.canEditCalendar,
     /* The REAL predicate, not `() => canEdit`. The two were conflated in the
        app until v198 and a stub that repeated the mistake would have hidden
        it: a fitness coach who may view but not edit still reads the whole
        club's schedule. */
-    isStaffViewer: (s) => ((s && s.roles) || []).indexOf('staff') !== -1,
-    canAddTraining: () => o.role !== 'player' && o.role !== 'fitness' && o.role !== 'delegate',
+    isStaffViewer,
+    canAddTraining: gates.canAddTraining,
     getCurrentCategory: () => o.category || '',
     getVisibleCategories: () => ['amateur'],
     // One squad by default; the letter-filter tests ask for two.
@@ -182,7 +196,8 @@ function make(o) {
     };`)(...Object.values(stubs));
   return (session, month, letter) => {
     _squad = letter || 'all';
-    return fn(session || {id: 'coach', roles: ['staff']}, month);
+    _session = session || {id: 'coach', roles: ['staff']};
+    return fn(_session, month);
   };
 }
 
@@ -1063,6 +1078,42 @@ describe('the calendar and who is looking at it', () => {
     assert.ok(!html.includes('btn-fcf-refresh'));
   });
 
+  /* Roadmap 22 (v289): the planned RPE is the coach's planning number. A
+     player answers his own RPE after the session, and the calendar showed
+     him what the coach expected first — the dot, "RPE previst 7 · 630 UA",
+     the squad's mean once answered, the week's AU and the load legend. */
+  it('a player sees no planned RPE and no load figure anywhere on it', () => {
+    const tr = [T({plannedRpe: 7}), T({id: 'old', date: '2026-03-02', plannedRpe: 8}),
+      T({id: 'b', date: '2026-03-05'})];
+    const rpe = {p1_training_old: {rpe: 6}, p2_training_old: {rpe: 9}};
+    const html = make({role: 'player', trainings: tr, rpe})(player, '2026-03');
+    assert.ok(html.includes('data-cal-session="tr_1"'), 'the session itself must stay');
+    for (const [what, re] of [['the intensity dot', /cal-load-(low|mid|high)/],
+      ['the planned line', /load\.planned_rpe/], ['the reported mean', /load\.actual_rpe/],
+      ['the week AU', /class="cal-au/], ['the unrated flag', /cal-au-warn/],
+      ['the load legend', /cal-legend-load|load\.legend/]]) {
+      assert.ok(!re.test(html), 'a player is shown ' + what);
+    }
+    // The same month for staff keeps every one of them.
+    const coach = make({trainings: tr, rpe})(null, '2026-03');
+    for (const re of [/cal-load-mid|cal-load-high/, /load\.planned_rpe/, /load\.actual_rpe/,
+      /class="cal-au"/, /cal-au-warn/, /cal-legend-load/]) {
+      assert.ok(re.test(coach), 'staff lost ' + re);
+    }
+  });
+
+  /* v289: the gates are the app's own now (canEditCalendar, canAddTraining),
+     over a canEditPage that answers as staffAccess() does — 'edit' for a
+     player too. A delegate runs the calendar but may not open New Training,
+     so he gets the "+" and none of the "click to schedule" placeholders. */
+  it('a delegate may add to the calendar but is offered no session placeholder', () => {
+    assert.ok(make({})(null, '2026-03').includes('data-cal-ghost'),
+        'the fixture has no placeholders for a head coach, so it proves nothing');
+    const delegate = make({role: 'delegate'})(null, '2026-03');
+    assert.ok(delegate.includes('data-cal-add'), 'the delegate lost the add button');
+    assert.ok(!delegate.includes('data-cal-ghost'), 'a placeholder opens a page the delegate may not');
+  });
+
   it('a player still SEES his sessions and fixtures', () => {
     const html = make({role: 'player', trainings: [T()], matches: [M()]})(player, '2026-03');
     assert.ok(html.includes('data-cal-session="tr_1"'));
@@ -1286,7 +1337,7 @@ describe('the top bar', () => {
     /* ⚠ The two banners render BEFORE the root, never inside it: the root's
        `:first-child` arm pulls a different top margin, and a banner tucked in
        would make it mis-fire on the very page it sits above. */
-    const ro = make({ role: 'player' })(null, '2026-03');
+    const ro = make({ role: 'fitness' })(null, '2026-03');   // staff who may only view
     assert.ok(ro.indexOf('view-only') !== -1, 'the read-only fixture stopped being read-only');
     assert.ok(ro.indexOf('view-only') < ro.indexOf('cal-page'),
         'the view-only banner is inside the root, where the :first-child arm mis-fires');

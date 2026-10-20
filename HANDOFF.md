@@ -8,7 +8,17 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 288**
+**Version triple is at 289**
+
+## 2026-10-21 — v289: the planned RPE hidden from players (roadmap 22); players' "+" on Calendari
+
+Full detail in CONTEXT.md (v289).
+- **Calendari's load figures are staff-only:** `ctx.staffView` gates the dot, the RPE line, the week AU and the load legend.
+- **⚠ `canEditPage(x)` is TRUE for a pure player:** `staffAccess()` answers `'edit'` for anyone with no staff sub-role. On a page players also open, ask `isStaffViewer(session) && canEditPage(x)`.
+  - Calendari now asks it through `canEditCalendar()`, which `canAddTraining()` uses too.
+  - Players had been given every "+", the "click to schedule" placeholders and the add menu, whose saves the rules refused.
+  - Partit already asked both.
+- **Deploy:** frontend only, push.
 
 ## 2026-10-20 — v288: the small and technical items
 
@@ -551,8 +561,10 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
 21. **Players vote for the MVP.** Only the called-up squad, never for themselves, and the vote is
     final once cast. ⚠ The "cannot change it" part has to be enforced in `firestore.rules`, not in
     the UI — a client-side lock on a client-written document is decoration.
-22. **RPE hidden from players.** It is a coach's planning number; check every render path, not just
-    the obvious one.
+22. ✅ **Done — v289: the planned RPE is staff-only.** Calendari was the one place a player saw it:
+    the intensity dot, "RPE previst 7 · 630 UA" (or the squad's reported mean), the week's AU and the
+    load legend. Every other reader of `plannedRpe` is on a staff page. A player's own RPE answers
+    (Accions, Les meves estadístiques) are his, and stay.
 
 **Communication**
 

@@ -13096,3 +13096,25 @@ Version triple → **v287**.
 **Release order:** functions (`deleteTeam`), push and wait for Pages, the backfill, then the rules — so no client ever reads under rules its queries do not match — then the stray accounts and the empty shard.
 
 Version triple → **v288**.
+
+### 2026-10-21 — v289: the planned RPE hidden from players (roadmap 22); players' "+" on Calendari
+
+**Roadmap 22 ("RPE hidden from players — a coach's planning number; check every render path") was not done.** Every reader of `plannedRpe` was traced to its function:
+- **New Training, the staff session page, the print sheet:** staff pages, so already hidden.
+- **Calendari, which players open,** drew it in four places: the intensity dot, the line "RPE previst 7 · 630 UA" (or "RPE 6.0 real · 7 previst", the squad's mean once answered), the week gutter's AU, and the load legend.
+
+`calContext` already knew `staffView`; it now hands it on, and those four render only for staff. A player's OWN RPE answers (Accions, Les meves estadístiques) are his data, not the coach's number, and stay.
+
+**Found on the way, in the browser: players had every "+" on Calendari.** `staffAccess()` answers `'edit'` for any session with no staff sub-role, a pure player included. So `canEditPage('calendar')` was true for players, and with it the "+" on every day, the "Clica per programar" placeholders and the add menu. Their saves were refused by the rules (players may not write `fa_matches` / `fa_training`).
+- **The fix:** `canEditCalendar()` = `isStaffViewer(session) && canEditPage('calendar')`, used by `calContext`, `canAddTraining()` and `bindCalendar`. Partit already asked both (`canEditMatchRecord`, `canEditFixture`).
+- **Why no test caught it:** the calendar harness stubbed `canEditPage` as false for a player, the same wrong assumption. It now slices the real `canAddTraining` / `canEditCalendar` over a `canEditPage` that answers as `staffAccess()` does.
+
+**Checked:** emulators at 390 px, the same week:
+- Player: 0 dots, 0 AU, no RPE line, no load legend, 0 "+", 0 placeholders.
+- Lead: 4 dots, the AU, the lines, the legend, 31 "+", 5 placeholders.
+
+**Tests:** a player sees none of the six load signs, and staff keep them. A delegate gets the "+" and no placeholder. Mutations 10/11; the survivor is `bindCalendar`'s guard, equivalent because everything it binds is drawn for editors only. Unit **4212**.
+
+**Deploy:** frontend only.
+
+Version triple → **v289**.

@@ -3132,7 +3132,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 288;
+  const APP_VERSION = 289;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7874,7 +7874,7 @@
 
   // Pages that require a specific role
   /* `calendar` is deliberately NOT here: a player opens the same page, and
-     canEditPage('calendar') is what decides whether anything on it can be
+     canEditCalendar() is what decides whether anything on it can be
      clicked into existence. */
   const STAFF_PAGES = new Set([
     'staff-home',
@@ -8028,7 +8028,16 @@
      page behind it refuses to open — and the add menu would offer a route
      straight into a bounce. */
   function canAddTraining() {
-    return canEditPage('calendar') && canViewPage('training-new');
+    return canEditCalendar() && canViewPage('training-new');
+  }
+
+  /* May this session change the calendar? NOT canEditPage('calendar') alone:
+     staffAccess() answers 'edit' for anyone with no staff sub-role — a
+     PLAYER included — and Calendari is the one editing page players also
+     open. They got every "+", the "click to schedule" placeholders and the
+     add menu, whose saves the rules then refused (v289). */
+  function canEditCalendar() {
+    return isStaffViewer(getSession()) && canEditPage('calendar');
   }
 
   /**
@@ -30870,11 +30879,11 @@
   function calTrainingBlockHtml(row, ctx) {
     var md = matchdayLabel(matchdayOffset(row.date,
       calMatchDates(ctx.matches, row.category, calLetterOf(row))));
-    var loadLine = calLoadLine(row, ctx);
+    var loadLine = ctx.staffView ? calLoadLine(row, ctx) : '';
     var squads = (row.teams || []).join(' + ');
     var where = [row.location, squads].filter(Boolean).join(' · ');
     return '<div class="cal-b cal-b-train" data-cal-session="' + sanitize(String(row.id)) + '">' +
-      '<div class="cal-b-name">' + calLoadDot(row.plannedRpe) +
+      '<div class="cal-b-name">' + (ctx.staffView ? calLoadDot(row.plannedRpe) : '') +
         '<span class="cal-b-ttl">' + sanitize(activityTitleOf(row, t('cal.training'))) + '</span></div>' +
       '<div class="cal-b-when"><span class="cal-time">' + sanitize(row.time || '—') + '</span>' +
         (md ? '<span class="cal-md">' + md + '</span>' : '') + '</div>' +
@@ -31182,7 +31191,7 @@
    * season for a page that fits on one screen.
    */
   function calContext(session) {
-    const canEdit = canEditPage('calendar');
+    const canEdit = canEditCalendar();
     const curCat = getCurrentCategory();
     const all = getTrainings();
     /* A player sees what he is called to and nothing else — the same rule
@@ -31224,6 +31233,11 @@
 
     return {
       canEdit: canEdit,
+      /* The planned RPE and every load figure built on it — the dot, the
+         RPE line, the week's AU, their legend — are the coach's planning
+         numbers, staff only (v289, roadmap 22). A player answers his own
+         RPE and should not be shown what the coach expected first. */
+      staffView: staffView,
       /* A narrower gate than canEdit, and only the placeholders and the
          add menu use it — a delegate runs the calendar but may not invent
          a session. */
@@ -31507,10 +31521,10 @@
         '<div class="cal-gutter">' +
           '<span class="cal-wk">' + sanitize(t('cal.week_n').replace('{n}', wk.week)) + '</span>' +
           '<span class="cal-range">' + sanitize(range) + '</span>' +
-          '<div class="cal-au">' + auText +
+          (ctx.staffView ? '<div class="cal-au">' + auText +
             (load.unknown ? '<span class="cal-au-warn" title="' +
               sanitize(t('load.au_unrated').replace('{n}', load.unknown)) + '">·</span>' : '') +
-          '</div>' +
+          '</div>' : '') +
         '</div>' +
         '<div class="cal-days">' + cells + '</div>' +
         '</div>';
@@ -31608,7 +31622,7 @@
         /* What is left of the old bar is the two legends and the refresh —
            a thin strip under the band, which is what they were always for. */
         '<div class="cal-bar">' +
-          '<div class="cal-bar-l">' + loadLegend + kindLegend + '</div>' +
+          '<div class="cal-bar-l">' + (ctx.staffView ? loadLegend : '') + kindLegend + '</div>' +
           '<div class="cal-bar-r">' + refreshBtn + '</div>' +
         '</div>' +
         '<div class="cal-weeks">' + weeks + '</div>' +
@@ -36690,7 +36704,7 @@
     });
 
     bindFcfRefresh();
-    if (!canEditPage('calendar')) return;
+    if (!canEditCalendar()) return;
 
     /* Editing a fixture, from the match detail page. Bound here rather than
        with the rest of that page because it is a calendar concern and it is
