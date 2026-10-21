@@ -230,6 +230,13 @@ describe('exercise notes — on the session page', () => {
     assert.strictEqual(page({TN: null}).d.querySelector('[data-stp-notes]'), null);
   });
 
+  it('the button is the square speech bubble with two lines (v293, Movment\'s comment icon)', () => {
+    const {d} = page({notes: {e1: [NOTE('n1', 'me', 'Marc', 'a')]}});
+    const paths = [...d.querySelectorAll('[data-stp-notes="e1"] svg path')].map((x) => x.getAttribute('d'));
+    assert.deepStrictEqual(paths, ['M4 4h16v12H9l-5 4z', 'M8 8.5h8M8 12h5']);
+    assert.ok(!d.querySelector('[data-stp-notes="e1"]').textContent.includes('💬'), 'the emoji is still there');
+  });
+
   it('💬 opens the notes: first name, when, the text — as text, never markup', () => {
     const p = page({notes: {e1: [NOTE('n1', 'x', 'Berta Bosch', '<b>massa</b> llarg')]}});
     p.open('e1');

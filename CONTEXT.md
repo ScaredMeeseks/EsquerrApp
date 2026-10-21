@@ -13280,3 +13280,26 @@ Version triple → **v291**.
 **Deploy:** functions (`archiveSeason`, `deleteTeam`), then push.
 
 Version triple → **v292**.
+
+### 2026-10-21 — v293: "Carregar entrenament" on the top band; the notes icon
+
+**The owner, after v292:** move "Carregar entrenament" to the top band next to Esborra — "this way it's more intuitive to understand you're loading the whole training" — and give the notes Movment's square speech-bubble icon.
+
+**The button:**
+- **Where it is:** `#std-load` on `std-topbar-r`, between Edita (activities) and Esborra. Editors only, and never on an activity, which has no plan.
+- **How it is bound:** in `bindStaffTrainingDetail`, beside Esborra, reading the session by `detailTrainingId`. NOT in `bindStdPlan`: the top band is not part of `stdRefreshPlan`, and every plan refresh re-runs `bindStdPlan`, so a top-band button bound there would gather one more listener per refresh.
+- **The plan panel is plain again:** no load button in its header or under "Encara no hi ha exercicis". The short label `plan.load_short` is gone with it.
+
+**The icon:** an inline SVG (`STP_NOTE_ICON`): `M4 4h16v12H9l-5 4z` plus two lines, stroke 2, grey and darker on hover or while open. It is the drawing of Movment's `.fc-comment-btn`, and it replaces the 💬 emoji.
+
+**Checked (emulators, 390 px):**
+- The top band reads "← Enrere · 📥 Carregar entrenament · Esborra · ENTRENAMENT" on one row.
+- The plan holds no load button.
+- Three icons show, one per exercise, with the count beside them.
+- The button opens the list.
+
+**Tests:** the placement (top band, editor, training only, absent from the panel with a plan or without); the binder run for real; the icon's two paths. Mutations 6/6. Unit **4293**.
+
+**Deploy:** frontend only.
+
+Version triple → **v293**.

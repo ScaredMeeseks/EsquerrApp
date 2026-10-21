@@ -303,8 +303,18 @@ describe('Carregar entrenament — the dialog', () => {
   });
 });
 
-describe('Carregar entrenament — on the session page', () => {
-  function panel(tr, ro) {
+describe('Carregar entrenament — on the session page (the top band, v293)', () => {
+  /* The owner: it loads the WHOLE session — focus and planned RPE with the
+     plan — so it sits on the top band beside Esborra, not inside the plan. */
+  const page = grab('  function renderStaffTrainingDetail', '  function buildDetailBar');
+
+  it('is on the top band, before Esborra, for an editor on a training — not an activity', () => {
+    assert.ok(/const loadBtn = \(isAct \|\| ro\) \? '' :/.test(page), 'shown to view-only staff, or on an activity');
+    assert.ok(/id="std-load"/.test(page));
+    assert.ok(/std-topbar-r">\$\{actEdit\}\$\{loadBtn\}\$\{delBtn\}/.test(page), 'not beside Esborra');
+  });
+
+  it('is no longer inside the plan panel, with a plan or without', () => {
     const e = env();
     // eslint-disable-next-line no-new-func
     const render = new Function('stdPlan', 'stdBoardResolver', 'stdSessionBoards', 'planMaterial',
@@ -314,36 +324,28 @@ describe('Carregar entrenament — on the session page', () => {
         () => [], () => ({ rows: [{ label: '20:00' }, { label: '20:10' }], endLabel: '21:00' }),
         () => '<div class="blk"></div>', () => '', e.api._stpN, t, e.api.sanitize,
         require('../js/utils.js').exPointsOf);
-    const d = new JSDOM('<body>' + render(tr, ro, []) + '</body>').window.document;
-    return { all: d.querySelectorAll('[data-stp-load]'), cta: d.querySelectorAll('.stp-load-cta') };
-  }
-
-  it('one button: in the header with a plan, under "no exercises yet" without', () => {
-    assert.deepStrictEqual([panel(T(), false).all.length, panel(T(), false).cta.length], [1, 0]);
-    const empty = panel(Object.assign(T(), { plan: null }), false);
-    assert.deepStrictEqual([empty.all.length, empty.cta.length], [1, 1]);
+    [T(), Object.assign(T(), { plan: null })].forEach((tr) => {
+      const h = render(tr, false, []);
+      assert.ok(!/std-load|data-stp-load=|plan\.load\b/.test(h), 'a second load button in the plan');
+    });
   });
 
-  it('none for staff who may only read the session', () => {
-    assert.strictEqual(panel(T(), true).all.length, 0);
-    assert.strictEqual(panel(Object.assign(T(), { plan: null }), true).all.length, 0);
-  });
-
-  it('the button opens the dialog for THIS session and a load redraws the page', () => {
+  it('opens the dialog for the session on screen, and a load redraws the page', () => {
     const e = env();
-    e.doc.body.innerHTML = '<button data-stp-load="1"></button>';
-    const tr = e.row('tr_new');
+    e.doc.body.innerHTML = '<button id="std-load"></button>';
     let target = null;
     // eslint-disable-next-line no-new-func
-    new Function('document', 'tr', 'stpOpenLoadDialog', 'stpLoadIntoSession', '_showPushToast',
-        'renderPage', 'getSession', 't', 'tDateShort', '_stpN',
-        grab("    // Load a past session's plan into this one (v290).", "    // An exercise's description."))(
-        e.doc, tr, (tg, onLoad) => { target = tg; onLoad(S1, e.api.stpTemplateOf(S1)); },
-        e.api.stpLoadIntoSession, (a, b) => e.calls.toast.push(a + '|' + b),
+    new Function('document', 'getTrainings', 'detailTrainingId', 'stpOpenLoadDialog', 'stpLoadIntoSession',
+        '_showPushToast', 'renderPage', 'getSession', 't', 'tDateShort', '_stpN',
+        grab('    // Load a past session into this one (v290). A full render after',
+            "    const actEdit = document.getElementById('std-edit-activity');"))(
+        e.doc, e.deps.getTrainings, 'tr_new', (tg, onLoad) => { target = tg; onLoad(S1, e.api.stpTemplateOf(S1)); },
+        e.api.stpLoadIntoSession, (a2, b2) => e.calls.toast.push(a2 + '|' + b2),
         () => { e.calls.render++; }, () => ({}), t, e.deps.tDateShort, e.api._stpN);
-    e.doc.querySelector('[data-stp-load]').click();
+    e.doc.getElementById('std-load').click();
     assert.strictEqual(target.id, 'tr_new');
     assert.strictEqual(e.api.stdPlan(e.row('tr_new')).blocks.length, 2, 'nothing was loaded');
+    assert.deepStrictEqual([e.row('tr_new').focus, e.row('tr_new').plannedRpe], ['Pressing', 7]);
     assert.deepStrictEqual([e.calls.toast.length, e.calls.render], [1, 1]);
   });
 });

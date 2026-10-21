@@ -2835,6 +2835,7 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   display:inline-flex; align-items:center; gap:2px;
 }
 .stp-ex-notes:hover, .stp-ex-notes-on { color:var(--pp-ink); }
+.stp-ex-notes svg { display:block; }
 .stp-ex-notes-n { font-size:11px; font-weight:600; color:var(--pp-ink-2); }
 .stp-ex-notes + .stp-ex-edit { margin-left:8px; }
 .stp-notes {
@@ -3032,7 +3033,6 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 .stp-load-row.stp-load-off { display:none; }
-.stp-load-cta { display:inline-block; margin-top:6px; }
 #nt-page .nt-tpl {
   display:flex; align-items:center; gap:8px; padding:14px 0 10px;
   font-size:13px; color:var(--pp-ink-2);

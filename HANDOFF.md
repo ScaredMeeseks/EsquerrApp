@@ -8,7 +8,15 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 292**
+**Version triple is at 293**
+
+## 2026-10-21 — v293: "Carregar entrenament" on the top band; the notes icon
+
+- **"Carregar entrenament" sits on the session page's top band, before Esborra** (`#std-load`, bound in `bindStaffTrainingDetail`). The owner: it loads the WHOLE session, so it belongs with the session's own actions.
+  - It has left the plan panel (header and empty state).
+  - It is still on each New Training draft.
+- **The notes' button** is the square speech bubble with two lines (`STP_NOTE_ICON`), the same drawing as Movment's comment button, with the count beside it.
+- **Deploy:** frontend only, push.
 
 ## 2026-10-21 — v292: exercise points, periods and rankings (roadmap 36)
 

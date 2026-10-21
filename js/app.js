@@ -1199,7 +1199,6 @@
     'plan.ex_n':         { ca:'{n} exercicis', es:'{n} ejercicios', en:'{n} exercises' },
     // "Carregar entrenament" (v290, roadmap 37). {ex} is plan.ex_1 / plan.ex_n.
     'plan.load':         { ca:'Carregar entrenament', es:'Cargar entrenamiento', en:'Load a training' },
-    'plan.load_short':   { ca:'Carregar', es:'Cargar', en:'Load' },
     'plan.load_pts':     { ca:'Els punts dels exercicis actuals s\'esborraran.', es:'Los puntos de los ejercicios actuales se borrarán.', en:'The points of the current exercises will be deleted.' },
     'plan.del_ex_pts':   { ca:'Té punts assignats, que s\'esborraran amb ell.', es:'Tiene puntos asignados, que se borrarán con él.', en:'It has points, which will be deleted with it.' },
     // Exercise points (v292, roadmap 36).
@@ -3192,7 +3191,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 292;
+  const APP_VERSION = 293;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -24792,6 +24791,11 @@
      note being edited, the unsent text per exercise — so a re-render (a
      colleague's note arriving) never throws away what is being typed — and
      whether such a re-render is waiting for the field to lose focus. */
+  /* The notes' icon (v293): a square speech bubble with two lines — the
+     owner's pick, the same drawing as Movment's comment button. */
+  const STP_NOTE_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">' +
+    '<path d="M4 4h16v12H9l-5 4z"/><path d="M8 8.5h8M8 12h5"/></svg>';
   let _stpNotesOpen = {};
   let _stpNoteEdit = null;
   let _stpNoteDraft = {};
@@ -25318,7 +25322,7 @@
     const noteBtn = ctx.notes
       ? '<button class="stp-ex-notes' + (notesOn ? ' stp-ex-notes-on' : '') + '" data-stp-notes="' +
         sanitize(ex.id) + '" aria-expanded="' + notesOn + '" title="' + sanitize(t('plan.notes_hint')) +
-        '" aria-label="' + sanitize(t('plan.notes_hint')) + '">💬' +
+        '" aria-label="' + sanitize(t('plan.notes_hint')) + '">' + STP_NOTE_ICON +
         (nNotes ? '<span class="stp-ex-notes-n">' + nNotes + '</span>' : '') + '</button>'
       : '';
 
@@ -25400,12 +25404,6 @@
       return _stpBlockRow(blk, bi, times.rows[bi], ro, resolve, ctx);
     }).join('');
 
-    /* Load a past session's plan (v290, roadmap 37). In the header once
-       there is a plan to replace, and under "no exercises yet" while there
-       is not — never both. */
-    const loadBtn = (cls, key) => '<button class="' + cls + '" data-stp-load="1" title="' +
-      sanitize(t('plan.load_hint')) + '">📥 ' + sanitize(t(key)) + '</button>';
-
     /* One footer button. "+ Bloc alhora" is gone: a parallel block is made by
        adding a second exercise to a block, not by choosing a different kind
        of block up front. */
@@ -25420,9 +25418,6 @@
           '<span class="std-sec-note">' +
             _stpN(plan.blocks.length, 'plan.blk_1', 'plan.blk_n') + ' · ' +
             _stpN(exCount, 'plan.ex_1', 'plan.ex_n') + '</span>' +
-          // The short label here: beside the count and Imprimir, the long one
-          // wraps every word onto its own line at phone width.
-          (plan.blocks.length && !ro ? loadBtn('stp-a', 'plan.load_short') : '') +
           (plan.blocks.length
             ? '<button class="stp-a" id="stp-print" title="' +
               sanitize(t('plan.print_hint')) + '">🖨 ' +
@@ -25430,8 +25425,7 @@
         '</span>' +
       '</div>' +
       (plan.blocks.length ? '<div class="stp-flow">' + rows + '</div>'
-                          : '<p class="stp-empty">' + sanitize(t('plan.empty')) + '</p>' +
-                            (ro ? '' : loadBtn('stp-a stp-load-cta', 'plan.load'))) +
+                          : '<p class="stp-empty">' + sanitize(t('plan.empty')) + '</p>') +
       '<div class="stp-foot">' + foot +
         '<span class="stp-ends">' + sanitize(t('plan.ends')) + ' ' +
           sanitize(times.endLabel) + '</span>' +
@@ -26847,19 +26841,6 @@
       });
     });
 
-    // Load a past session's plan into this one (v290). A full render after,
-    // not stdRefreshPlan: the focus and the planned RPE sit in the hero.
-    document.querySelectorAll('[data-stp-load]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        stpOpenLoadDialog(tr, function (src, tpl) {
-          if (!stpLoadIntoSession(tr.id, src, tpl)) return;
-          _showPushToast(t('plan.loaded'), t('plan.loaded_body')
-            .replace('{ex}', _stpN(tpl.exCount, 'plan.ex_1', 'plan.ex_n')).replace('{date}', tDateShort(src.date)));
-          renderPage(getSession());
-        });
-      });
-    });
-
     // An exercise's description. Found by ID, not by path: the dialog is
     // open while a sync may re-render the plan underneath it.
     document.querySelectorAll('[data-stp-edit]').forEach(function (btn) {
@@ -28006,6 +27987,12 @@
        session and cannot remove it. A session and an activity are the same
        row and delete the same way — only the warning differs, since an
        activity carries no RPE. */
+    /* "Carregar entrenament" (v290; on the top band since v293, the owner's
+       call — it loads the WHOLE session, its focus and planned RPE as well as
+       the plan, so it sits with the session's own actions and not inside the
+       plan). A training's, for an editor: an activity has no plan. */
+    const loadBtn = (isAct || ro) ? '' :
+      `<button class="stp-a" id="std-load" title="${sanitize(t('plan.load_hint'))}">📥 ${sanitize(t('plan.load'))}</button>`;
     const delBtn = ro ? '' :
       `<button class="stp-a stp-a-danger" id="std-delete">${t('std.delete')}</button>`;
 
@@ -28023,7 +28010,7 @@
       <div class="std-page">
       <div class="std-topbar">
         <button class="std-back detail-back" data-back="${backTarget('calendar')}">${t('btn.back')}</button>
-        <div class="std-topbar-r">${actEdit}${delBtn}
+        <div class="std-topbar-r">${actEdit}${loadBtn}${delBtn}
           <span class="std-eyebrow">${t(isAct ? 'cal.activity' : 'training.badge')}</span>
         </div>
       </div>
@@ -38923,6 +38910,22 @@
         });
         _showPushToast(t('std.deleted'), sanitize(tr.title || tDateLong(tr.date || '')));
         renderPage(getSession());
+      });
+    }
+
+    // Load a past session into this one (v290). A full render after: the
+    // focus and the planned RPE sit in the hero, not only in the plan.
+    const loadBtn = document.getElementById('std-load');
+    if (loadBtn) {
+      loadBtn.addEventListener('click', function () {
+        const tr = getTrainings().find(function (x) { return String(x.id) === String(detailTrainingId); });
+        if (!tr) return;
+        stpOpenLoadDialog(tr, function (src, tpl) {
+          if (!stpLoadIntoSession(tr.id, src, tpl)) return;
+          _showPushToast(t('plan.loaded'), t('plan.loaded_body')
+            .replace('{ex}', _stpN(tpl.exCount, 'plan.ex_1', 'plan.ex_n')).replace('{date}', tDateShort(src.date)));
+          renderPage(getSession());
+        });
       });
     }
 

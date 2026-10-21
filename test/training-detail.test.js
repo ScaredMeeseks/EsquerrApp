@@ -355,7 +355,7 @@ describe('what a player must NOT be shown', () => {
        bindDynamicActions binds by name. */
     const h = html();
     assert.ok(!/std-sel|<select/.test(h), 'a dropdown reached the player');
-    assert.ok(!/std-drop|std-add-player|std-delete|std-edit-activity/.test(h));
+    assert.ok(!/std-drop|std-add-player|std-delete|std-edit-activity|std-load/.test(h));
     assert.ok(!/data-std-|data-avail|data-player=/.test(h),
         'a bound write hook reached the player');
     assert.strictEqual(count(h, /<button/g), 1, 'Back is the only button');

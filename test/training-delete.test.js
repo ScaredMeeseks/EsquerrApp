@@ -251,7 +251,8 @@ describe('the button that reaches it', () => {
     const page = grab('  function renderStaffTrainingDetail', '  function buildDetailBar');
     assert.ok(/const delBtn = ro \? '' :/.test(page), 'view-only sub-roles get no button');
     assert.ok(/id="std-delete"/.test(page));
-    assert.ok(/std-topbar-r">\$\{actEdit\}\$\{delBtn\}/.test(page),
+    // v293: "Carregar entrenament" sits between them.
+    assert.ok(/std-topbar-r">\$\{actEdit\}\$\{loadBtn\}\$\{delBtn\}/.test(page),
         'it belongs in the topbar beside Edita, not loose in the page');
   });
 
