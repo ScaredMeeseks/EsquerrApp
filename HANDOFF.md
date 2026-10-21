@@ -10,6 +10,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 **Version triple is at 298**
 
+## 2026-10-21 — automatic acta import switched ON
+
+- **Switch:** `fcfCrawl/actaImport` is `{enabled: true, dryRun: false}` since 14:45 on 2026-10-21, at the owner's request. Before that the doc didn't exist (off), and the planned dry-run weekend never happened.
+- **Dry run first:** a local read-only replica of `_importActa` ran over the 9 queued items (script `acta-dryrun.js`, kept in that session's scratchpad). 4 would import, each merged score equal to the acta, and none had hand-entered events to replace. 2 were past but FCF still shows "Pendent". 3 were upcoming.
+- **First run (15:00):** imported those 4 (`src: auto`). The 2 still-pending ones were past the 72 h horizon and dropped; the "Importa l'acta" button still works for them. Queue left: the 3 upcoming matches.
+- **Players:** per acta, 0–2 of ours link automatically, about 6 more have a suggestion in "Vincula jugadors", and the rest have no app account (L'Esquerra: 11 player accounts; the Juvenil C club: 0). 3 L'Esquerra player accounts have no category.
+
 ## 2026-10-21 — v298: tap your own photo to change it
 
 - **Where:** the player's Inici photo, their face on Les meves estadístiques, and the top bar's avatar for everyone. The top bar is the only way in for staff.
