@@ -3192,7 +3192,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 294;
+  const APP_VERSION = 295;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -30591,15 +30591,23 @@
       '</div>';
     const rows = pointsRanking(exercisePointsTally(getTrainings(), { category: cat, from: range.from, to: range.to }), players);
     const table = rows.some(function (r) { return r.pts > 0; })
-      ? '<table class="pts-table"><thead><tr><th class="pts-c-pos">#</th><th>' + sanitize(t('pts.th_player')) +
-          '</th><th class="pts-c-n">' + sanitize(t('pts.th_pts')) + '</th><th class="pts-c-n">' + sanitize(t('pts.th_ex')) +
-          '</th></tr></thead><tbody>' +
-        rows.map(function (r) {
-          return '<tr' + (r.pts ? '' : ' class="pts-zero"') + '><td class="pts-c-pos">' + r.pos + '</td><td>' + sanitize(r.name) +
-            '</td><td class="pts-c-n pts-v">' + r.pts + '</td><td class="pts-c-n">' + r.ex + '</td></tr>';
-        }).join('') + '</tbody></table>'
+      ? ptsTableHtml(rows, { ex: true })
       : '<p class="plm-empty">' + sanitize(t('pts.none')) + '</p>';
     return wrap('<div class="pts-sec"><div class="pts-chips">' + chips + '</div>' + meta + table + '</div>');
+  }
+
+  /** The squad's table, one builder for Plantilla and for the player's own
+      page (v295): `ex` adds the exercises column; `me` marks that player's row. */
+  function ptsTableHtml(rows, opts) {
+    const o = opts || {};
+    return '<table class="pts-table"><thead><tr><th class="pts-c-pos">#</th><th>' + sanitize(t('pts.th_player')) +
+        '</th><th class="pts-c-n">' + sanitize(t('pts.th_pts')) + '</th>' +
+        (o.ex ? '<th class="pts-c-n">' + sanitize(t('pts.th_ex')) + '</th>' : '') + '</tr></thead><tbody>' +
+      rows.map(function (r) {
+        const cls = [r.pts ? '' : 'pts-zero', o.me && r.uid === String(o.me) ? 'pts-me' : ''].filter(Boolean).join(' ');
+        return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td class="pts-c-pos">' + r.pos + '</td><td>' + sanitize(r.name) +
+          '</td><td class="pts-c-n pts-v">' + r.pts + '</td>' + (o.ex ? '<td class="pts-c-n">' + r.ex + '</td>' : '') + '</tr>';
+      }).join('') + '</tbody></table>';
   }
 
   function ptsRefresh() {
@@ -30728,7 +30736,12 @@
       '<div class="ms-pts-line"><span class="ms-pts-v ms-num">' + me.pts + '</span>' +
         '<span class="ms-pts-u">' + sanitize(me.pts === 1 ? t('pts.unit_1') : t('pts.unit_n')) + '</span>' +
         '<span class="ms-pts-pos">' + sanitize(t('pts.pos').replace('{p}', me.pos).replace('{t}', rows.length)) + '</span>' +
-      '</div></div>';
+      '</div>' +
+      /* The whole squad's table (v295, the owner's call), his own row
+         marked: the same period, the same squad, the same builder as the
+         coach's on Plantilla — without the exercises column. */
+      ptsTableHtml(rows, { me: u.id }) +
+      '</div>';
   }
 
   function plScopedPlayers() {

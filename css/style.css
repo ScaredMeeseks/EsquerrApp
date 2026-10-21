@@ -2903,6 +2903,9 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .pts-table th.pts-c-n { text-align:right; }
 .pts-v { font-weight:600; }
 .pts-zero td { color:var(--pp-ink-3); }
+/* The player's own row on his page (v295). */
+.pts-me td { font-weight:700; color:var(--pp-ink); background:rgba(0,0,0,.035); }
+.ms-pts .pts-table { margin-top:14px; }
 .pts-dlg-shown { gap:6px; }
 .pts-dlg-err { margin:0; font-size:12px; color:var(--pp-bad); }
 .stp-dot, .stp-dot-sm {

@@ -361,6 +361,24 @@ describe('exercise points — the player\'s card', () => {
     assert.strictEqual(d.querySelector('.ms-pts-pos').textContent, 'P2/3');
   });
 
+  it('shows him the whole squad\'s table, his own row marked — his squad only, no exercises column (v295)', () => {
+    const d = card({periods: [Object.assign({shown: true}, OCT)]}, 'p2');
+    const rows = [...d.querySelectorAll('.ms-pts .pts-table tbody tr')].map((tr) =>
+      [...tr.querySelectorAll('td')].map((td) => td.textContent).join(' '));
+    assert.deepStrictEqual(rows, ['1 Aleix 4', '2 Bru 3', '2 Carla 3'], 'not the squad\'s table, or not only his squad');
+    const me = d.querySelectorAll('.pts-me');
+    assert.strictEqual(me.length, 1, 'his row is not marked, or more than his is');
+    assert.ok(me[0].textContent.includes('Bru'));
+    assert.strictEqual(d.querySelectorAll('.ms-pts .pts-table thead th').length, 3, 'the exercises column reached the player');
+  });
+
+  it('Plantilla\'s table keeps the exercises column and marks nobody', () => {
+    const p = plantilla({periods: [Object.assign({shown: true}, OCT)]});
+    p.api.open(); p.mount();
+    assert.strictEqual(p.d.querySelectorAll('.pts-table thead th').length, 4);
+    assert.strictEqual(p.d.querySelector('.pts-me'), null);
+  });
+
   it('no period shown: the season', () => {
     const d = card({periods: [OCT]}, 'p2');
     assert.ok(d.querySelector('.ms-sec-solo').textContent.includes('pts.season'));

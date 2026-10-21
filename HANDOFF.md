@@ -8,7 +8,15 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 294**
+**Version triple is at 295**
+
+## 2026-10-21 — v295: players see the whole points table
+
+- **On Les meves estadístiques,** the points card shows the whole squad's table under the player's own figure, his row marked (`.pts-me`).
+  - Same period (the shown one, else the season) and same squad (category and letter) as the figure.
+  - No exercises column.
+- **One builder,** `ptsTableHtml(rows, {ex, me})`, for Plantilla and the player.
+- **Deploy:** frontend only, push.
 
 ## 2026-10-21 — v294: a faint hint where points cannot go yet
 
@@ -660,8 +668,8 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
       so points inside it would be erased.
     - **Periods:** the coach defines them, and marks the one players see, in Plantilla → "Punts
       d'exercicis". The squad's table is there too.
-    - **The player** sees his points and his position in his squad on Les meves estadístiques, for that
-      period or, with none shown, the season.
+    - **The player** sees his points, his position and the whole squad's table on Les meves estadístiques
+      (since v295), for that period or, with none shown, the season.
 
 37. ✅ **Done — v290: "Carregar entrenament".** It is on each New Training draft and in the session
     page's plan panel.

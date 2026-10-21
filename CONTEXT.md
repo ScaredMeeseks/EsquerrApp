@@ -13315,3 +13315,20 @@ Version triple → **v293**.
 **Tests:** editor-only, and not where teams already are. Mutations 2/2. Unit **4294**.
 
 Version triple → **v294**.
+
+### 2026-10-21 — v295: players see the whole points table
+
+**The owner:** players should see the whole exercise-points classification on their stats page, not only their own total and position.
+
+**The change:** the card on Les meves estadístiques now carries the squad's table under the player's figure.
+- **What it shows:** #, player, points, with his own row marked (`.pts-me`: bold, a faint band).
+- **What it covers:** the same period as the figure (the shown one, else the season) and the same squad (category and letter). The table appears only when the card does, i.e. once someone has a point.
+- **What it leaves out:** the exercises column, which stays on the coach's table.
+- **One builder for both pages:** `ptsTableHtml(rows, {ex, me})`, used by Plantilla and the player's card.
+- **Privacy:** nothing new reaches the device. The sessions' `exPoints`, the periods and the squad roster were already there.
+
+**Checked:** at 390 px, the player's card shows "3 punts · posició 1 de 2" and a two-row table with his row marked. No overflow.
+
+**Tests:** his squad only, his row marked, three columns for him and four on Plantilla, nobody marked there. Mutations 5/5. Unit **4296**.
+
+Version triple → **v295**.
