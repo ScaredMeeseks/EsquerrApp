@@ -2903,9 +2903,26 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .pts-table th.pts-c-n { text-align:right; }
 .pts-v { font-weight:600; }
 .pts-zero td { color:var(--pp-ink-3); }
-/* The player's own row on his page (v295). */
-.pts-me td { font-weight:700; color:var(--pp-ink); background:rgba(0,0,0,.035); }
-.ms-pts .pts-table { margin-top:14px; }
+/* The player's own row on his page (v295; marked harder in v296): the club
+   red's tint, a red bar at its start, and the name in bold. */
+.pts-me td { font-weight:700; color:var(--pp-ink); background:rgba(189,22,44,.09); }
+.pts-me td:first-child { box-shadow:inset 3px 0 0 var(--pp-red); color:var(--pp-red); }
+/* Ten rows at a time, the header kept in view (v296). The row height is
+   FIXED and the name ellipsed, so ten rows are always exactly ten: a name
+   wrapping onto two lines would otherwise show nine. */
+.pts-scroll {
+  --pts-row: 34px; --pts-head: 32px;
+  max-height: calc(var(--pts-head) + var(--pts-row) * 10);
+  overflow-y: auto; overscroll-behavior: contain; margin-top: 14px;
+  -webkit-overflow-scrolling: touch;
+}
+.pts-scroll .pts-table { table-layout: fixed; }
+.pts-scroll .pts-table thead th {
+  position: sticky; top: 0; z-index: 1; height: var(--pts-head); box-sizing: border-box;
+  background: var(--pp-paper); border-bottom: none; box-shadow: inset 0 -1px 0 var(--pp-ink);
+}
+.pts-scroll .pts-table tbody tr { height: var(--pts-row); }
+.pts-scroll .pts-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
 .pts-dlg-shown { gap:6px; }
 .pts-dlg-err { margin:0; font-size:12px; color:var(--pp-bad); }
 .stp-dot, .stp-dot-sm {

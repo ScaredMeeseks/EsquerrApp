@@ -8,7 +8,15 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 295**
+**Version triple is at 296**
+
+## 2026-10-21 — v296: the player's points table — ten rows, centred on him, his row marked
+
+- **The table** sits in a scrolling window exactly ten rows high (`.pts-scroll`), with a sticky header.
+  - Rows are a fixed height and names ellipsed, so ten rows are always ten.
+- **After every render of `my-stats`,** `ptsCenterOnMe()` scrolls so his row is the 5th of the ten. It uses real layout and snaps to whole rows, so no half row shows at either edge.
+- **His row:** the club red's tint, a red bar, his position in red, his name in bold.
+- **Deploy:** frontend only, push.
 
 ## 2026-10-21 — v295: players see the whole points table
 

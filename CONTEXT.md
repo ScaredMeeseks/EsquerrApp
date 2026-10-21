@@ -13332,3 +13332,30 @@ Version triple → **v294**.
 **Tests:** his squad only, his row marked, three columns for him and four on Plantilla, nobody marked there. Mutations 5/5. Unit **4296**.
 
 Version triple → **v295**.
+
+### 2026-10-21 — v296: the player's points table — ten rows, centred on him, his row marked
+
+**The owner:** in the player's points list, his name highlighted; the classification always loading with him at the centre; at most ten records at a time, scrolling up and down for the rest.
+
+**The window (`.pts-scroll`):**
+- **Height:** exactly ten rows, `calc(var(--pts-head) + var(--pts-row) * 10)` (32 + 10 × 34 px), scrolling inside itself (`overscroll-behavior: contain`).
+- **Header:** sticky (on the `th` cells, which is what sticks; the `thead` box scrolls away).
+- **Fixed geometry:** the row height is fixed and the table `table-layout: fixed`, with names ellipsed. A name wrapping onto two lines would otherwise make it nine rows.
+- **Scope:** the player's page only. The coach's table on Plantilla is the whole list.
+
+**Centring (`ptsCenterOnMe`, run from the post-render dispatch on `my-stats`):**
+- **What it measures:** his row, the window and the header on the real layout (`getBoundingClientRect`, plus the current `scrollTop`, so a second call does not drift).
+- **Snapping:** `ptsCenterTop` makes his row the middle slot of the ten (the 5th), not the geometric centre. The geometric centre left half a row at each edge.
+- **Clamping:** at the top (the 1st–5th see the top of the table); the browser clamps the bottom.
+
+**His row (`.pts-me`):** the club red's tint, a 3px red bar at its start, his position in red, and his name in bold.
+
+**Checked (emulators, 26-player squad, him 13th; at 390 px and at 1280 px):**
+- 10 rows fully visible (9th–18th), his the 5th, half a row above the geometric centre (an even count).
+- Scrolling reaches the last row.
+- No horizontal overflow.
+- The first measurement was wrong (it read the scrolled-away `thead`); the screenshot is what showed it.
+
+**Tests:** the window rule (ten rows, scrolling, sticky header); `ptsCenterTop` (snapped, clamped); `ptsCenterOnMe` over jsdom with stubbed geometry, including an already-scrolled window; the post-render call. Mutations 6/6. Unit **4299**.
+
+Version triple → **v296**.

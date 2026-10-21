@@ -242,7 +242,8 @@ function plantilla(o) {
   // eslint-disable-next-line no-new-func
   const api = new Function(...Object.keys(deps), `
     ${grab('  /* ── Exercise points on Plantilla (v292', '  function plScopedPlayers() {')}
-    return { ptsSectionHtml, bindPtsControls, msPointsCardHtml, open: () => { _ptsOpen = true; } };`)(...Object.values(deps));
+    return { ptsSectionHtml, bindPtsControls, msPointsCardHtml, ptsCenterTop, ptsCenterOnMe,
+      open: () => { _ptsOpen = true; } };`)(...Object.values(deps));
   const mount = () => {
     d.getElementById('root').innerHTML = api.ptsSectionHtml(deps.plScopedPlayers());
     api.bindPtsControls(d.getElementById('pts-secwrap'));
@@ -370,6 +371,49 @@ describe('exercise points — the player\'s card', () => {
     assert.strictEqual(me.length, 1, 'his row is not marked, or more than his is');
     assert.ok(me[0].textContent.includes('Bru'));
     assert.strictEqual(d.querySelectorAll('.ms-pts .pts-table thead th').length, 3, 'the exercises column reached the player');
+  });
+
+  /* v296: ten rows at a time, scrolling, centred on him. The window and the
+     scroll need a real layout — checked in the browser (CONTEXT v296); here,
+     the arithmetic and the wiring. */
+  it('sits in a scrolling window, ten rows high in the stylesheet', () => {
+    const d = card({periods: [Object.assign({shown: true}, OCT)]}, 'p2');
+    assert.ok(d.querySelector('.ms-pts .pts-scroll .pts-table'), 'the table is not in its window');
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+    const rule = /\.pts-scroll \{([^}]*)\}/.exec(css);
+    assert.ok(rule && /max-height:\s*calc\(var\(--pts-head\) \+ var\(--pts-row\) \* 10\)/.test(rule[1]), 'not ten rows');
+    assert.ok(/overflow-y:\s*auto/.test(rule[1]), 'it does not scroll');
+    assert.ok(/\.pts-scroll \.pts-table thead th \{[^}]*position: sticky/.test(css), 'the header scrolls away');
+  });
+
+  it('centres his row under the header — and never scrolls above the top', () => {
+    const p = plantilla();
+    // A 372px window with a 32px header: ten 34px slots; his row the 13th
+    // (top 440). Snapped to whole rows, his the 5th slot: rows 9–18 show.
+    assert.strictEqual(p.api.ptsCenterTop(440, 34, 372, 32), 272);
+    assert.strictEqual((272 % 34), 0, 'a half row at the edge');
+    assert.strictEqual(p.api.ptsCenterTop(32, 34, 372, 32), 0, 'scrolled above the first row');
+    assert.strictEqual(p.api.ptsCenterTop(32 + 4 * 34, 34, 372, 32), 0, 'the 5th row is already in the middle slot');
+  });
+
+  it('scrolls each window on the page to its own row, from the layout', () => {
+    const p = plantilla();
+    const d = new JSDOM('<body><div class="pts-scroll"><table><thead><tr><th>#</th></tr></thead><tbody>' +
+      '<tr><td>a</td></tr><tr class="pts-me"><td>b</td></tr></tbody></table></div></body>').window.document;
+    const box = d.querySelector('.pts-scroll');
+    box.getBoundingClientRect = () => ({top: 100, height: 372});
+    Object.defineProperty(box, 'clientHeight', {value: 372});
+    d.querySelector('thead').getBoundingClientRect = () => ({top: 100, height: 32});
+    d.querySelector('.pts-me').getBoundingClientRect = () => ({top: 540, height: 34});
+    p.api.ptsCenterOnMe(d);
+    assert.strictEqual(box.scrollTop, 272);
+    // Run again on a window someone has already scrolled: the same place, not a drift.
+    box.scrollTop = 100;
+    d.querySelector('.pts-me').getBoundingClientRect = () => ({top: 440, height: 34});
+    p.api.ptsCenterOnMe(d);
+    assert.strictEqual(box.scrollTop, 272, 'centred from where it happened to be scrolled');
+    const app = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+    assert.ok(/if \(currentPage === 'my-stats'\) ptsCenterOnMe\(\);/.test(app), 'not run after the page renders');
   });
 
   it('Plantilla\'s table keeps the exercises column and marks nobody', () => {

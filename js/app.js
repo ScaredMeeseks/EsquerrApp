@@ -3192,7 +3192,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 295;
+  const APP_VERSION = 296;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -8520,6 +8520,7 @@
     if (currentPage === 'medical') bindMedical();
     if (currentPage === 'medical-detail') bindMedicalDetail();
     if (currentPage === 'my-stats' || currentPage === 'staff-player-stats') bindMyStatsInjuryPopup();
+    if (currentPage === 'my-stats') ptsCenterOnMe();   // v296
     bindAccions();
     bindNotifications();
     // Inici redraws itself at the next session end or lock (v288).
@@ -30740,8 +30741,36 @@
       /* The whole squad's table (v295, the owner's call), his own row
          marked: the same period, the same squad, the same builder as the
          coach's on Plantilla — without the exercises column. */
-      ptsTableHtml(rows, { me: u.id }) +
+      // Ten rows at a time, scrolling, centred on him (v296 — ptsCenterOnMe).
+      '<div class="pts-scroll">' + ptsTableHtml(rows, { me: u.id }) + '</div>' +
       '</div>';
+  }
+
+  /** Where to scroll a list so a row sits in the middle of what is visible
+      under a sticky header (v296) — SNAPPED to whole rows: the window holds
+      `slots` rows and his is the middle one (the 5th of 10), so no half row
+      shows at either edge. Clamped at the top; the browser clamps the bottom. */
+  function ptsCenterTop(rowTop, rowH, boxH, headH) {
+    const head = headH || 0;
+    const slots = Math.max(1, Math.floor((boxH - head) / rowH));
+    const k = Math.floor((slots - 1) / 2);
+    return Math.max(0, Math.round(rowTop - head - k * rowH));
+  }
+
+  /** Scroll the player's table so his own row is centred in its ten-row
+      window — after every render, so a sync never leaves him out of sight.
+      Geometry from the layout, not assumed: a long name or a bigger font
+      changes the row height, and a guessed one would centre the wrong row. */
+  function ptsCenterOnMe(root) {
+    (root || document).querySelectorAll('.pts-scroll').forEach(function (box) {
+      const me = box.querySelector('.pts-me');
+      if (!me) return;
+      const b = box.getBoundingClientRect();
+      const r = me.getBoundingClientRect();
+      const head = box.querySelector('thead');
+      const headH = head ? head.getBoundingClientRect().height : 0;
+      box.scrollTop = ptsCenterTop(r.top - b.top + box.scrollTop, r.height, box.clientHeight, headH);
+    });
   }
 
   function plScopedPlayers() {
