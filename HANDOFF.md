@@ -8,7 +8,18 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 297**
+**Version triple is at 298**
+
+## 2026-10-21 — v298: tap your own photo to change it
+
+- **Where:** the player's Inici photo, their face on Les meves estadístiques, and the top bar's avatar for everyone. The top bar is the only way in for staff.
+  - On a phone the top bar now keeps the avatar and drops only the name. It used to hide both.
+- **How:** each of those is a `<button data-own-pic>`. `bindOwnPicChange()` binds them once per element and runs from `bindDynamicActions`. They all call `changeOwnPic()`.
+  - That is the old Inici upload path, unchanged: under 2 MB, downscaled, to Storage `profilePics/{uid}`, and no data-URI fallback.
+  - A small camera badge (`OWN_PIC_CAM`) marks the photo as changeable, since a phone has no hover.
+- **Not on a coach's view of a player:** the picker always writes the signed-in user, so a mark there would change the wrong photo. A test pins the four functions allowed to carry the mark.
+- **The top bar** is painted by `paintNavUser(session)` only. A placeholder initial shows when there's no photo.
+- **Deploy:** frontend only, push.
 
 ## 2026-10-21 — v297: room at both ends of the player's points table
 

@@ -219,6 +219,9 @@ function render(over) {
     /* v292: the exercise-points card is a collaborator here — run for real,
        over its own fixtures, in exercise-points.test.js. */
     msPointsCardHtml: () => '',
+    // v298: the camera badge on a photo you can change — the real markup.
+    OWN_PIC_CAM: new Function(grab('  const OWN_PIC_CAM = ', '  /** The top bar') +
+        '\n return OWN_PIC_CAM;')(),
     clubMonogram: new Function(
         grab('  function clubMonogram(name) {', '  function applyLeagueRows(') +
         '\n return clubMonogram;')(),
@@ -278,6 +281,19 @@ describe('Les meves estadístiques — the page renders at all', () => {
         assert.ok(entry.includes(lang), k + ' has no ' + lang.slice(0, 2));
       });
     });
+  });
+
+  /* v298: his own face here changes his photo; the picker behind the mark
+     runs for real in profile-pic.test.js. The STAFF view of a player's stats
+     must not carry it — that guard is there too. */
+  it('your face is a button that changes your photo', () => {
+    const doc = new JSDOM('<!doctype html><body>' + render() + '</body>').window.document;
+    const btn = doc.querySelector('.ms-id-who [data-own-pic]');
+    assert.ok(btn, 'the face no longer opens the picker');
+    assert.strictEqual(btn.tagName, 'BUTTON');
+    assert.strictEqual(btn.type, 'button');
+    assert.ok(btn.querySelector('.ms-face'), 'the face is not inside the button');
+    assert.ok(btn.querySelector('.own-pic-cam svg'), 'nothing on the face says it can be changed');
   });
 });
 

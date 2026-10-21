@@ -1107,6 +1107,9 @@ describe('Inici — the heroes are rendered, not just read', () => {
     posCirclesHtmlGlobal: () => '<pos>',
     CATEGORY_LABELS: { amateur: 'Amateur' },
     localStorage: { getItem: () => null },
+    // v298: the camera badge on a photo you can change — the real markup.
+    OWN_PIC_CAM: new Function(grab('  const OWN_PIC_CAM = ', '  /** The top bar') +
+        '\n return OWN_PIC_CAM;')(),
     Math, JSON, Object, String, Number, Date, Array, isNaN,
   };
 
@@ -1128,6 +1131,18 @@ describe('Inici — the heroes are rendered, not just read', () => {
     const h = renderPlayer();
     assert.ok(h.includes('ini-player'), 'no player hero came back');
     assert.ok(h.includes('<weeks>'), 'the two-week strip is missing');
+  });
+
+  /* v298: the photo is a button, and SAYS so — a phone has no hover. The
+     picker behind the mark runs for real in profile-pic.test.js. */
+  it('your photo is a button that changes it, with the camera on it', () => {
+    const doc = new JSDOM('<!doctype html><body>' + renderPlayer() + '</body>').window.document;
+    const btn = doc.getElementById('po-pic-change');
+    assert.ok(btn, 'the photo is gone');
+    assert.strictEqual(btn.tagName, 'BUTTON', 'not a button: a keyboard cannot reach it');
+    assert.strictEqual(btn.type, 'button');
+    assert.ok(btn.hasAttribute('data-own-pic'), 'the photo no longer opens the picker');
+    assert.ok(btn.querySelector('.own-pic-cam svg'), 'nothing on the photo says it can be changed');
   });
 
   /* v282: players do not see their minutes. The fixture's 300 must not

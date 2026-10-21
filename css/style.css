@@ -405,6 +405,24 @@ a:hover { text-decoration: underline; }
 
 .nav-user { font-size: .88rem; display: flex; align-items: center; gap: .4rem; }
 .nav-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
+/* v298: the top bar's you is a button that changes your photo. */
+.nav-me { display: inline-flex; padding: 0; border: none; background: none; cursor: pointer; border-radius: 50%; }
+.nav-avatar-ph {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+  font-size: 13px; font-weight: 600; color: var(--pp-ink-2); background: var(--pp-rule-2);
+}
+/* A photo you can change (v298): a button that looks like the photo, with a
+   small camera at its foot — a phone has no hover to discover it by. */
+.own-pic { position: relative; border: none; cursor: pointer; font-family: inherit; }
+.own-pic-cam {
+  position: absolute; right: 2px; bottom: 2px; width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--pp-paper); color: var(--pp-ink-2); border: 1px solid var(--pp-rule);
+  box-shadow: 0 1px 2px rgba(0,0,0,.15);
+}
+.ini-photo.own-pic { overflow: visible; }
+.ini-photo.own-pic img { border-radius: 50%; }
+.ms-face-btn { display: block; flex: none; padding: 0; background: none; border-radius: 50%; }
 .nav-badges { display: none; }
 .nav-badge {
   background: var(--accent); color: var(--pp-ink);
@@ -4408,7 +4426,8 @@ tr[data-tidx]:hover { background: rgba(0,0,0,.03); }
   .sidebar.open { transform: translateX(0); }
 
   .topnav-right { gap: .4rem; }
-  .nav-user { display: none; }
+  /* v298: on a phone, your face alone — no name — so it is still there to tap. */
+  .nav-user .nav-user-n { display: none; }
 
   /* ── Core layout fix ── */
   .dashboard-content { padding: .75rem 1rem; min-width: 0; }

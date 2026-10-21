@@ -3192,7 +3192,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 297;
+  const APP_VERSION = 298;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -7615,6 +7615,79 @@
     reader.readAsDataURL(file);
   }
 
+  /* Change your own photo (v298, the owner: "by clicking on their profile pic,
+     once in the app"). ONE picker and ONE upload for every place your face
+     shows — Inici, Les meves estadístiques, the top bar — each marked
+     `data-own-pic`. The path the Inici photo has always used, unchanged:
+     downscaled, to Storage, and NO data-URI fallback (v232). */
+  function changeOwnPic() {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/*';
+    inp.onchange = async () => {
+      const file = inp.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) { alert(t('alert.image_too_large')); return; }
+      const session = getSession();
+      if (!session || !auth.currentUser) return;
+      try {
+        const blob = await iniShrinkImage(file);
+        // Always .jpg when it was re-encoded — see handleProfileSetup.
+        const ext = blob === file ? (file.name.split('.').pop() || 'jpg') : 'jpg';
+        const ref = storage.ref('profilePics/' + auth.currentUser.uid + '.' + ext);
+        await ref.put(blob);
+        session.profilePic = await ref.getDownloadURL();
+        setSession(session);
+        paintNavUser(session);
+        renderPage(session);
+      } catch (err) {
+        /* ⚠ NO DATA-URI FALLBACK (v232). This used to read the whole
+           file back as base64 and hand it to setSession(), which wrote
+           it into `users/{uid}` AND the club-wide `fa_users` blob — a
+           Firestore document capped at 1 MB. One player's failed upload
+           could stop `fa_users` syncing for everybody, and nothing on
+           screen would have connected the two. Say it failed instead. */
+        console.error('Profile pic upload failed:', err);
+        _showPushToast(t('pic.failed_t'), t('pic.failed_b'));
+      }
+    };
+    inp.click();
+  }
+
+  /** Every `[data-own-pic]` under `root` opens the picker — once per element,
+      so a binder that runs on every render never stacks a second picker. */
+  function bindOwnPicChange(root) {
+    (root || document).querySelectorAll('[data-own-pic]').forEach(function (el) {
+      if (el._ownPicBound) return;
+      el._ownPicBound = true;
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        changeOwnPic();
+      });
+    });
+  }
+
+  /* The little camera on a photo you can change (v298): a phone has no hover,
+     so the photo has to SAY it can be tapped. */
+  const OWN_PIC_CAM = '<span class="own-pic-cam" aria-hidden="true"><svg viewBox="0 0 24 24" width="12" height="12" ' +
+    'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">' +
+    '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>';
+
+  /** The top bar's you: your face (or your initial), tappable to change it,
+      and your name beside it where there is room (v298). */
+  function paintNavUser(session) {
+    const el = $('#nav-user-name');
+    if (!el || !session) return;
+    const face = session.profilePic
+      ? '<img src="' + sanitize(session.profilePic) + '" class="nav-avatar" alt="">'
+      : '<span class="nav-avatar nav-avatar-ph">' + sanitize(String(session.name || '?').charAt(0).toUpperCase()) + '</span>';
+    el.innerHTML = '<button type="button" class="nav-me" data-own-pic title="' + sanitize(t('home.change_photo')) +
+      '" aria-label="' + sanitize(t('home.change_photo')) + '">' + face + '</button>' +
+      '<span class="nav-user-n">' + sanitize(session.name || '') + '</span>';
+    bindOwnPicChange(el);
+  }
+
   async function handleProfileSetup(e) {
     e.preventDefault();
     const session = getSession();
@@ -7839,12 +7912,7 @@
 
   function renderDashboard(session) {
     migrateInjuryData();
-    const navUserEl = $('#nav-user-name');
-    if (session.profilePic) {
-      navUserEl.innerHTML = `<img src="${session.profilePic}" class="nav-avatar" alt=""> ${sanitize(session.name)}`;
-    } else {
-      navUserEl.textContent = session.name;
-    }
+    paintNavUser(session);
 
     // Dynamic badge / app name from club config
     var logoEl = document.querySelector('.topnav-logo');
@@ -10706,7 +10774,7 @@
       <div class="ini-page ini-player">
         <div class="ini-hero">
           <div class="ini-hero-id">
-            <div class="ini-photo" id="po-pic-change" style="cursor:pointer" title="${t('home.change_photo')}">${picHtml}</div>
+            <button type="button" class="ini-photo own-pic" id="po-pic-change" data-own-pic title="${t('home.change_photo')}" aria-label="${t('home.change_photo')}">${picHtml}${OWN_PIC_CAM}</button>
             <div class="ini-idcol">
               <span class="ini-eyebrow">${t('ini.greeting')}</span>
               <div class="ini-name-row">
@@ -18020,7 +18088,7 @@
       <div class="ms-page" id="ms-page">
         <div class="ms-id">
           <div class="ms-id-who">
-            ${avatarHtmlGlobal(myUser, 'ms-face')}
+            <button type="button" class="ms-face-btn own-pic" data-own-pic title="${t('home.change_photo')}" aria-label="${t('home.change_photo')}">${avatarHtmlGlobal(myUser, 'ms-face')}${OWN_PIC_CAM}</button>
             <div class="ms-id-col">
               <span class="ms-eyebrow">${sanitize(t('page.my_stats'))}</span>
               <span class="ms-name-row">
@@ -42057,42 +42125,8 @@
     });
     _donutAnimatedPage = currentPage;
 
-    // Profile pic click → change photo
-    const poPicWrap = document.getElementById('po-pic-change');
-    if (poPicWrap) {
-      poPicWrap.addEventListener('click', () => {
-        const inp = document.createElement('input');
-        inp.type = 'file';
-        inp.accept = 'image/*';
-        inp.onchange = async () => {
-          const file = inp.files[0];
-          if (!file) return;
-          if (file.size > 2 * 1024 * 1024) { alert(t('alert.image_too_large')); return; }
-          const session = getSession();
-          if (!session || !auth.currentUser) return;
-          try {
-            const blob = await iniShrinkImage(file);
-            // Always .jpg when it was re-encoded — see handleProfileSetup.
-            const ext = blob === file ? (file.name.split('.').pop() || 'jpg') : 'jpg';
-            const ref = storage.ref('profilePics/' + auth.currentUser.uid + '.' + ext);
-            await ref.put(blob);
-            session.profilePic = await ref.getDownloadURL();
-            setSession(session);
-            renderPage(session);
-          } catch (err) {
-            /* ⚠ NO DATA-URI FALLBACK (v232). This used to read the whole
-               file back as base64 and hand it to setSession(), which wrote
-               it into `users/{uid}` AND the club-wide `fa_users` blob — a
-               Firestore document capped at 1 MB. One player's failed upload
-               could stop `fa_users` syncing for everybody, and nothing on
-               screen would have connected the two. Say it failed instead. */
-            console.error('Profile pic upload failed:', err);
-            _showPushToast(t('pic.failed_t'), t('pic.failed_b'));
-          }
-        };
-        inp.click();
-      });
-    }
+    // Your own photo, wherever it shows, changes it (v298).
+    bindOwnPicChange();
 
     // Convocatòria drag-and-drop
     bindConvocatoria();

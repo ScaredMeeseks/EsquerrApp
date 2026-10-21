@@ -13372,3 +13372,44 @@ Version triple → **v296**.
 **Checked:** at 390 and 1280 px, still 10 rows with his in the middle slot, and no overflow.
 
 Version triple → **v297**.
+
+### 2026-10-21 — v298: tap your own photo to change it
+
+**The owner:** "users should be able to change their profile pic by clicking on their profile pic once in the app".
+
+**Before:** only the player's Inici photo did, through a handler bound by id. A coach had no way to change their photo after profile setup. On a phone the whole top-bar user (face and name) was hidden.
+
+**The change:**
+- **One picker:** `changeOwnPic()`. It is the old Inici path: 2 MB cap, `iniShrinkImage`, Storage `profilePics/{uid}.{ext}`, `.jpg` when re-encoded, a toast on failure and no data-URI fallback. On success it does `setSession`, `paintNavUser`, `renderPage`.
+- **The mark:** `data-own-pic`, on a `<button type="button">`.
+  - It appears on the Inici hero (`#po-pic-change`), the my-stats face (`.ms-face-btn`) and the top bar (`.nav-me`).
+  - `bindOwnPicChange(root)` binds each element once (`_ownPicBound`) and stops the tap from reaching what's underneath.
+- **The camera badge:** `OWN_PIC_CAM`, a 22px round badge at the foot of the two large photos.
+- **The top bar:** `paintNavUser(session)` replaces renderDashboard's inline paint. It renders a face button (photo, or an initial on `.nav-avatar-ph`) followed by `.nav-user-n`. The phone rule now hides only `.nav-user-n`.
+- **Deliberately not marked:** renderStaffPlayerStats and every other place a coach sees someone else's face. The picker writes the signed-in user.
+
+**Checked:**
+- **Emulators at 390 px, as the player:**
+  - The photo and the camera badge show.
+  - Tapping opens one image/* picker.
+  - Choosing a generated PNG uploads it to the Storage emulator, and the new photo appears in the top bar and the hero.
+  - The my-stats face is a button with the badge.
+- **As the lead:** the top-bar initial opens the picker, and it's the only mark on the page.
+- **At 1280 px:** the face shows with the name beside it. No horizontal overflow at either width.
+
+**Tests (profile-pic.test.js, inici.test.js, ms.test.js):**
+- The picker, upload and top bar run in jsdom over a Storage stand-in:
+  - one picker per tap, however often the binder runs;
+  - the tap doesn't reach the card under the photo;
+  - the uid path and the extension rule;
+  - the 2 MB refusal;
+  - a failed upload saves nothing and shows the toast;
+  - closing the picker or being signed out changes nothing;
+  - the top bar's photo and initial, escaping, and repaints.
+- Where the mark lives: four owner functions, and `#nav-user-name` is painted only by `paintNavUser`.
+- The phone CSS rule.
+- The rendered Inici hero and my-stats face are buttons with the mark and the badge.
+
+Mutations 26/26 (one survivor, renderDashboard's paint call, got its own test). Unit **4318**.
+
+Version triple → **v298**.
