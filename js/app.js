@@ -1203,6 +1203,7 @@
     'plan.del_ex_pts':   { ca:'Té punts assignats, que s\'esborraran amb ell.', es:'Tiene puntos asignados, que se borrarán con él.', en:'It has points, which will be deleted with it.' },
     // Exercise points (v292, roadmap 36).
     'pts.pts':           { ca:'{n} pts', es:'{n} pts', en:'{n} pts' },
+    'pts.hint':          { ca:'Assigna-hi equips per donar punts', es:'Asígnale equipos para dar puntos', en:'Assign teams to give points' },
     'pts.minus':         { ca:'Un punt menys', es:'Un punto menos', en:'One point less' },
     'pts.plus':          { ca:'Un punt més', es:'Un punto más', en:'One point more' },
     'pts.unassign_q':    { ca:'Treure els equips?', es:'¿Quitar los equipos?', en:'Remove the teams?' },
@@ -3191,7 +3192,7 @@
 
      Later this same comparison drives a Play/App Store link or an OTA bundle
      swap, so nothing here is throwaway. */
-  const APP_VERSION = 293;
+  const APP_VERSION = 294;
 
   /* ═══════════════════════════════════════════════════════════
      Is this the version the server is serving?
@@ -25331,6 +25332,9 @@
       '<div class="stp-ex-note">' + sanitize(_stpExNote(ex, resolve)) + '</div>' +
       (ex.desc ? '<div class="stp-ex-desc">' + sanitize(ex.desc) + '</div>' : '') +
       _stpTeamLines(ex, ctx.squad, ro, (ctx.points || {})[ex.id]) +
+      /* v294: points go to TEAMS, so an exercise without a split has nowhere
+         to put them — say so, faintly, to whoever could assign one. */
+      (ex.teams || ro ? '' : '<div class="stp-pts-hint">' + sanitize(t('pts.hint')) + '</div>') +
       (notesOn ? _stpNotesHtml(ex, ctx, ro) : '') +
       panel + '</div>';
   }

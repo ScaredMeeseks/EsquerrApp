@@ -8,7 +8,12 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 293**
+**Version triple is at 294**
+
+## 2026-10-21 — v294: a faint hint where points cannot go yet
+
+- An exercise with no team split now shows "Assigna-hi equips per donar punts", faintly, to editors only. Points go to teams, and the owner did not find the steppers without it.
+- **Deploy:** frontend only, push.
 
 ## 2026-10-21 — v293: "Carregar entrenament" on the top band; the notes icon
 

@@ -2884,6 +2884,8 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 .stp-pts-b:disabled { opacity:.35; cursor:default; }
 .stp-pts-n { min-width:20px; text-align:center; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; }
 .stp-pts-ro { flex:none; font-size:12px; font-weight:600; color:var(--pp-ink-2); }
+/* v294: the faint "assign teams to give points" under an exercise without a split. */
+.stp-pts-hint { font-size:11px; font-style:italic; color:var(--pp-ink-3); opacity:.75; }
 /* Plantilla's exercise points (v292), beside Mètriques. */
 .pts-sec-head { cursor:pointer; }
 .pts-sec { padding-bottom:12px; }

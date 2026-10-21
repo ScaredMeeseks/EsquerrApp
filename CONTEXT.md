@@ -13303,3 +13303,15 @@ Version triple → **v292**.
 **Deploy:** frontend only.
 
 Version triple → **v293**.
+
+### 2026-10-21 — v294: a faint hint where points cannot go yet
+
+**The owner did not find the points:** the − n + only appears on an exercise with a team split, because points go to teams.
+
+**The fix:** an exercise with no split now shows "Assigna-hi equips per donar punts" (`pts.hint`, `.stp-pts-hint`: 11px, italic, ink-3 at 75%) under its team lines. It is shown only to editors, since view-only staff cannot assign teams. It disappears once teams are assigned.
+
+**Checked:** at 390 px, the hint sits under the two exercises without teams and not under the one with them.
+
+**Tests:** editor-only, and not where teams already are. Mutations 2/2. Unit **4294**.
+
+Version triple → **v294**.

@@ -141,6 +141,13 @@ describe('exercise points — on the session page', () => {
     assert.ok(!('exPoints' in p.tr), 'an empty map stayed on the row');
   });
 
+  it('an exercise with no teams says, faintly, how to give it points — to an editor only (v294)', () => {
+    const p = page();
+    assert.strictEqual(p.d.querySelector('[data-stp-ex="0.0"] .stp-pts-hint'), null, 'shown where points can already go');
+    assert.strictEqual(p.d.querySelector('[data-stp-ex="0.1"] .stp-pts-hint').textContent, 'pts.hint');
+    assert.strictEqual(page({canEdit: false}).d.querySelector('.stp-pts-hint'), null, 'told to someone who cannot assign');
+  });
+
   it('stops at 99', () => {
     const p = page({over: {exPoints: {e1: {g0: 99}}}});
     assert.ok(p.d.querySelector('[data-stp-pt="e1|g0|1"]').disabled);
