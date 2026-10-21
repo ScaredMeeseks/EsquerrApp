@@ -8,7 +8,13 @@ verbatim when this document is rewritten — do not regenerate it from the sessi
 
 ## Where things stand
 
-**Version triple is at 296**
+**Version triple is at 297**
+
+## 2026-10-21 — v297: room at both ends of the player's points table
+
+- **14px of padding** at the start of the first column and the end of the last. The position and points columns widen by the same, so the name keeps its share.
+- **Still** ten rows, his centred.
+- **Deploy:** frontend only, push.
 
 ## 2026-10-21 — v296: the player's points table — ten rows, centred on him, his row marked
 

@@ -2923,6 +2923,13 @@ line.tb-copied-flash, rect.tb-copied-flash, polyline.tb-copied-flash {
 }
 .pts-scroll .pts-table tbody tr { height: var(--pts-row); }
 .pts-scroll .pts-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
+/* Room at both ends (v297, the owner): the position and the points no longer
+   sit on the window's edges, and the red bar has air beside it. The fixed
+   columns grow by the padding, so the name keeps its share. */
+.pts-scroll .pts-table th:first-child, .pts-scroll .pts-table td:first-child { padding-left: 14px; }
+.pts-scroll .pts-table th:last-child, .pts-scroll .pts-table td:last-child { padding-right: 14px; }
+.pts-scroll .pts-table .pts-c-pos { width: 46px; }
+.pts-scroll .pts-table .pts-c-n { width: 78px; }
 .pts-dlg-shown { gap:6px; }
 .pts-dlg-err { margin:0; font-size:12px; color:var(--pp-bad); }
 .stp-dot, .stp-dot-sm {

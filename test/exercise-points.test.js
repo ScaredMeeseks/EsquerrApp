@@ -384,6 +384,9 @@ describe('exercise points — the player\'s card', () => {
     assert.ok(rule && /max-height:\s*calc\(var\(--pts-head\) \+ var\(--pts-row\) \* 10\)/.test(rule[1]), 'not ten rows');
     assert.ok(/overflow-y:\s*auto/.test(rule[1]), 'it does not scroll');
     assert.ok(/\.pts-scroll \.pts-table thead th \{[^}]*position: sticky/.test(css), 'the header scrolls away');
+    // v297: room at both ends.
+    assert.ok(/\.pts-scroll \.pts-table td:first-child \{ padding-left: 14px; \}/.test(css), 'no left margin');
+    assert.ok(/\.pts-scroll \.pts-table td:last-child \{ padding-right: 14px; \}/.test(css), 'no right margin');
   });
 
   it('centres his row under the header — and never scrolls above the top', () => {

@@ -13359,3 +13359,16 @@ Version triple → **v295**.
 **Tests:** the window rule (ten rows, scrolling, sticky header); `ptsCenterTop` (snapped, clamped); `ptsCenterOnMe` over jsdom with stubbed geometry, including an already-scrolled window; the post-render call. Mutations 6/6. Unit **4299**.
 
 Version triple → **v296**.
+
+### 2026-10-21 — v297: room at both ends of the player's points table
+
+**The owner:** more left and right margin in the points table.
+
+**The change:**
+- **Padding:** `.pts-scroll` tables get 14px of padding at the start of the first column and at the end of the last.
+- **Columns:** the fixed columns widen by the same amount (# 46px, points 78px), so the name keeps its share.
+- **Scope:** the player's page only; Plantilla's table aligns with the page's other sections and is unchanged.
+
+**Checked:** at 390 and 1280 px, still 10 rows with his in the middle slot, and no overflow.
+
+Version triple → **v297**.
