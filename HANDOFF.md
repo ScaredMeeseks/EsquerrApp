@@ -721,6 +721,17 @@ Not ordered by priority except the first, which is next. Sizes are a first read,
       pattern, so the notes never reach a player's device.
     - They go with their exercise and with their session, and are archived with the season.
 
+39. **Coaches invite their own staff.** *(owner asked 2026-10-22, while onboarding C.E. Europa)*
+    Today only the club responsable can invite staff (assistant, fitness, delegate). On Registres
+    the Staff chip is lead-only, because firestore.rules lets staff write `playerEmails` on a roster
+    and nothing else. The change means opening `staffEmails` (and `staffRoles`) to a coach for
+    their own squads' rosters only. Decide first:
+    - Can any staff member do it, or only the head coach?
+    - Which roles may a coach hand out? Probably not lead, and maybe not another head coach.
+    Then: the rule, plus its rules tests (another category refused, a player refused); the chip for
+    those coaches; and a check that `onRosterWritten` / `joinClub` grant the role exactly as they
+    do for a lead's invite.
+
 **Data**
 
 30. **Wire the Xweather free API.** ✅ **Done — v208–v210, and this entry was ~25 versions stale.**
